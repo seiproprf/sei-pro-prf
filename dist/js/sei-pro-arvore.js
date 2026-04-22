@@ -5,11 +5,19 @@ var arrayIconsView = [];
 var arrayLinksPage = [];
 var arvoreDropzone = false;
 var containerUpload = 'body';
+var uploadArvoreDragBound = false;
 var delayAjax = false;
 var selectedItensPanelArvore = false;
 var stickNoteDivSelected = 0;
 const pathArvore = parent.isNewSEI ? '/infra_js/arvore/24/' : '/infra_js/arvore/';
-const anchorDoc = isSEI_5 ? 'a[id*="anchorImg"][data-serialtip]' : 'a.clipboard[id*="anchorImg"]';
+const anchorDoc = parent.isSEI_5 ? 'a[id*="anchorImg"][data-serialtip]' : 'a.clipboard[id*="anchorImg"]';
+
+function getSelectedItensPanelArvore() {
+    return ( typeof localStorageRestorePro('configViewFlashPanelArvorePro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configViewFlashPanelArvorePro')) )
+        ? localStorageRestorePro('configViewFlashPanelArvorePro')
+        : [["Anota\u00E7\u00F5es"],["Marcador"],["Acompanhamento Especial"],["Tipo de Procedimento"],["Assuntos"],["Interessados"],["Atribui\u00E7\u00E3o"],["N\u00EDvel de Acesso"],["Observa\u00E7\u00F5es"]];
+}
+selectedItensPanelArvore = getSelectedItensPanelArvore();
 
 function initCSSArvore() {
     if ( $('head').find('style[data-style="seipro"]').length == 0 ) {
@@ -31,6 +39,12 @@ function dropzoneCancelInfo(e) {
     $(containerUpload).removeClass('dz-drag-hover');
     return false;
 }
+function hasUploadFiles(dataTransfer) {
+    if (!dataTransfer) return false;
+    if (dataTransfer.files && dataTransfer.files.length > 0) return true;
+    if (!dataTransfer.types) return false;
+    return Array.prototype.indexOf.call(dataTransfer.types, 'Files') !== -1;
+}
 function encodeUrlUploadArvore(response, params) {
     var id = response[0];
     var nome = response[1];
@@ -50,7 +64,7 @@ function encodeUrlUploadArvore(response, params) {
 }
 function initToolbarDocs(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
-    if (typeof jmespath !== 'undefined' && typeof typeof $().toolbar !== 'undefined') { 
+    if (typeof jmespath !== 'undefined' && typeof $().toolbar !== 'undefined') { 
         setToolbarDocs();
     } else {
         setTimeout(function(){ 
@@ -64,7 +78,7 @@ function setToolbarDocs() {
     var selectedItensMenu = ( typeof localStorageRestorePro('configViewFlashMenuPro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configViewFlashMenuPro')) ) ? localStorageRestorePro('configViewFlashMenuPro') : [['Copiar n\u00FAmero do processo'],['Copiar link do processo'],['Enviar Documento Externo'],['A\u00E7\u00F5es em lote'],['Atribuir Processo'],['Add/Remover Urg\u00EAncia']];
     var selectedItensDocMenu = ( typeof localStorageRestorePro('configViewFlashDocMenuPro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configViewFlashDocMenuPro')) ) ? localStorageRestorePro('configViewFlashDocMenuPro') : [['Copiar n\u00FAmero SEI'],['Copiar nome do documento'],['Copiar link do documento'],['Duplicar documento'],['Copiar para...']];
     var selectedItensDocArvore = ( typeof localStorageRestorePro('configViewFlashDocArvorePro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configViewFlashDocArvorePro')) ) ? localStorageRestorePro('configViewFlashDocArvorePro') : [["Copiar n\u00FAmero SEI"],["Copiar link do documento"],["Duplicar documento"]];
-        selectedItensPanelArvore = ( typeof localStorageRestorePro('configViewFlashPanelArvorePro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configViewFlashPanelArvorePro')) ) ? localStorageRestorePro('configViewFlashPanelArvorePro') : [["Anota\u00E7\u00F5es"],["Marcador"],["Acompanhamento Especial"],["Tipo de Procedimento"],["Assuntos"],["Interessados"],["Atribui\u00E7\u00E3o"],["N\u00EDvel de Acesso"],["Observa\u00E7\u00F5es"]];
+        selectedItensPanelArvore = getSelectedItensPanelArvore();
     
     var htmlToolbarProc =   '<div id="toolbar-options-proc" class="hidden">';
         if (getOptionsPro('optionsFlashMenu_menuproc') != 'disabled') {
@@ -988,6 +1002,9 @@ function setLoadingActionDoc(id_documento) {
     $('#anchor'+id_documento).before(html);
 }
 function loadUploadArvore() {
+    if (typeof Dropzone !== 'undefined') {
+        Dropzone.autoDiscover = false;
+    }
     dropzoneDivInfoHover();
     arvoreDropzone = new Dropzone(containerUpload, { 
         url: url_host,
@@ -1063,10 +1080,48 @@ function loadUploadArvore() {
     }).on('dragleave', function(e) {
         $(containerUpload).addClass('dz-drag-hover');
     });
+    bindUploadArvoreNativeDragEvents();
     var extUpload = localStorageRestorePro('arvoreDropzone_acceptedFiles');
     if (extUpload !== null) {
         arvoreDropzone.options.acceptedFiles = extUpload;
     }
+}
+function bindUploadArvoreNativeDragEvents() {
+    if (uploadArvoreDragBound) return;
+    uploadArvoreDragBound = true;
+
+    $(document)
+        .off('.uploadArvorePro')
+        .on('dragenter.uploadArvorePro dragover.uploadArvorePro', function(e) {
+            var originalEvent = e.originalEvent;
+            var dataTransfer = originalEvent ? originalEvent.dataTransfer : null;
+            if (!hasUploadFiles(dataTransfer)) return;
+
+            // Prevent the browser from navigating to the dropped file.
+            e.preventDefault();
+            openModalDropzone();
+        })
+        .on('dragleave.uploadArvorePro', function(e) {
+            var originalEvent = e.originalEvent;
+            if (
+                originalEvent &&
+                originalEvent.clientX <= 0 &&
+                originalEvent.clientY <= 0
+            ) {
+                dropzoneCancelInfo();
+            }
+        })
+        .on('drop.uploadArvorePro', function(e) {
+            var originalEvent = e.originalEvent;
+            var dataTransfer = originalEvent ? originalEvent.dataTransfer : null;
+            if (!hasUploadFiles(dataTransfer)) return;
+
+            e.preventDefault();
+            dropzoneCancelInfo();
+            if (arvoreDropzone && typeof arvoreDropzone.handleFiles === 'function') {
+                arvoreDropzone.handleFiles(Array.from(dataTransfer.files));
+            }
+        });
 }
 function statusUploadArvore(this_) {
     $(this_).find('i').attr('class', 'fas fa-sync-alt fa-spin azulColor');
@@ -1421,8 +1476,16 @@ function initDadosProcessoArvore(TimeOut = 1000) {
         }
         return; 
     }
-    if (typeof jmespath !== 'undefined' && typeof parent.dadosProcessoPro !== 'undefined' && typeof parent.dadosProcessoPro.propProcesso !== 'undefined' && typeof getOptionsPro !== 'undefined') {
-        setDadosProcessoArvore();
+    var dadosProcesso = (typeof parent.getDadosProcessoSession === 'function') ? parent.getDadosProcessoSession() : false;
+    if (
+        typeof jmespath !== 'undefined' &&
+        typeof getOptionsPro !== 'undefined' &&
+        (
+            (typeof parent.dadosProcessoPro !== 'undefined' && typeof parent.dadosProcessoPro.propProcesso !== 'undefined') ||
+            (dadosProcesso && typeof dadosProcesso.propProcesso !== 'undefined')
+        )
+    ) {
+        setDadosProcessoArvore(dadosProcesso);
     } else {
         setTimeout(function(){ 
             initDadosProcessoArvore(TimeOut - 100); 
@@ -1464,6 +1527,7 @@ function sticknoteUpdate(this_, value, type, priority = false, mode = 'insert') 
             _parent.find('.setDateStickNote_input').hide();
             _parent.find('.setDateStickNote').show();
             _parent.find('.countLimit').text('');
+            _parent.find('.removeStickConfirm, .removeStickCancel').hide();
             if (type == 'save') {
                 _parent.find('.saveStickNote').toggleClass('fa-spinner fa-save').removeClass('fa-spin').hide();
             } else if (type == 'remove') {
@@ -1499,12 +1563,23 @@ function sticknoteRemove(this_) {
     var _this = $(this_);
     var _parent = _this.closest('.stickDadosArvore');
     if (_parent.find('.stickNotePro').text().trim() != '') {
-        parent.confirmaBoxPro('Tem certeza que deseja remover esta anota\u00E7\u00E3o?', function(){
-            sticknoteUpdate(this_, '', 'remove');
-            _parent.find('.removeStickNote').toggleClass('fa-trash-alt fa-spinner').addClass('fa-spin');
-            _parent.addClass('stickEmpty').removeClass('priority');
-        }, 'Remover');
+        _parent.find('.removeStickNote').hide();
+        _parent.find('.removeStickConfirm, .removeStickCancel').show();
     }
+}
+function sticknoteRemoveConfirm(this_) {
+    var _this = $(this_);
+    var _parent = _this.closest('.stickDadosArvore');
+    sticknoteUpdate(this_, '', 'remove');
+    _parent.find('.removeStickConfirm, .removeStickCancel').hide();
+    _parent.find('.removeStickNote').toggleClass('fa-trash-alt fa-spinner').addClass('fa-spin').show();
+    _parent.addClass('stickEmpty').removeClass('priority');
+}
+function sticknoteRemoveCancel(this_) {
+    var _this = $(this_);
+    var _parent = _this.closest('.stickDadosArvore');
+    _parent.find('.removeStickConfirm, .removeStickCancel').hide();
+    _parent.find('.removeStickNote').show();
 }
 function sticknoteSave_(this_) {
     var _this = $(this_);
@@ -1538,6 +1613,7 @@ function sticknoteCancel(this_) {
     _parent.find('.setDateStickNote_input').hide();
     _parent.find('.saveStickNote').hide();
     _parent.find('.cancelStickNote').hide();
+    _parent.find('.removeStickConfirm, .removeStickCancel').hide();
     _parent.find('.checkStickNote').hide();
     _parent.find('.countLimit').text('');
     var textarea = _parent.find('.stickNotePro');
@@ -1629,13 +1705,10 @@ function sticknoteDates(this_) {
     var textarea = _parent.find('.stickNotePro');
     var date_stick = removeAcentos(textarea.text().trim());
     var regex = /(\d{1,2})\/(\d{1,2})\/(\d{4})/i;
-    var htmlDateStick = '';
     var userStick = getSticknoteUser();
         userStick = (userStick) ? '<i class="far fa-user" style="color: #777;padding-right: 3px;margin-left: 10px;"></i> por <span class="userStick">'+userStick+'</span>' : '';
     var checkDate = regex.exec(date_stick);
-        htmlDateStick = (checkDate !== null) ? parent.getDatesPreview({date: moment(checkDate[0], 'DD/MM/YYYY').format('YYYY-MM-DD HH:mm:ss')}) : '';
-        htmlDateStick = (htmlDateStick != '') ? $(htmlDateStick).html() : htmlDateStick;
-    var htmlStick = (htmlDateStick || userStick) ? '<span class="dateboxDisplay" style="'+(checkDate !== null && moment(checkDate[0], 'DD/MM/YYYY') < moment() ? 'background: #fac3c4 !important;' : '')+'" >'+htmlDateStick+userStick+'</span>' : '';
+    var htmlStick = userStick ? '<span class="dateboxDisplay" style="'+(checkDate !== null && moment(checkDate[0], 'DD/MM/YYYY') < moment() ? 'background: #fac3c4 !important;' : '')+'" >'+userStick+'</span>' : '';
     _parent.find('.stickNoteDate').html(htmlStick);
 }
 function sticknotePriority(this_) {
@@ -1734,9 +1807,11 @@ function setDadosAnotacao(anotacaoTxt, checkPrioridade) {
                         '           <i class="fas fa-edit azulColor editStickNote" style="cursor: pointer;" onclick="sticknoteEdit(this)" onmouseover="return infraTooltipMostrar(\'Editar Anota\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
                         '           <i class="fas fa-save azulColor saveStickNote" style="cursor: pointer; display:none" onclick="sticknoteSave(this)" onmouseover="return infraTooltipMostrar(\'Salvar Anota\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
                         '           <i class="fas fa-trash-alt removeStickNote" style="margin-top: 2px; cursor: pointer;float: right;font-size: 90%;" onclick="sticknoteRemove(this)" onmouseover="return infraTooltipMostrar(\'Remover Anota\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
+                        '           <i class="fas fa-thumbs-up removeStickConfirm" style="margin-top: 2px; cursor: pointer;float: right;font-size: 90%; display:none;" onclick="sticknoteRemoveConfirm(this)" onmouseover="return infraTooltipMostrar(\'Confirmar remo\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
+                        '           <i class="fas fa-thumbs-down removeStickCancel" style="cursor: pointer;float: right;font-size: 90%; display:none; margin: 2px 10px 0 0;" onclick="sticknoteRemoveCancel(this)" onmouseover="return infraTooltipMostrar(\'Manter anota\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
                         '           <i class="fas fa-times-circle cancelStickNote" style="cursor: pointer;float: right;font-size: 90%; display:none;" onclick="sticknoteCancel(this)" onmouseover="return infraTooltipMostrar(\'Cancelar Edi\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"></i>'+
                         '           <i class="fas fa-calendar-plus azulColor setDateStickNote" style="cursor: pointer;float: right;margin-right: 10px;" onclick="sticknoteSetDate(this)" onmouseover="return infraTooltipMostrar(\'Inserir Data\');" onmouseout="return infraTooltipOcultar();"></i>'+
-                        '           <span class="setDateStickNote_input" style="display:none"><input onkeypress="sticknoteSetDateKey(event, this)" type="date"></span>'+
+                        '           <span class="setDateStickNote_input" style="display:none"><input onkeypress="sticknoteSetDateKey(event, this)" type="date" name="setDateStickNote"></span>'+
                         '           <span style="cursor: pointer;float: right;margin: -2px 10px 0 0; display:none;font-size: 100%;" class="checkStickNote" onclick="sticknoteCheck(this)"><i class="fas fa-check-square azulColor" style="font-size: 90%;"></i> <span  class="checkListStickNote" style="font-size: 80%;">Checklist</span></span>'+
                         '           <i class="fas fa-exclamation-circle priorityStickNote" style="cursor: pointer;float: right;margin-right: 10px;" onclick="sticknotePriority(this)" onmouseover="return infraTooltipMostrar(\'Prioridade\');" onmouseout="return infraTooltipOcultar();"></i>'+
                         '       </div>'+
@@ -1802,8 +1877,25 @@ function setStickNoteCheck() {
         }
     });
 }
+function getUrlAnotacaoArvore() {
+    if (typeof jmespath === 'undefined') return false;
+
+    var url = jmespath.search(arrayLinksArvore, "[?name=='Anota\u00E7\u00F5es'] | [0].url");
+        url = url || jmespath.search(arrayLinksPage, "[?name=='Anota\u00E7\u00F5es'] | [0].url");
+
+    if (!url && arrayLinksArvoreAll && arrayLinksArvoreAll.length) {
+        $.each(arrayLinksArvoreAll, function(index, value) {
+            if (value && (value.indexOf('anotacao_registrar') !== -1 || value.indexOf('acao=anotacao_') !== -1)) {
+                url = value;
+                return false;
+            }
+        });
+    }
+
+    return url || false;
+}
 function getDadosAnotacao() {
-    var urlAnotacao = jmespath.search(arrayLinksPage,"[?name=='Anota\u00E7\u00F5es'] | [0].url");
+    var urlAnotacao = getUrlAnotacaoArvore();
     if (urlAnotacao && !parent.checkHostLimit()) {
         $.ajax({ url: urlAnotacao }).done(function (html) {
             var $htmlAnotacao = $(html);
@@ -1811,6 +1903,8 @@ function getDadosAnotacao() {
             var checkPrioridade = $htmlAnotacao.find('#chkSinPrioridade').is(':checked');
             setDadosAnotacao(anotacaoTxt, checkPrioridade);
         });
+    } else if (!$('.stickDadosArvore').length && !parent.checkHostLimit()) {
+        setDadosAnotacao('', false);
     }
 }
 function togglePanelDadosArvore(this_) {
@@ -2139,7 +2233,9 @@ function setDadosProcessoArvore(dadosProcessoPro = false) {
 
         $('.panelDadosArvorePro').remove();
         $('#frmArvore').append(htmlBlocoInterno+htmlMarcador+htmlAcompEsp+htmlDescricao+htmlTipoProcedimento+htmlNivelAcesso+htmlInteressados+htmlAssuntos+htmlObservacoes);  
-        if (typeof $(parent.document).find("#divIframeArvore").resizable !== 'undefined') parent.forceOnLoadBodyPage();  
+        if (typeof parent.resizeArvoreMaxWidth === 'function') {
+            parent.resizeArvoreMaxWidth(true);
+        }
         if (!dataMarcador && processoAberto) {
             getDataMarcadorProcesso();
         }
@@ -2277,6 +2373,7 @@ function getAtividadesProcessoArvore() {
     return htmlAtividades;
 }
 function stylePanelArvore() { 
+    if (typeof jmespath === 'undefined') return false;
     if ($('.iconDadosProcesso').length == 0) {
         $('#divConsultarAndamento').css({'border-top': '1px solid #dadada'}).find('a').addClass('newLink').prepend('<i class="fas fa-search azulColor iconDadosProcesso"></i>').find('img').remove();
         $('#divRelacionados').addClass('panelDadosArvore').find('label').addClass('newLink').prepend('<i class="fas fa-retweet azulColor iconDadosProcesso"></i>');
@@ -2358,7 +2455,9 @@ function stylePanelArvore() {
             });
             if (typeof parent.getInsertIconAtividade === 'function') parent.getInsertIconAtividade();
         }
-        if (typeof $(parent.document).find("#divIframeArvore").resizable !== 'undefined') parent.forceOnLoadBodyPage();
+        if (typeof parent.resizeArvoreMaxWidth === 'function') {
+            parent.resizeArvoreMaxWidth(true);
+        }
 
         if ($.inArray("Anota\u00E7\u00F5es",jmespath.search(selectedItensPanelArvore,"[]")) !== -1) getDadosAnotacao();
 
@@ -2372,11 +2471,12 @@ function stylePanelArvore() {
 function initStylePanelArvore(TimeOut = 9000) {
 
     if (TimeOut <= 0 || (!isSEI_5 && parent.window.name != '') || (isSEI_5 && parent.window.name != 'autopreenchersenha')) { return; }
+    if (!selectedItensPanelArvore || !selectedItensPanelArvore.length) {
+        selectedItensPanelArvore = getSelectedItensPanelArvore();
+    }
     if (
-        typeof getOptionsPro !== 'undefined' && selectedItensPanelArvore && 
-        selectedItensPanelArvore.length && 
-        // (!parent.userHashAtiv || (parent.userHashAtiv && typeof parent.arrayAtividadesPro !== 'undefined' && parent.arrayAtividadesPro.length)) &&
-        typeof parent.__ !== 'undefined'
+        typeof getOptionsPro !== 'undefined' && typeof jmespath !== 'undefined' && selectedItensPanelArvore && 
+        selectedItensPanelArvore.length
     ) {
         if (!getOptionsPro('optionsFlashMenu_panelinfo') || getOptionsPro('optionsFlashMenu_panelinfo') == 'enabled') { 
             stylePanelArvore();
@@ -2569,6 +2669,17 @@ function initOnClickPasta() {
 }
 */
 function initSeiProArvore(loop = true) {
+    if (typeof jmespath === 'undefined') {
+        if (!window.__SEI_PRO_JMESPATH_LOADING__ && typeof parent.URL_SPRO !== 'undefined') {
+            window.__SEI_PRO_JMESPATH_LOADING__ = true;
+            $.getScript(parent.URL_SPRO+"js/lib/jmespath.min.js")
+                .always(function() {
+                    window.__SEI_PRO_JMESPATH_LOADING__ = false;
+                    initSeiProArvore(loop);
+                });
+        }
+        return;
+    }
     loadStyleDesign();
     checkProcessoSigiloso();
     if (typeof parent.checkCapacidade !== 'undefined' && parent.checkCapacidade('view_prescricoes') && parent.checkConfigValue('gerenciarprescricoes')) initPanelPrescricaoProcesso();
@@ -2579,7 +2690,9 @@ function initSeiProArvore(loop = true) {
     if (typeof localStorageRestorePro === "function" && typeof parent.checkConfigValue !== 'undefined' && parent.checkConfigValue('infoarvore') ) { 
         initStylePanelArvore();
     } else if (typeof localStorageRestorePro === "function" && typeof parent.checkConfigValue !== 'undefined'  && !parent.checkConfigValue('infoarvore')) {
-        if (typeof $(parent.document).find("#divIframeArvore").resizable !== 'undefined') parent.forceOnLoadBodyPage(); 
+        if (typeof parent.resizeArvoreMaxWidth === 'function') {
+            parent.resizeArvoreMaxWidth(true);
+        }
         console.log('forceOnLoadBodyPage');
     }
     
@@ -2631,24 +2744,55 @@ function initSeiProArvore(loop = true) {
         replaceColorsIcons($('a[href*="andamento_marcador_gerenciar"], .tagUserColorPro'));
     }
     
-    $('a[id*="anchor"][target="'+ifrVisualizacao_+'"]').data('arvore-pro', true);
+    var markTreeAnchors = function() {
+        $('a[id*="anchor"][target="'+ifrVisualizacao_+'"]').data('arvore-pro', true);
+    };
+    var scheduleTreeAnchorMark = function() {
+        if (window.__SEI_PRO_ARVORE_MARK_PENDING__) return;
+        window.__SEI_PRO_ARVORE_MARK_PENDING__ = true;
+        requestAnimationFrame(function() {
+            window.__SEI_PRO_ARVORE_MARK_PENDING__ = false;
+            markTreeAnchors();
+        });
+    };
+
+    markTreeAnchors();
     $('a[target="ifrVisualizacao"]:contains("(URGENTE)")').addClass('urgentePro').find('div.urgentePro').remove().end().prepend('<div class="urgentePro"></div>');
 
-    setTimeout(function(){ 
-        var arrayCheckActions = $('a[id*="anchor"][target="'+ifrVisualizacao_+'"]').map(function(){ if (typeof $(this).data('arvore-pro') === 'undefined') return true ; }).get();
-        if (typeof parent.execArvorePro !== 'undefined' && loop && typeof arrayCheckActions !== 'undefined' && arrayCheckActions.length > 0) {
-            parent.execArvorePro(initSeiProArvore);
-            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload initSeiProArvore Loop');
-        } 
-        if (typeof parent.loadResizeIframeArvoreNewSEI !== 'undefined') parent.loadResizeIframeArvoreNewSEI();
-        if (typeof jmespath === 'undefined' && typeof parent.URL_SPRO !== 'undefined') $.getScript(parent.URL_SPRO+"js/lib/jmespath.min.js");
-        if (typeof DOMPurify === 'undefined' && typeof parent.URL_SPRO !== 'undefined') $.getScript(parent.URL_SPRO+"js/lib/purify.min.js");
-
-        if (typeof parent.checkHostLimit !== 'undefined'  && parent.checkHostLimit() && typeof parent.getUrlAcaoPro !== 'undefined'  && parent.getUrlAcaoPro('duplicar_documento')) {
-            parent.initCheckDadosProcesso();
-            console.log('parent.getUrlAcaoPro(duplicar_documento)',parent.getUrlAcaoPro('duplicar_documento'));
+    if (!window.__SEI_PRO_ARVORE_MUTATION_OBSERVER__ && typeof MutationObserver !== 'undefined') {
+        var treeObserverTarget = document.getElementById('divArvore') || document.body;
+        if (treeObserverTarget) {
+            window.__SEI_PRO_ARVORE_MUTATION_OBSERVER__ = new MutationObserver(function() {
+                scheduleTreeAnchorMark();
+            });
+            window.__SEI_PRO_ARVORE_MUTATION_OBSERVER__.observe(treeObserverTarget, {
+                childList: true,
+                subtree: true
+            });
         }
-    }, 500);
+    }
+
+    if (typeof DOMPurify === 'undefined' && typeof parent.URL_SPRO !== 'undefined') $.getScript(parent.URL_SPRO+"js/lib/purify.min.js");
+
+    if (!window.__SEI_PRO_ARVORE_READY_EVENT_SENT__ && typeof parent.dispatchEvent === 'function') {
+        window.__SEI_PRO_ARVORE_READY_EVENT_SENT__ = true;
+        try {
+            var ArvoreReadyEvent = (typeof parent.CustomEvent === 'function') ? parent.CustomEvent : CustomEvent;
+            parent.dispatchEvent(new ArvoreReadyEvent('sei-pro-arvore-ready', {
+                detail: {
+                    href: window.location.href,
+                    loop: loop
+                }
+            }));
+        } catch (e) {
+            window.__SEI_PRO_ARVORE_READY_EVENT_SENT__ = false;
+        }
+    }
+
+    if (typeof parent.checkHostLimit !== 'undefined'  && parent.checkHostLimit() && typeof parent.getUrlAcaoPro !== 'undefined'  && parent.getUrlAcaoPro('duplicar_documento')) {
+        parent.initCheckDadosProcesso();
+        console.log('parent.getUrlAcaoPro(duplicar_documento)',parent.getUrlAcaoPro('duplicar_documento'));
+    }
 }
 
 $(document).ready(function () { initSeiProArvore() });

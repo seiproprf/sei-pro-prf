@@ -505,7 +505,7 @@ const getUniqueTableTag = (i, tagName, type) => {
 
     // BOTÃO DE SELEÇÃO COM EVENTOS EMBUTIDOS (QUE SERÃO DELEGADOS)
     const iconSelect = `
-        <label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label>
+        <span class="lblInfraCheck" aria-hidden="true"></span>
         <a id="lnkInfraCheck" data-tagname="${tagName_}">
             <img src="/infra_css/${isNewSEI ? 'svg/check.svg' : 'imagens/check.gif'}" id="imgRecebidosCheck" class="infraImg">
         </a>
@@ -806,68 +806,81 @@ const storeGroupTablePro = () => {
         return false;
     }
 };
+function hideProcessoPaginacaoSuperior() {
+    if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('ocultarpaginacaosuperior')) {
+        $('#divGeradosAreaPaginacaoSuperior, #divRecebidosAreaPaginacaoSuperior').hide();
+    }
+}
 
 function insertGroupTable(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
-    if (typeof checkConfigValue !== 'undefined' && (checkConfigValue('agruparlista') || verifyConfigValue('removepaginacao')) ) {
-        if (checkConfigValue('agruparlista')) { 
-            var statusTableTags =           ( storeGroupTablePro() == 'tags' ) ? 'selected' : '';
-            var statusTableTypes =          ( storeGroupTablePro() == 'types' ) ? 'selected' : '';
-            var statusTableUsers =          ( storeGroupTablePro() == 'users' ) ? 'selected' : '';
-            var statusTableCheckpoints =    ( storeGroupTablePro() == 'checkpoints' ) ? 'selected' : '';
-            var statusTableArrivaldate =    ( storeGroupTablePro() == 'arrivaldate' ) ? 'selected' : '';
-            var statusTableSenddate =       ( storeGroupTablePro() == 'senddate' ) ? 'selected' : '';
-            var statusTableDeadline =       ( storeGroupTablePro() == 'deadline' ) ? 'selected' : '';
-            var statusTableAcessdate =      ( storeGroupTablePro() == 'acessdate' ) ? 'selected' : '';
-            var statusTableDepartSend =     ( storeGroupTablePro() == 'senddepart' ) ? 'selected' : '';
-            var statusTableCreatedate =     ( storeGroupTablePro() == 'createdate' ) ? 'selected' : '';
-            var statusTableAcompEsp =       ( storeGroupTablePro() == 'acompanhamentoesp' ) ? 'selected' : '';
-            var statusTableAll =            ( storeGroupTablePro() == 'all' ) ? 'selected' : '';
-            var filterTableHome = selectFilterTableHome();
-            var panelKanbanHome = selectPanelKanbanHome();
-            var htmlControl =    '<div id="newFiltro">'+
-                                 '  '+filterTableHome+
-                                 '  '+panelKanbanHome+
-                                 '   <select id="selectGroupTablePro" class="groupTable selectPro" onchange="updateGroupTable(this)" data-placeholder="Agrupar processos...">'+
-                                 '     <option value="">&nbsp;</option>'+
-                                 '     <option value="">Sem agrupamento</option>'+
-                                 '     <option value="all" '+statusTableAll+'>Agrupar processos recebidos/gerados</option>'+
-                                 '     <option value="deadline" '+statusTableDeadline+'>Agrupar processos por prazo</option>'+
-                                 '     <option value="createdate" '+statusTableCreatedate+'>Agrupar processos por data de autua\u00E7\u00E3o</option>'+
-                                 '     <option value="arrivaldate" '+statusTableArrivaldate+'>Agrupar processos por data de recebimento</option>'+
-                                 '     <option value="senddate" '+statusTableSenddate+'>Agrupar processos por data de envio</option>'+
-                                 '     <option value="acessdate" '+statusTableAcessdate+'>Agrupar processos por data do \u00FAltimo acesso</option>'+
-                                 '     <option value="tags" '+statusTableTags+'>Agrupar processos por marcadores</option>'+
-                                 '     <option value="types" '+statusTableTypes+'>Agrupar processos por tipo</option>'+
-                                 '     <option value="users" '+statusTableUsers+'>Agrupar processos por respons\u00E1vel</option>'+
-                                 '     <option value="checkpoints" '+statusTableCheckpoints+'>Agrupar processos por ponto de controle</option>'+
-                                 '     <option value="senddepart" '+statusTableDepartSend+'>Agrupar processos por unidade de envio</option>'+
-                                 '     <option value="acompanhamentoesp" '+statusTableAcompEsp+'>Agrupar processos por acompanhamento especial</option>'+
-                                 '  </select>'+
-                                 '  <a class="newLink" onclick="getTableProcessosCSV()" id="processoToCSV" onmouseover="return infraTooltipMostrar(\'Exportar informa\u00E7\u00F5es de processos em planilha CSV\');" onmouseout="return infraTooltipOcultar();" style="margin: 0;font-size: 10pt;float: right;"><i class="fas fa-file-download cinzaColor"></i></a>'+
-                                 '</div>';
-
-            if ( $('#selectGroupTablePro').length == 0 && $('#tblProcessosDetalhado').length == 0) { 
-                $('#divFiltro').after(htmlControl).css('width','50%');
-                setTimeout(function(){ 
-                    updateGroupTable($('#selectGroupTablePro'));
-                    if ($('#selectGroupTablePro_chosen').length == 0 && verifyConfigValue('substituiselecao')) {
-                        initChosenFilterHome();
-                    }
-                }, 500);
-            }
-            if ( $('#idSelectTipoBloco').length != 0 ) { 
-                $("#idSelectTipoBloco").appendTo("#newFiltro");
-                $("#idSelectBloco").appendTo("#newFiltro");
-            }
-        } else {
-            initProcessoPaginacao($('#selectGroupTablePro'));
-        }
-    } else {
+    if (typeof selectFilterTableHome === 'undefined' || typeof selectPanelKanbanHome === 'undefined') {
         setTimeout(function(){ 
             insertGroupTable(TimeOut - 100); 
             if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload insertGroupTable'); 
         }, 500);
+        return;
+    }
+
+    var isGroupEnabled = typeof checkConfigValue !== 'undefined' && checkConfigValue('agruparlista');
+    var isRemovePaginationEnabled = typeof verifyConfigValue !== 'undefined' && verifyConfigValue('removepaginacao');
+
+    if ($('#selectGroupTablePro').length == 0 && $('#tblProcessosDetalhado').length == 0) {
+        var statusTableTags =           ( storeGroupTablePro() == 'tags' ) ? 'selected' : '';
+        var statusTableTypes =          ( storeGroupTablePro() == 'types' ) ? 'selected' : '';
+        var statusTableUsers =          ( storeGroupTablePro() == 'users' ) ? 'selected' : '';
+        var statusTableCheckpoints =    ( storeGroupTablePro() == 'checkpoints' ) ? 'selected' : '';
+        var statusTableArrivaldate =    ( storeGroupTablePro() == 'arrivaldate' ) ? 'selected' : '';
+        var statusTableSenddate =       ( storeGroupTablePro() == 'senddate' ) ? 'selected' : '';
+        var statusTableDeadline =       ( storeGroupTablePro() == 'deadline' ) ? 'selected' : '';
+        var statusTableAcessdate =      ( storeGroupTablePro() == 'acessdate' ) ? 'selected' : '';
+        var statusTableDepartSend =     ( storeGroupTablePro() == 'senddepart' ) ? 'selected' : '';
+        var statusTableCreatedate =     ( storeGroupTablePro() == 'createdate' ) ? 'selected' : '';
+        var statusTableAcompEsp =       ( storeGroupTablePro() == 'acompanhamentoesp' ) ? 'selected' : '';
+        var statusTableAll =            ( storeGroupTablePro() == 'all' ) ? 'selected' : '';
+        var filterTableHome = selectFilterTableHome();
+        var panelKanbanHome = selectPanelKanbanHome();
+        var htmlControl =    '<div id="newFiltro">'+
+                             '  '+filterTableHome+
+                             '   <select id="selectGroupTablePro" class="groupTable selectPro" onchange="updateGroupTable(this)" data-placeholder="Agrupar processos...">'+
+                             '     <option value="">&nbsp;</option>'+
+                             '     <option value="">Sem agrupamento</option>'+
+                             '     <option value="all" '+statusTableAll+'>Agrupar processos recebidos/gerados</option>'+
+                             '     <option value="deadline" '+statusTableDeadline+'>Agrupar processos por prazo</option>'+
+                             '     <option value="createdate" '+statusTableCreatedate+'>Agrupar processos por data de autua\u00E7\u00E3o</option>'+
+                             '     <option value="arrivaldate" '+statusTableArrivaldate+'>Agrupar processos por data de recebimento</option>'+
+                             '     <option value="senddate" '+statusTableSenddate+'>Agrupar processos por data de envio</option>'+
+                             '     <option value="acessdate" '+statusTableAcessdate+'>Agrupar processos por data do \u00FAltimo acesso</option>'+
+                             '     <option value="tags" '+statusTableTags+'>Agrupar processos por marcadores</option>'+
+                             '     <option value="types" '+statusTableTypes+'>Agrupar processos por tipo</option>'+
+                             '     <option value="users" '+statusTableUsers+'>Agrupar processos por respons\u00E1vel</option>'+
+                             '     <option value="checkpoints" '+statusTableCheckpoints+'>Agrupar processos por ponto de controle</option>'+
+                             '     <option value="senddepart" '+statusTableDepartSend+'>Agrupar processos por unidade de envio</option>'+
+                             '     <option value="acompanhamentoesp" '+statusTableAcompEsp+'>Agrupar processos por acompanhamento especial</option>'+
+                             '  </select>'+
+                             '  '+panelKanbanHome+
+                             '  <a class="newLink" onclick="getTableProcessosCSV()" id="processoToCSV" onmouseover="return infraTooltipMostrar(\'Exportar informa\u00E7\u00F5es de processos em planilha CSV\');" onmouseout="return infraTooltipOcultar();" style="margin: 0;font-size: 10pt;float: right;"><i class="fas fa-file-download cinzaColor"></i></a>'+
+                             '</div>';
+
+        $('#divFiltro').after(htmlControl).css('width','50%');
+        if (isGroupEnabled) {
+            setTimeout(function(){ 
+                updateGroupTable($('#selectGroupTablePro'));
+                if ($('#selectGroupTablePro_chosen').length == 0 && verifyConfigValue('substituiselecao')) {
+                    initChosenFilterHome();
+                }
+            }, 500);
+        }
+    }
+    if ( $('#idSelectTipoBloco').length != 0 ) { 
+        $("#idSelectTipoBloco").appendTo("#newFiltro");
+        $("#idSelectBloco").appendTo("#newFiltro");
+    }
+    if (isRemovePaginationEnabled) {
+        initProcessoPaginacao($('#selectGroupTablePro'));
+    }
+    if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('ocultarpaginacaosuperior')) {
+        hideProcessoPaginacaoSuperior();
     }
 }
 function initChosenFilterHome(TimeOut = 9000) {
@@ -902,6 +915,7 @@ function removeCacheGroupTable(this_) {
     //updateGroupTable($('#selectGroupTablePro'));
 }
 function updateGroupTable(this_) {
+    hideProcessoPaginacaoSuperior();
     if (typeof checkConfigValue !== 'undefined' && verifyConfigValue('removepaginacao')) {
         initProcessoPaginacao(this_);
     } else {
@@ -909,6 +923,7 @@ function updateGroupTable(this_) {
     }
 }
 function initUpdateGroupTable(this_) {
+    hideProcessoPaginacaoSuperior();
     if (typeof checkConfigValue !== 'undefined' && checkConfigValue('agruparlista')) {
         var valueSelect = $(this_).val();
         initTableTag(valueSelect);
@@ -971,7 +986,7 @@ function initTableTag(type = '') {
                 colspan = (typeof colspan !== 'undefined' && colspan > 0) ? colspan+2 : 7;
             var htmlHeadUrgente =   '<tr data-htagname="(URGENTE)" class="tagintable tableHeader">'+
                                     '   <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" width="5%" align="center">'+
-                                    '       <label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label>'+
+                                    '       <span class="lblInfraCheck" aria-hidden="true"></span>'+
                                     '       <a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'(URGENTE)\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Tudo\')" onmouseout="return infraTooltipOcultar();">'+
                                     '           <img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" class="infraImg">'+
                                     '       </a>'+
@@ -1182,6 +1197,7 @@ function initDadosProcesso(TimeOut = 9000) {
         }
     }
     const initProcessoPaginacao = (this_) => {
+        hideProcessoPaginacaoSuperior();
         if ($('.infraAreaPaginacao a').is(':visible')) {
             if ($('#divRecebidosAreaPaginacaoSuperior a').is(':visible')) {
                 checkProcessoPaginacao(this_, 'Recebidos');
@@ -2393,8 +2409,8 @@ function selectPanelKanbanHome() {
     var type = storeGroupTablePro();
         type = (!type || type == 'all' || type == '') ? false : true;
         type = true;
-    var html =  '<div id="processosProActions" class="panelHome panelHomeProcessos" style="'+(type ? '' : 'display:none;')+' position: absolute;z-index: 999;right: 0;width: auto;margin: 15px 0 0 0;">'+
-                '    <div class="btn-group processosBtnPanel" role="group" style="float: right;margin-right: 10px;">'+
+    var html =  '<div id="processosProActions" class="panelHome panelHomeProcessos" style="'+(type ? 'display: inline-block;' : 'display:none;')+' vertical-align: middle; margin-left: 10px; width: auto;">'+
+                '    <div class="btn-group processosBtnPanel" role="group" style="margin-right: 10px;">'+
                 '       <button type="button" onclick="getPanelProc(this)" data-value="Tabela" class="btn btn-sm btn-light '+(getOptionsPro('panelProcessosView') == 'Tabela' || !getOptionsPro('panelProcessosView') ? 'active' : '')+'"><i class="fas fa-table" style="color: #888;"></i> <span class="text">Tabela</span></button>'+
                 '       <button type="button" onclick="getPanelProc(this)" title="D\u00EA um duplo clique para atualizar o quadro" ondblclick="removeDataPanelProc(this)" data-value="Quadro" class="btn btn-sm btn-light '+(getOptionsPro('panelProcessosView') == 'Quadro' ? 'active' : '')+'"><i class="fas fa-project-diagram" style="color: #888;"></i> <span class="text">Quadro</span></button>'+
                 '    </div>'+
@@ -3253,7 +3269,7 @@ var getTableDistribAutomatica = async () => {
                         '        <thead>'+
                         '            <tr class="tableHeader">'+
                         '                <th class="tituloControle " width="5%" align="center">'+
-                        '                   <label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label>'+
+                        '                   <span class="lblInfraCheck" aria-hidden="true"></span>'+
                         '                   <a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'SemGrupo\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Todos\')" onmouseout="return infraTooltipOcultar();">'+
                         '                       <img src="/infra_css/imagens/check.gif" id="imgRecebidosCheck" class="infraImg">'+
                         '                   </a>'+
@@ -3753,6 +3769,7 @@ function initSeiPro() {
         initAllMarcadoresHome();
         initUrgentePro();
         initNaoVisualizadoPro();
+        if (typeof initProcessNotificationsPro === 'function') initProcessNotificationsPro();
         storeLinkUsuarioSistema();
         storeVersionSEI();
         if (typeof checkDadosAcompEspecial !== 'undefined') checkDadosAcompEspecial();
@@ -3764,6 +3781,7 @@ function initSeiPro() {
         //observeHistoryBrowserPro();
 	}
     initReloadModalLink();
+    if (typeof initSmartSignatureSelectionPro === 'function') initSmartSignatureSelectionPro();
     if (typeof isNewSEI !== 'undefined' && isNewSEI) {
         // localStorageRemovePro('seiSlim');
         

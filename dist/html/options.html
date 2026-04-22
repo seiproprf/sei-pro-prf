@@ -3,7 +3,7 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
     <title>Configura&ccedil;&otilde;es Gerais</title>
-    <script src="../js/lib/jquery-3.4.1.min.js"></script>
+    <script src="../js/lib/jquery-3.7.1.min.js"></script>
     <script src="../js/lib/jquery-ui.min.js"></script>
     <script src="../js/lib/jmespath.min.js"></script>
     <link rel="stylesheet" type="text/css" href="page.css">
@@ -23,12 +23,25 @@
         </div>
         <h1><img class="icon-space" src="../icons/icon-32.png" style="vertical-align: middle;margin-right: 10px;"> <span class="title"><span class="name-space"></span> | Configura&ccedil;&otilde;es</span></h1>
     </div>
+    <div class="panel options-search-panel">
+        <div class="options-search">
+            <i class="fas fa-search"></i>
+            <input id="options-search-input" type="text" placeholder="Pesquisar configura&ccedil;&otilde;es..." autocomplete="off" spellcheck="false">
+            <button id="options-search-clear" type="button" class="button-light">Limpar</button>
+        </div>
+        <div id="options-search-empty" style="display:none;">Nenhum resultado encontrado.</div>
+    </div>
     <div class="panel options-panel options-profile" id="options-tabs">
         <ul>
-            <li><a href="#options-functions"><i class="fas fa-cog"></i> Geral</a></li>
+            <li><a href="#options-process-control"><i class="fas fa-folder-open"></i> Controle de Processos</a></li>
+            <li><a href="#options-editor-text"><i class="fas fa-keyboard"></i> Editor de Texto</a></li>
+            <li><a href="#options-tree-view"><i class="fas fa-sitemap"></i> &Aacute;rvore e Visualiza&ccedil;&atilde;o de Documentos</a></li>
             <li><a href="#options-database"><i class="fas fa-database"></i> Base de Dados</a></li>
             <li><a href="#options-complements"><i class="fas fa-puzzle-piece"></i> Complementos</a></li>
         </ul>
+        <div id="options-process-control"></div>
+        <div id="options-editor-text"></div>
+        <div id="options-tree-view"></div>
         <div id="options-database">
             <div id="options-profile">
                 <table id="options-table-0" class="options-table">
@@ -143,7 +156,7 @@
                     </td>
                     <td>
                            <div class="onoffswitch">
-                               <input type="checkbox" data-name="gerenciaratividades" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciaratividades" tabindex="0" checked>
+                               <input type="checkbox" data-name="gerenciaratividades" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciaratividades" tabindex="0">
                                <label class="onoff-switch-label" for="itemConfigGeral_gerenciaratividades"></label>
                            </div>
                     </td>
@@ -157,7 +170,7 @@
                     </td>
                     <td>
                            <div class="onoffswitch">
-                               <input type="checkbox" data-name="gerenciarprojetos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprojetos" tabindex="0" checked>
+                               <input type="checkbox" data-name="gerenciarprojetos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprojetos" tabindex="0">
                                <label class="onoff-switch-label" for="itemConfigGeral_gerenciarprojetos"></label>
                            </div>
                     </td>
@@ -171,7 +184,7 @@
                     </td>
                     <td>
                            <div class="onoffswitch">
-                               <input type="checkbox" data-name="gerenciarprescricoes" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprescricoes" tabindex="0" checked>
+                               <input type="checkbox" data-name="gerenciarprescricoes" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprescricoes" tabindex="0">
                                <label class="onoff-switch-label" for="itemConfigGeral_gerenciarprescricoes"></label>
                            </div>
                     </td>
@@ -213,7 +226,7 @@
                     </td>
                     <td>
                            <div class="onoffswitch">
-                               <input type="checkbox" data-name="gerenciarformularios" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarformularios" tabindex="0" checked>
+                               <input type="checkbox" data-name="gerenciarformularios" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarformularios" tabindex="0">
                                <label class="onoff-switch-label" for="itemConfigGeral_gerenciarformularios"></label>
                            </div>
                     </td>
@@ -227,7 +240,7 @@
                     </td>
                     <td>
                            <div class="onoffswitch">
-                               <input type="checkbox" data-name="sincronizarprocessos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_sincronizarprocessos" tabindex="0" checked>
+                               <input type="checkbox" data-name="sincronizarprocessos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_sincronizarprocessos" tabindex="0">
                                <label class="onoff-switch-label" for="itemConfigGeral_sincronizarprocessos"></label>
                            </div>
                     </td>
@@ -248,7 +261,7 @@
                 </tr>
             </table>
         </div>
-        <div id="options-functions">
+        <div id="options-functions" style="display:none;">
             <div id="accordion">
                 <h3>Controle de Processos</h3>
                 <div>
@@ -262,8 +275,22 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="gerenciarfavoritos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarfavoritos" tabindex="0" checked>
+                                       <input type="checkbox" data-name="gerenciarfavoritos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarfavoritos" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_gerenciarfavoritos"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr id="favoritesPro_beforeControl">
+                            <td>
+                                <p>
+                                    <i class="iconPopup fa fa-arrow-up cinzaColor"></i><span class="info">Mover Favoritos para cima do Controle de Processos</span>
+                                    <a class="manual" href="/pages/FAVORITOS.html" target="_blank" style="float: right;"><i class="iconPopup fa fa-info-circle" style="color: #C0C0C0 !important;"></i></a>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="favoritosacimacontrole" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_favoritosacimacontrole" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_favoritosacimacontrole"></label>
                                    </div>
                             </td>
                         </tr>
@@ -276,7 +303,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="gerenciarprazos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprazos" tabindex="0" checked>
+                                       <input type="checkbox" data-name="gerenciarprazos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_gerenciarprazos" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_gerenciarprazos"></label>
                                    </div>
                             </td>
@@ -321,8 +348,86 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="marcar_naolido" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_marcar_naolido" tabindex="0" checked>
+                                       <input type="checkbox" data-name="marcar_naolido" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_marcar_naolido" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_marcar_naolido"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fa fa-bell cinzaColor"></i><span class="info">Notificar quando surgirem novos processos n&atilde;o visualizados</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="notificacaonovoprocesso" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_notificacaonovoprocesso" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_notificacaonovoprocesso"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fas fa-badge-check cinzaColor"></i><span class="info">Indicador global de blocos de assinatura</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="indicadorglobalblocoassinatura" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_indicadorglobalblocoassinatura" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_indicadorglobalblocoassinatura"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fas fa-file-signature cinzaColor"></i><span class="info">Sele&ccedil;&atilde;o inteligente dentro do bloco de assinatura</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="selecaointeligenteblocoassinatura" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_selecaointeligenteblocoassinatura" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_selecaointeligenteblocoassinatura"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fas fa-search azulColor"></i><span class="info">Filtrar a p&aacute;gina pelo campo de pesquisa r&aacute;pida</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="filtrarpaginapelapesquisarapida" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_filtrarpaginapelapesquisarapida" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_filtrarpaginapelapesquisarapida"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fas fa-bullhorn azulColor"></i><span class="info">Atalho para Publica&ccedil;&otilde;es Eletr&ocirc;nicas</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="atalhopublicacoeseletronicas" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_atalhopublicacoeseletronicas" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_atalhopublicacoeseletronicas"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fas fa-user-check azulColor"></i><span class="info">Filtro por atribui&ccedil;&atilde;o</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="filtroporatribuicao" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_filtroporatribuicao" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_filtroporatribuicao"></label>
                                    </div>
                             </td>
                         </tr>
@@ -335,7 +440,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="agruparlista" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_agruparlista" tabindex="0" checked>
+                                       <input type="checkbox" data-name="agruparlista" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_agruparlista" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_agruparlista"></label>
                                    </div>
                             </td>
@@ -349,7 +454,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="menurapido" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_menurapido" tabindex="0" checked>
+                                       <input type="checkbox" data-name="menurapido" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_menurapido" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_menurapido"></label>
                                    </div>
                             </td>
@@ -365,6 +470,20 @@
                                    <div class="onoffswitch">
                                        <input type="checkbox" data-name="removepaginacao" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_removepaginacao" tabindex="0" >
                                        <label class="onoff-switch-label" for="itemConfigGeral_removepaginacao"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
+                                    <i class="iconPopup fa fa-angle-double-up cinzaColor"></i><span class="info">Ocultar pagina&ccedil;&atilde;o superior dos processos</span>
+                                    <a class="manual" href="/pages/REMOVEPAGINACAO.html" target="_blank" style="float: right;"><i class="iconPopup fa fa-info-circle" style="color: #C0C0C0 !important;"></i></a>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="ocultarpaginacaosuperior" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ocultarpaginacaosuperior" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_ocultarpaginacaosuperior"></label>
                                    </div>
                             </td>
                         </tr>
@@ -405,7 +524,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="ordenarmenu" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ordenarmenu" tabindex="0" checked>
+                                       <input type="checkbox" data-name="ordenarmenu" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ordenarmenu" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_ordenarmenu"></label>
                                    </div>
                             </td>
@@ -419,7 +538,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="ordernartabela" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ordernartabela" tabindex="0" checked>
+                                       <input type="checkbox" data-name="ordernartabela" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ordernartabela" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_ordernartabela"></label>
                                    </div>
                             </td>
@@ -455,13 +574,26 @@
                         <tr>
                             <td>
                                 <p>
+                                    <i class="iconPopup fas fa-sticky-note cinzaColor"></i><span class="info">Mostrar anota&ccedil;&atilde;o do processo na tela de controle de processos</span>
+                                </p>
+                            </td>
+                            <td>
+                                   <div class="onoffswitch">
+                                       <input type="checkbox" data-name="mostraranotacaocontrole" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_mostraranotacaocontrole" tabindex="0">
+                                       <label class="onoff-switch-label" for="itemConfigGeral_mostraranotacaocontrole"></label>
+                                   </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p>
                                     <i class="iconPopup fa fa-certificate azulColor"></i><span class="info">Contador de processos n&atilde;o recebidos no &iacute;cone do SEI</span>
                                     <a class="manual" href="/pages/CONTADORPROCESSOICONE.html" target="_blank" style="float: right;"><i class="iconPopup fa fa-info-circle" style="color: #C0C0C0 !important;"></i></a>
                                 </p>
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="contadoricone" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_contadoricone" tabindex="0" checked>
+                                       <input type="checkbox" data-name="contadoricone" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_contadoricone" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_contadoricone"></label>
                                    </div>
                             </td>
@@ -475,7 +607,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="historicoproc" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_historicoproc" tabindex="0" checked>
+                                       <input type="checkbox" data-name="historicoproc" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_historicoproc" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_historicoproc"></label>
                                    </div>
                             </td>
@@ -517,7 +649,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="coresmarcadores" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_coresmarcadores" tabindex="0" checked>
+                                       <input type="checkbox" data-name="coresmarcadores" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_coresmarcadores" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_coresmarcadores"></label>
                                    </div>
                             </td>
@@ -531,7 +663,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="autopreenchersenha" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_autopreenchersenha" tabindex="0">
+                                       <input type="checkbox" data-name="autopreenchersenha" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_autopreenchersenha" tabindex="0" checked>
                                        <label class="onoff-switch-label" for="itemConfigGeral_autopreenchersenha"></label>
                                    </div>
                             </td>
@@ -550,7 +682,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="ferramentasia" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ferramentasia" tabindex="0" checked>
+                                       <input type="checkbox" data-name="ferramentasia" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ferramentasia" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_ferramentasia"></label>
                                    </div>
                             </td>
@@ -564,7 +696,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="revisaotexto" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_revisaotexto" tabindex="0" checked>
+                                       <input type="checkbox" data-name="revisaotexto" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_revisaotexto" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_revisaotexto"></label>
                                    </div>
                             </td>
@@ -592,7 +724,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="ditado" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ditado" tabindex="0" checked>
+                                       <input type="checkbox" data-name="ditado" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_ditado" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_ditado"></label>
                                    </div>
                             </td>
@@ -606,7 +738,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="editarlinks" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_editarlinks" tabindex="0" checked>
+                                       <input type="checkbox" data-name="editarlinks" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_editarlinks" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_editarlinks"></label>
                                    </div>
                             </td>
@@ -659,7 +791,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="teclasatalho" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_teclasatalho" tabindex="0" checked>
+                                       <input type="checkbox" data-name="teclasatalho" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_teclasatalho" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_teclasatalho"></label>
                                    </div>
                             </td>
@@ -694,7 +826,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="editarimagens" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_editarimagens" tabindex="0" checked>
+                                       <input type="checkbox" data-name="editarimagens" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_editarimagens" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_editarimagens"></label>
                                    </div>
                             </td>
@@ -744,7 +876,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="acoesemlote" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_acoesemlote" tabindex="0" checked>
+                                       <input type="checkbox" data-name="acoesemlote" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_acoesemlote" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_acoesemlote"></label>
                                    </div>
                             </td>
@@ -758,7 +890,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="documentosemlote" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_documentosemlote" tabindex="0" checked>
+                                       <input type="checkbox" data-name="documentosemlote" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_documentosemlote" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_documentosemlote"></label>
                                    </div>
                             </td>
@@ -772,7 +904,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="comparardocumentos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_comparardocumentos" tabindex="0" checked>
+                                       <input type="checkbox" data-name="comparardocumentos" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_comparardocumentos" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_comparardocumentos"></label>
                                    </div>
                             </td>
@@ -884,7 +1016,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="naoassinados" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_naoassinados" tabindex="0" checked>
+                                       <input type="checkbox" data-name="naoassinados" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_naoassinados" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_naoassinados"></label>
                                    </div>
                             </td>
@@ -912,7 +1044,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="certidaosigilo" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_certidaosigilo" tabindex="0" checked>
+                                       <input type="checkbox" data-name="certidaosigilo" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_certidaosigilo" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_certidaosigilo"></label>
                                    </div>
                             </td>
@@ -943,7 +1075,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="movericone" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_movericone" tabindex="0" checked>
+                                       <input type="checkbox" data-name="movericone" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_movericone" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_movericone"></label>
                                    </div>
                             </td>
@@ -957,7 +1089,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="visualizarzip" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_visualizarzip" tabindex="0" checked>
+                                       <input type="checkbox" data-name="visualizarzip" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_visualizarzip" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_visualizarzip"></label>
                                    </div>
                             </td>
@@ -971,7 +1103,7 @@
                             </td>
                             <td>
                                    <div class="onoffswitch">
-                                       <input type="checkbox" data-name="newdocdefault" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdocdefault" tabindex="0" checked>
+                                       <input type="checkbox" data-name="newdocdefault" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdocdefault" tabindex="0">
                                        <label class="onoff-switch-label" for="itemConfigGeral_newdocdefault"></label>
                                    </div>
                             </td>
@@ -1032,7 +1164,7 @@
                                     </td>
                                     <td style="width: 40%;">
                                            <div class="onoffswitch">
-                                               <input type="checkbox" data-name="newdoctoday" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdoctoday" tabindex="0" checked>
+                                               <input type="checkbox" data-name="newdoctoday" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdoctoday" tabindex="0">
                                                <label class="onoff-switch-label" for="itemConfigGeral_newdoctoday"></label>
                                            </div>
                                     </td>
@@ -1045,7 +1177,7 @@
                                     </td>
                                     <td style="width: 40%;">
                                            <div class="onoffswitch">
-                                               <input type="checkbox" data-name="newdocnivel" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdocnivel" tabindex="0" checked>
+                                               <input type="checkbox" data-name="newdocnivel" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newdocnivel" tabindex="0">
                                                <label class="onoff-switch-label" for="itemConfigGeral_newdocnivel"></label>
                                            </div>
                                     </td>
@@ -1058,7 +1190,7 @@
                                     </td>
                                     <td style="width: 40%;">
                                            <div class="onoffswitch">
-                                               <input type="checkbox" data-name="newproc_selfunidade" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newproc_selfunidade" tabindex="0" checked>
+                                               <input type="checkbox" data-name="newproc_selfunidade" name="onoffswitch" class="onoffswitch-checkbox" id="itemConfigGeral_newproc_selfunidade" tabindex="0">
                                                <label class="onoff-switch-label" for="itemConfigGeral_newproc_selfunidade"></label>
                                            </div>
                                     </td>

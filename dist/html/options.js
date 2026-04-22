@@ -82,6 +82,53 @@ function remove_options() {
             //location.reload(true); 
         });
 }
+function closeOptionsView(goHome = false) {
+    try {
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                source: 'SEI_PRO_OPTIONS',
+                action: 'close-options',
+                goHome: goHome === true
+            }, '*');
+            return true;
+        }
+    } catch (error) {
+        console.warn('Não foi possível notificar o fechamento das configurações:', error);
+    }
+
+    try {
+        window.close();
+        return true;
+    } catch (error) {
+        console.warn('Não foi possível fechar a janela de configurações:', error);
+    }
+
+    return false;
+}
+function getRuntimeApi() {
+    if (typeof browser !== 'undefined' && browser.runtime) {
+        return browser;
+    }
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+        return chrome;
+    }
+    return null;
+}
+function syncProcessNotificationOption() {
+    var runtimeApi = getRuntimeApi();
+    if (!runtimeApi || !runtimeApi.runtime || typeof runtimeApi.runtime.sendMessage !== 'function') {
+        return;
+    }
+
+    try {
+        runtimeApi.runtime.sendMessage({
+            action: 'syncNotificacaoProcessosConfig',
+            enabled: $('#itemConfigGeral_notificacaonovoprocesso').is(':checked')
+        });
+    } catch (error) {
+        console.warn('Não foi possível sincronizar a configuração de notificações:', error);
+    }
+}
 function save_options(reload) {
     
 	var dataValues = [];
@@ -106,10 +153,12 @@ function save_options(reload) {
     chrome.storage.sync.set({
         dataValues: JSON.stringify(dataValues)
     }, function() {
+        syncProcessNotificationOption();
         // Update status to let user know options were saved.
         if ( reload == true ) { 
-            alertaBoxPro('Sucess', 'check-circle', 'Configura\u00e7\u00f5es salvas com sucesso!');
-            //location.reload(true); 
+            if (!closeOptionsView(true)) {
+                alertaBoxPro('Sucess', 'check-circle', 'Configura\u00e7\u00f5es salvas com sucesso!');
+            }
         } else { 
             downloadFile(); 
         }
@@ -169,6 +218,12 @@ function restore_options() {
             $('#newdocDefault_table').show();
         } else {
             $('#newdocDefault_table').hide();
+        }
+        if(jmespath.search(dataValuesConfig, "[?name=='gerenciarfavoritos'].value | [0]") || jmespath.search(dataValuesConfig, "[?name=='gerenciarfavoritos'].value | [0]") === null) {
+            $('#favoritesPro_beforeControl').show();
+        } else {
+            $('#favoritesPro_beforeControl').hide();
+            $('#itemConfigGeral_favoritosacimacontrole').prop('checked', false);
         }
         if(jmespath.search(dataValuesConfig, "[?name=='uploaddocsexternos'].value | [0]") || jmespath.search(dataValuesConfig, "[?name=='uploaddocsexternos'].value | [0]") === null) {
             $('#uploadDoc_sortBefore').show();
@@ -240,6 +295,7 @@ function restore_options() {
             $('#newDoc_sigilo').show();
         }
         addActionsProfile();
+        applyOptionsSearchFilter();
     });
 }
 function actionRemoveProfile(idTable) {
@@ -256,11 +312,13 @@ function actionRemoveProfile(idTable) {
         if ( $('.removeProfile').length > 1 ) {
             $('#options-table-'+idTable).fadeOut('slow', function() {
                 $(this).remove();
+                applyOptionsSearchFilter();
                 //  $('.save').removeClass('button-light');
             });
         } else {
             $('#options-table-'+idTable).find('.input-config-pro').val('');
             remove_options();
+            applyOptionsSearchFilter();
         }
     });
     $('.options-table').find('.input-config-pro').on('change', function() {
@@ -277,6 +335,7 @@ function addProfile() {
     });
     actionRemoveProfile(idTable);
     addActionsProfile();
+    applyOptionsSearchFilter();
 }
 function addActionsProfile() {
     $('.sca-conexaoTipo').unbind().on("change", function () {
@@ -288,6 +347,9 @@ function addActionsProfile() {
     $('.passReveal').unbind().on("input", function () {
         passUpdate(this);
     });
+}
+function getOptionsGeneralPanels() {
+    return $('#options-process-control, #options-editor-text, #options-tree-view, #options-functions');
 }
 function passUpdate(this_) {
     var _this = $(this_);
@@ -303,7 +365,7 @@ function passUpdate(this_) {
 }
 function changeConfigGeral() {
     var arrayShowItensMenu = [];
-    $('#options-functions').find('input[name="onoffswitch"]').each(function(){
+    getOptionsGeneralPanels().find('input[name="onoffswitch"]').each(function(){
         if ($(this).is(':checked')) {
             var value = true;
             $(this).closest('tr').find('.iconPopup').addClass('azulColor').removeClass('cinzaColor');
@@ -323,22 +385,28 @@ function changeConfigGeral() {
         }
         arrayShowItensMenu.push({name: $(this).attr('data-name'), value: value});
     });
-    $('#options-functions').find('input[type="text"]').each(function(){
+    getOptionsGeneralPanels().find('input[type="text"]').each(function(){
         if ($(this).val() != '') {
             arrayShowItensMenu.push({name: $(this).attr('data-name'), value: $(this).val()});
         }
     });
-    $('#options-functions').find('input[type="number"]').each(function(){
+    getOptionsGeneralPanels().find('input[type="number"]').each(function(){
         if ($(this).val() != '') {
             arrayShowItensMenu.push({name: $(this).attr('data-name'), value: parseInt($(this).val())});
         }
     });
-    $('#options-functions').find('select').each(function(){
+    getOptionsGeneralPanels().find('select').each(function(){
         if ($(this).val() != '') {
             arrayShowItensMenu.push({name: $(this).attr('data-name'), value: $(this).val()});
         }
     });
     if ($('#itemConfigGeral_newdocdefault').is(':checked')) { $('#newdocDefault_table').show(); } else { $('#newdocDefault_table').hide(); } 
+    if ($('#itemConfigGeral_gerenciarfavoritos').is(':checked')) {
+        $('#favoritesPro_beforeControl').show();
+    } else {
+        $('#favoritesPro_beforeControl').hide();
+        $('#itemConfigGeral_favoritosacimacontrole').prop('checked',false);
+    }
     if ($('#itemConfigGeral_uploaddocsexternos').is(':checked')) { 
         $('#uploadDoc_sortBefore').show(); 
     } else { 
@@ -403,14 +471,14 @@ function setNamePage() {
     var manifest = getManifestExtension();
     var NAMESPACE_SPRO = manifest.short_name;
     var ICONSPACE_SPRO = manifest.icons['32'];
-    var URLPages_SPRO = manifest.homepage_url;
+    var URLPages_SPRO = 'https://sei-pro.github.io/sei-pro';
     // var title = 'Configura\u00E7\u00F5es Gerais | '+NAMESPACE_SPRO;
     $('.title .name-space').text(NAMESPACE_SPRO);
     $('.icon-space').attr('src','../'+ICONSPACE_SPRO);
     $('a.manual').each(function(){
         $(this).attr('href', URLPages_SPRO+$(this).attr('href'));
     });
-    if (NAMESPACE_SPRO == 'SEI Pro Lab') {
+    if (NAMESPACE_SPRO == 'SEI Pro PRF Dev') {
         $('body').addClass('SEIPro_lab');
     } else if (NAMESPACE_SPRO == 'ANTAQ Pro') {
         $('body').addClass('ANTAQ_Pro');
@@ -419,7 +487,171 @@ function setNamePage() {
     }
     console.log(manifest);
 }
-$('#options-functions').find('input[type="text"]').on("keyup", function () {
+var optionsSearchState = {
+    rafId: 0,
+    tabsActive: 0,
+    tabsSearchMode: false
+};
+function normalizeOptionsSearchText(text) {
+    return (text || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+function clearOptionsSearchFilterClasses() {
+    $('.options-search-hidden').removeClass('options-search-hidden');
+    $('.options-search-match').removeClass('options-search-match');
+}
+function setOptionsTabsSearchMode(enable) {
+    var $tabs = $('#options-tabs');
+    if (!$tabs.length) {
+        return;
+    }
+
+    if (enable) {
+        if (!$tabs.hasClass('options-search-mode')) {
+            if ($tabs.hasClass('ui-tabs')) {
+                try {
+                    optionsSearchState.tabsActive = $tabs.tabs('option', 'active');
+                } catch (error) {
+                    optionsSearchState.tabsActive = 0;
+                }
+                $tabs.tabs('destroy');
+            }
+            $tabs.addClass('options-search-mode');
+            $tabs.children('ul').hide();
+            $tabs.children('#options-process-control, #options-editor-text, #options-tree-view, #options-database, #options-complements').show();
+        }
+        optionsSearchState.tabsSearchMode = true;
+    } else if ($tabs.hasClass('options-search-mode')) {
+        $tabs.removeClass('options-search-mode');
+        $tabs.children('ul').show();
+        if (!$tabs.hasClass('ui-tabs')) {
+            $tabs.tabs({
+                active: (typeof optionsSearchState.tabsActive === 'number') ? optionsSearchState.tabsActive : 0
+            });
+        }
+        optionsSearchState.tabsSearchMode = false;
+    }
+}
+function rebuildOptionsFunctionTabs() {
+    var $accordion = $('#accordion');
+    if (!$accordion.length) {
+        return;
+    }
+
+    var tabMap = [
+        '#options-process-control',
+        '#options-editor-text',
+        '#options-tree-view'
+    ];
+
+    $accordion.children('h3').each(function(index) {
+        var selector = tabMap[index];
+        if (!selector) {
+            return;
+        }
+
+        var $target = $(selector);
+        if (!$target.length || $.trim($target.html()) !== '') {
+            return;
+        }
+
+        var $pane = $(this).next('div');
+        if ($pane.length) {
+            $target.append($pane.children().detach());
+        }
+    });
+}
+function applyOptionsSearchFilter() {
+    var query = normalizeOptionsSearchText($('#options-search-input').val());
+    var hasQuery = query !== '';
+    var $tabs = $('#options-tabs');
+    var tabsWidgetReady = $tabs.hasClass('ui-tabs') || !!$tabs.data('ui-tabs');
+    var activeTab = tabsWidgetReady
+        ? $tabs.tabs('option', 'active')
+        : optionsSearchState.tabsActive;
+    var tabMatches = [false, false, false, false, false];
+    var visibleMatches = 0;
+
+    clearOptionsSearchFilterClasses();
+    setOptionsTabsSearchMode(hasQuery);
+
+    if (!hasQuery) {
+        $('#options-search-empty').hide();
+        return;
+    }
+
+    var tabDefinitions = [
+        { selector: '#options-process-control table.tableZebra', index: 0 },
+        { selector: '#options-editor-text table.tableZebra', index: 1 },
+        { selector: '#options-tree-view table.tableZebra', index: 2 },
+        { selector: '#options-profile .options-table', index: 3 },
+        { selector: '#options-complements table.tableZebra', index: 4 }
+    ];
+
+    $.each(tabDefinitions, function(_, definition) {
+        $(definition.selector).each(function() {
+            var $table = $(this);
+            var tableHasMatch = false;
+
+            $table.find('tr').each(function() {
+                var $row = $(this);
+
+                if ($row.is('#footer') || !$row.is(':visible')) {
+                    return;
+                }
+
+                var rowHasMatch = normalizeOptionsSearchText($row.text()).indexOf(query) !== -1;
+                if (rowHasMatch) {
+                    tableHasMatch = true;
+                    visibleMatches++;
+                    $row.removeClass('options-search-hidden');
+                    $row.addClass('options-search-match');
+                } else {
+                    $row.addClass('options-search-hidden');
+                }
+            });
+
+            if (tableHasMatch) {
+                tabMatches[definition.index] = true;
+                $table.removeClass('options-search-hidden');
+            } else {
+                $table.addClass('options-search-hidden');
+            }
+        });
+    });
+
+    var targetTab = -1;
+    if (tabMatches[activeTab]) {
+        targetTab = activeTab;
+    } else {
+        for (var i = 0; i < tabMatches.length; i++) {
+            if (tabMatches[i]) {
+                targetTab = i;
+                break;
+            }
+        }
+    }
+
+    if (!optionsSearchState.tabsSearchMode && targetTab !== -1 && targetTab !== activeTab) {
+        $('#options-tabs').tabs('option', 'active', targetTab);
+    }
+
+    $('#options-search-empty').toggle(visibleMatches === 0);
+}
+function scheduleOptionsSearchFilter() {
+    if (optionsSearchState.rafId) {
+        window.cancelAnimationFrame(optionsSearchState.rafId);
+    }
+    optionsSearchState.rafId = window.requestAnimationFrame(function() {
+        optionsSearchState.rafId = 0;
+        applyOptionsSearchFilter();
+    });
+}
+$(document).on("keyup", "#options-process-control input[type='text'], #options-editor-text input[type='text'], #options-tree-view input[type='text'], #options-functions input[type='text']", function () {
     if ($(this).val() != '') {
         $(this).closest('tr').find('.iconPopup').addClass('azulColor').removeClass('cinzaColor');
     } else {
@@ -431,13 +663,22 @@ $('input[name="onoffswitch"]').on("change", function () {
 });
 $('.save').click(function() { save_options(true) });
 $('#new').click(function() { addProfile() });
+$(document).on('input', '#options-search-input', function() {
+    scheduleOptionsSearchFilter();
+});
+$(document).on('search', '#options-search-input', function() {
+    scheduleOptionsSearchFilter();
+});
+$(document).on('click', '#options-search-clear', function() {
+    $('#options-search-input').val('');
+    scheduleOptionsSearchFilter();
+    $('#options-search-input').trigger('focus');
+});
 
 $(function(){
     restore_options();
+    rebuildOptionsFunctionTabs();
     $('#options-tabs').tabs();
-    $('#accordion').accordion({
-        heightStyle: 'content',
-        collapsible: true
-      });
     setNamePage();
+    applyOptionsSearchFilter();
 });

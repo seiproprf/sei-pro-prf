@@ -28,7 +28,7 @@ function setConfigHost(host, callback, callback_else){
 }
 /* function appendIconEntidadeLogin() {
     if ($('#divAreaRestrita').length > 0 && $('#iconEntidade').length == 0) {
-        $.getScript(getUrlExtension("js/lib/jquery-3.4.1.min.js"));
+        $.getScript(getUrlExtension("js/lib/jquery-3.7.1.min.js"));
         if (typeof loadFunctionsPro === 'undefined') $.getScript(getUrlExtension("js/sei-functions-pro.js"));
         $.getScript(getUrlExtension("js/sei-pro-icons.js"));
 
@@ -40,7 +40,18 @@ function getParamsUrlPro(url) {
         var vars = url.split('?')[1].split('&');
         for (var i = 0; i < vars.length; i++) {
             var pair = vars[i].split('=');
-            params[pair[0]] = decodeURIComponent(pair[1]);
+            var key = pair.shift();
+            var value = pair.join('=');
+            if (typeof value === 'undefined') {
+                value = '';
+            }
+            value = value.replace(/\+/g, ' ');
+            try {
+                value = decodeURIComponent(value);
+            } catch (error) {
+                console.warn('Parametro de URL malformado ignorado em getParamsUrlPro:', value, error);
+            }
+            params[key] = value;
         }
         return params;
     } else { return false; }
@@ -256,7 +267,7 @@ function getPathExtensionPro() {
         var manifest = getManifestExtension();
         var VERSION_SPRO = manifest.version;
         var NAMESPACE_SPRO = manifest.short_name;
-        var URLPAGES_SPRO = manifest.homepage_url;
+        var URLPAGES_SPRO = 'https://sei-pro.github.io/sei-pro';
         setSessionNameSpace({URL_SPRO: URL_SPRO, NAMESPACE_SPRO: NAMESPACE_SPRO, URLPAGES_SPRO: URLPAGES_SPRO, VERSION_SPRO: VERSION_SPRO, ICON_SPRO: manifest.icons});
     }
 }
@@ -283,14 +294,24 @@ function verifyConfigValue(name) {
     }
 }
 function loadRepairPwdNewSei() {
-    if (verifyConfigValue('autopreenchersenha') && window.location.href.indexOf('sip/login.php') !== -1 && $('#divIdentificacaoSistema').length) {
-        $('#pwdSenha').hide();
-        $('input[type="password"]').show().attr('autocomplete','current-password').css({
+    if (verifyConfigValue('autopreenchersenha') && window.location.href.indexOf('sip/login.php') !== -1) {
+        var pwdHidden = $('#pwdSenha');
+        var pwdVisible = $('input[type="password"]').not('#pwdSenha');
+
+        if (!pwdHidden.length || !pwdVisible.length) {
+            setTimeout(loadRepairPwdNewSei, 250);
+            return;
+        }
+
+        pwdHidden.hide();
+        pwdVisible.show().attr('autocomplete','current-password').css({
             fontSize: '2em',
             height: 'calc(1em + .75rem)',
             borderTopLeftRadius: '0',
             borderBottomLeftRadius: '0'
-        }).addClass('form-control masked').on('change',function(){ $('#pwdSenha').val($(this).val()).trigger('change'); });
+        }).addClass('form-control masked').off('change.seiProPwd').on('change.seiProPwd',function(){
+            pwdHidden.val($(this).val()).trigger('change');
+        });
         console.log('loadRepairPwdNewSei');
     }
 }

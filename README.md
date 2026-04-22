@@ -1,137 +1,99 @@
-# Bem vindo ao SEI Pro ![SEI Pro](/img/icon-32.png)
+<div align="center">
 
-**SEI Pro!** adiciona ao [Sistema Eletrônico de Informações (SEI)](https://softwarepublico.gov.br/social/sei) diversas funções avançadas na página inicial e no editor de textos:
+<img src="https://www.gov.br/prf/pt-br/noticias/estaduais/distrito-federal/2023/outubro/nota-de-esclarecimento-superintendencia-da-policia-rooviaria-federal-no-distrito-federal/prf.png/@@images/55b76939-9dff-4eab-9966-6e5fbb0efa61.png" alt="Polícia Rodoviária Federal" width="180">
 
-**Compatível com a versão 4.0 do SEI**
+# SEI Pro PRF
 
-## Como começar?
+**Ferramentas avançadas para o SEI · Adaptado ao ambiente da PRF**
 
-Instale a extensão para seu navegador preferido:
+[![Versão](https://img.shields.io/badge/versão-1.7.5-0055A4?style=flat-square)](./CHANGELOG.md)
+[![SEI](https://img.shields.io/badge/SEI-4.0%2B%20%7C%205.x-F4A900?style=flat-square)](#compatibilidade)
+[![Licença](https://img.shields.io/badge/licença-AGPL--3.0-CC0000?style=flat-square)](./LICENSE.txt)
 
-<img src="https://edent.github.io/SuperTinyIcons/images/svg/chrome.svg" width="24" title="Chrome"> Google Chrome em:
+</div>
 
-> [https://chrome.google.com/webstore/detail/sei-pro/pdbbapplhjopafpgidbgceccbbmehcjj](https://chrome.google.com/webstore/detail/sei-pro/pdbbapplhjopafpgidbgceccbbmehcjj)
+---
 
-<img src="https://edent.github.io/SuperTinyIcons/images/svg/edge.svg" width="24" title="Edge"> Microsoft Edge em:
+## O que é?
 
-> [https://microsoftedge.microsoft.com/addons/detail/sei-pro/gkhfbbbminanojfklpfmloaglckmlfne](https://microsoftedge.microsoft.com/addons/detail/sei-pro/gkhfbbbminanojfklpfmloaglckmlfne)
+O **SEI Pro PRF** é uma extensão para Google Chrome que adiciona funcionalidades ao SEI (Sistema Eletrônico de Informações), tornando o trabalho no sistema mais ágil e produtivo. A identidade visual da PRF é aplicada no ambiente da PRF, e os recursos de reporte ficam restritos a esse contexto.
 
-<img src="https://edent.github.io/SuperTinyIcons/images/svg/firefox.svg" width="24" title="Firefox"> Mozilla Firefox em:
+> Veja as novidades da versão atual no [Changelog](./CHANGELOG.md).
 
-> [https://addons.mozilla.org/pt-BR/firefox/addon/sei-pro/](https://addons.mozilla.org/pt-BR/firefox/addon/sei-pro/)
+---
 
-## Funcionalidades disponíveis
+## Como instalar
 
-- ![Estilo Avançado](/img/icon-estiloavancado.png) [Alterar o layout do SEI (Estilo Avançado + Modo Noturno)](./pages/ESTILOAVANCADO.md)
-- ![Estilo Tabela](/img/icon-projetos.png) [Gerenciar projetos](./pages/PROJETOS.md) [MOMENTANEAMENTE DESCONTINUADA]
-- ![Favoritos](/img/icon-favoritos.png) [Gerenciar processos favoritos](./pages/FAVORITOS.md)
-- ![Gerenciar Prazos](/img/icon-controleprazo.png) [Controle de Prazos](./pages/PRAZOS.md)
-- ![Enumerar Normas (Legística)](/img/icon-legistica.png) [Enumerar Normas (Legística)](./pages/LEGISTICA.md)
-- ![Agrupar lista](/img/icon-agruparlista.png) [Agrupar  lista de processos por data de recebimento, envio, último acesso, marcadores, tipo, responsável, ponto de controle, unidade de envio e acompanhamento especial](./pages/AGRUPAR.md)
-- ![Inserir Documento Externo (HTML)](/img/icon-inserirhtml.png) [Inserir documento externo (HTML, Google Docs e Google Planilhas)](./pages/INSERIRDOC.md)
-- ![Estilo Tabela](/img/icon-estilotabela.png) [Adicionar estilo a tabela](./pages/ESTILOTABELA.md)
-- ![Link de Legislação](/img/icon-linklegis.png) [Adicionar link de legislação](./pages/LINKLEGIS.md)
-- ![Letras Maiúsculas](/img/icon-letramaiusc.png) [Primeira letra maiúscula (exceto artigos e preposições)](./pages/LETRAMAIUSC.md)
-- ![Referência Documentos](/img/icon-refdocumentos.png) [Inserir referência de documentos do processo](./pages/REFDOCUMENTOS.md)
-- ![Nota Rodapé](/img/icon-notarodape.png) [Inserir nota de rodapé](./pages/NOTARODAPE.md)
-- ![Sumário](/img/icon-sumario.png) [Inserir sumário](./pages/SUMARIO.md)
-- ![Dados do Processo](/img/icon-dadosprocesso.png) [Inserir dados do processo](./pages/DADOSPROCESSO.md)
-- ![Link Curto](/img/icon-linkcurto.png) [Gerar link curto do TinyUrl](./pages/LINKCURTO.md)
-- ![Código QR (QRCode)](/img/icon-qrcode.png) [Gerar código QR (QRCode)](./pages/QRCODE.md)
-- ![Redimensionar Imagens](/img/icon-redimensionaimg.png) [Redimensionar imagens](./pages/REDIMENSIONAIMG.md)
-- ![Quebra de Página](/img/icon-quebrapagina.png) [Inserir quebra de página](./pages/QUEBRAPAGINA.md)
-- ![Título da página](/img/icon-titulopagina.png) [Alterar título da página](./pages/TITULOPAGINA.md)
-- ![Abrir, editar e remover hiperlinks](/img/icon-abrirlink.png) [Abrir, editar e remover hiperlinks](./pages/ABRIRLINKS.md)
-- ![Inserir Equações](/img/icon-equacoes.png) [Inserir equações (fórmulas matemáticas)](./pages/EQUACOES.md)
-- ![Menu rápido na árvore de documentos](/img/icon-menurapido.png) [Menu e ícones rápidos na árvore de documentos](./pages/MENURAPIDO.md)
-- ![Tabela Rápida](/img/icon-tabelarapida.png) [Tabela rápida](./pages/TABELARAPIDA.md)
-- ![Copiar formatação de texto](/img/icon-copiarformatacao.png) [Copiar formatação do texto](./pages/COPIARFORMATACAO.md)
-- ![Aumentar fonte](/img/icon-aumentarfonte.png) [Aumentar ou reduzir o tamanho da fonte](./pages/AUMENTARFONTE.md)
-- ![Alinhar texto](/img/icon-alinhartexto.png) [Alinhar o texto à esquerda, ao centro, à direita ou justificadamente](./pages/ALINHARTEXTO.md)
-- ![Verificar Integridade Hashcode](/img/icon-hashcode.png) [Verificar código de integridade (Hashcode)](./pages/HASHCODE.md)
-- ![Adicionar link documento público](/img/icon-docpublico.png) [Adicionar link de documento público](./pages/DOCPUBLICO.md)
-- ![Adicionar valores padronizados](/img/icon-valdefault.png) [Adicionar valores padronizados ao criar um novo documento](./pages/VALDEFAULT.md)
-- ![Alinhar texto](/img/icon-linkpermanente.png) [Pesquisar link permanente](./pages/LINKPERMANENTE.md)
-- ![Aumentar fonte](/img/icon-playvideo.png) [Reproduzir vídeo na visualização de documentos](./pages/PLAYVIDEO.md)
-- ![Alinhar texto](/img/icon-listaprocessos.png) [Exportar informações de processos em planilha CSV](./pages/LISTAPROCESSOS.md)
-- ![Alinhar texto](/img/icon-marcaminuta.png) [Adicionar marca d'água de minuta ao documento](./pages/MARCAMINUTA.md)
-- ![Sigilo Documento](/img/icon-sigilodoc.png) [Adicionar marca de sigilo e tarjas pretas de confidencialidade (LGPD)](./pages/SIGILODOC.md)
-- ![Duplicar Documento](/img/icon-duplicardoc.png) [Duplicar documentos com 1 click](./pages/DUPLICARDOC.md)
-- ![Enviar documentos](/img/icon-uploaddocs.png) [Enviar múltiplos documentos externos](./pages/UPLOADDOCS.md)
-- ![Menu Suspenso](/img/icon-menususpenso.png) [Menu Suspenso](./pages/MENUSUSPENSO.md)
-- ![Ordenar Tabelas](/img/icon-ordernartabela.png) [Ordenar tabelas ao clicar no seu cabeçalho](./pages/ORDENARTABELA.md)
-- ![Enviar documentos](/img/icon-historicoproc.png) [Histórico de processos visitados](./pages/HISTORICOPROC.md)
-- ![Enviar documentos](/img/icon-infoarvore.png) [Informações adicionais na árvore do processo](./pages/INFOARVORE.md)
-- ![Enviar documentos](/img/icon-notaarvore.png) [Anotação diretamente pela árvore do processo](./pages/NOTAARVORE.md)
-- ![Remover paginação de processos](/img/icon-removerpaginacao.png) [Remover paginação de processos](./pages/REMOVEPAGINACAO.md)
-- ![Dividir as informações do documento na árvore do processo em duas linhas](/img/icon-dividirinformacoes.png) [Dividir as informações do documento na árvore do processo em duas linhas](./pages/DIVIDIRLINHASARVORE.md)
-- ![SEI Redimensionar automaticamente a árvore do processo pela sua largura total](/img/icon-resizearvore.png) [Redimensionar automaticamente a árvore do processo pela sua largura total](./pages/RESIZEARVORE.md)
-- ![Utilizar caixas de seleção inteligentes](/img/icon-cursor.png) [Utilizar caixas de seleção inteligentes](./pages/SUBSTITUIRSELECAO.md)
-- ![Ações em Lote](/img/icon-acoeslote.png) [Ações em Lote](./pages/ACOESEMLOTE.md)
-- ![Rolagem Infinita](/img/icon-rolageminfinita.png) [Rolagem infinita na pesquisa de processos](./pages/ROLAGEMINFINITA.md)
-- ![URL Amigável](/img/icon-urlamigavel.png) [Utilizar endereços amigáveis em processos e documentos](./pages/URLAMIGAVEL.md)
-- ![Documentos não assinados](/img/icon-docsnaoassinados.png) [Alertar sobre documentos não assinados ao enviar um processo](./pages/DOCSNAOASSINADOS.md)
-- ![Cores marcadores](/img/icon-coresmarcadores.png) [Permitir cores personalizadas em Marcadores](./pages/CORESMARCADORES.md)
-- ![Parágrafos Numerados](/img/icon-paragrafosnumerados.png) [Visualizar parágrafos numerados no visualizador de documentos](./pages/PARAGRAFOSNUMERADOS.md)
-- ![Certidão Sigilo](/img/icon-certidaosigilo.png) [Gerar Certidão de Documento Oficial com Sigilo (LGPD)](./pages/CERTIDAOSIGILO.md)
-- ![Editar Imagens](/img/icon-editarimagens.png) [Enviar múltiplas imagens, formatar e editar opções avançadas](./pages/EDITARIMAGENS.md)
-- ![Qualidade Imagens](/img/icon-qualidadeimagens.png) [Reduzir a qualidade das imagens inseridas nos documentos](./pages/QUALIDADEIMAGENS.md)
-- ![Teclas Atalho](/img/icon-teclasatalho.png) [Adicionar teclas de atalhos no editor de documentos](./pages/TECLASATALHO.md)
-- ![Referencia Interna](/img/icon-referenciainterna.png) [Adicionar referências internas](./pages/REFERENCIAINTERNA.md)
-- ![Ferramentas IA](/img/icon-ferramentasia.png) [Ferramentas de Inteligência Artificial (ChatGPT)](./pages/FERRAMENTASIA.md)
-- ![Mover ícone de excluir](/img/icon-movericone.png) [Mover ícone de excluir documentos para o final da lista](./pages/MOVERICONE.md)
-- ![Autopreencher senha](/img/icon-autopreenchersenha.png) [Autopreencher senha no login (SEI >= 4.0)](./pages/AUTOPREENCHERSENHA.md)
-- ![Numerar documentos](/img/icon-numerardocsarvore.png) [Numerar documentos na árvore do processo](./pages/NUMERARDOCSARVORE.md)
-- ![Contador de processos não recebidos](/img/icon-contadorprocessoicone.png) [Contador de processos não recebidos no ícone do SEI](./pages/CONTADORPROCESSOICONE.md)
-- ![Mostrar especificação do processo](/img/icon-especificacaoprocesso.png) [Mostrar especificação do processo na tabela de controle de processos](./pages/ESPECIFICACAOPROCESSO.md)
-- ![Mostrar nomes de usuários](/img/icon-nomesusuarios.png) [Mostrar nomes de usuários na tabela de controle de processos](./pages/NOMESUSUARIOS.md)
-- ![Marcar processo não visualizado](/img/icon-naolido.png) [Permitir marcar processos como "Não Visualizado"](./pages/NAOLIDO.md)
-- ![Comparador de Documentos](/img/icon-comparardocumentos.png) [Comparador de Documentos](./pages/COMPARARDOCUMENTOS.md)
-- ![Reabertura programada de processos](/img/icon-reabrirprocessos.png) [Reabertura programada de processos](./pages/REABRIRPROCESSOS.md)
-- ![Ditado no editor de documentos](/img/icon-ditado.png) [Ditado no editor de documentos](./pages/DITADO.md)
-- ![Escrita interativa](/img/icon-escritainterativa.png) [Escrita interativa no editor de documentos](./pages/ESCRITAINTERATIVA.md)
-- ![Revisão de texto](/img/icon-revisardoc.png) [Revisão de texto no editor de documentos](./pages/REVISARDOC.md)
-- ![Documentos em Lote](/img/icon-acoeslote.png) [Documentos em Lote](./pages/DOCUMENTOSEMLOTE.md)
+1. Acesse a **Chrome Web Store** pelo Chrome
+2. Procure por **"SEI Pro PRF"** ou acesse o link direto do repositório público deste fork
+3. Clique em **"Usar no Chrome"**
+4. Pronto — a extensão ativa automaticamente quando você abre o SEI
 
+---
 
-Você ainda pode [Desativar funções da extensão](./pages/DESATIVARFUNCOES.md) que não deseja utilizar.
+## O que você ganha
 
-## Encontrou um erro?
+### Processos mais rápidos
+- Agrupe e filtre sua lista de processos por tipo, responsável, prazo, marcador e mais
+- Veja a especificação e o responsável diretamente na lista, sem abrir o processo
+- Favoritos, controle de prazos e reabertura programada de processos
+- Rolagem infinita — sem paginação na pesquisa de processos
+- Exporte sua lista de processos para planilha CSV
 
-Caso deseja reportar um erro, acesse [Issue](https://github.com/pedrohsoaresadv/sei-pro/issues) no [Projeto GitHub](https://github.com/pedrohsoaresadv/sei-pro/) e adicione sua requisição.
+### Editor mais poderoso
+- Salve o documento automaticamente enquanto escreve
+- Copie e cole formatação de texto entre parágrafos
+- Insira sumário, notas de rodapé, referências internas e equações matemáticas
+- Adicione links de legislação e enumere normas automaticamente (Legística)
+- Tabelas com estilos avançados e atalhos de teclado personalizáveis
 
-## Deseja contribuir?
+### Inteligência Artificial no SEI
+- Revise textos, escreva com assistência e dite documentos usando IA
+- Compatível com **ChatGPT (OpenAI)**, **Google Gemini** e **modelos locais (Ollama)**
+- Configure seus próprios prompts e instruções para o contexto da sua unidade
+- Com Ollama, os dados **não saem da sua máquina**
 
-Envie sua sugestão de nova funcionalidade em [https://seipro.changecrab.com/suggestions](https://seipro.changecrab.com/suggestions)
-Vote nas sugestões que mais queria ver no SEI Pro!
+### Árvore de documentos aprimorada
+- Menu rápido com as ações mais usadas em cada documento
+- Envie múltiplos documentos externos de uma vez, arrastando e soltando
+- Anote e numere documentos diretamente pela árvore
 
-## SEI Pro no ParticiPEN
+### Visualização e segurança
+- Parágrafos numerados no visualizador de documentos
+- Marca d'água de minuta e marcas de sigilo com tarjas (LGPD)
+- Compare duas versões de um documento lado a lado
+- Gere certidão de documento sigiloso
 
-Participe da Comunidade do Processo Eletrônico Nacional (ParticiPEN), espaço criado para compartilhar ideias, experiências e discussões técnicas.
-[https://participen.processoeletronico.gov.br/c/modulos-comunidade/sei-pro/39](https://participen.processoeletronico.gov.br/c/modulos-comunidade/sei-pro/39)
+### Interface
+- Modo noturno e layout compacto
+- Ações em lote em processos e documentos
+- Alertas quando há documentos não assinados antes de enviar um processo
+- Cores personalizadas em marcadores
 
-## Comunidade SEI Lab
+### Privacidade e reporte
+- Preferências e configurações ficam armazenadas localmente no navegador
+- Integrações externas, como IA e planilhas, continuam opcionais e dependem de configuração explícita
+- No SEI da PRF, o ícone de reporte e a identidade visual da PRF aparecem apenas em `sei.prf.gov.br`
+- O reporte técnico é bloqueado fora do SEI da PRF
+- Quando o reporte é enviado no SEI da PRF, a extensão envia a URL da página, uma cópia dos logs/console coletados pela extensão e os dados informados no formulário de reporte
 
-Participe do laboratorio de ideias sobre inovações para o SEI, automações e boas práticas.
+---
 
-> <img src="https://github.com/pedrohsoaresadv/sei-pro/raw/master/img/whatsapp.png" data-canonical-src="https://github.com/pedrohsoaresadv/sei-pro/raw/master/img/whatsapp.png" width="16"/> [https://bit.ly/Comunidade_SEI_Lab](https://bit.ly/Comunidade_SEI_Lab)
+## Compatibilidade
 
+- **Navegador:** Google Chrome (versão atual)
+- **SEI:** versões 4.0+ e 5.x
 
-## Novidades e dicas
+---
 
-Receba em primeira mão sobre novidades e atualizações do SEI Pro. 
+## Suporte
 
-Inscreva-se na nossa Lista de e-mail: [http://eepurl.com/hjHh45](http://eepurl.com/hjHh45)
+Problemas ou sugestões? Abra uma issue no [Github do SEI Pro PRF](https://github.com/seiproprf/sei-pro-prf).
 
-## Histórico de versões
+---
 
-Confira nosso [Histórico de versões](./pages/HISTORICO.md)
+<div align="center">
 
-## Licença
+[Novidades da versão](./CHANGELOG.md) · [Política de Privacidade](./PRIVACY_POLICY.md) · [Licença AGPL-3.0](./LICENSE.txt) · [Third-Party Notices](./THIRD_PARTY_NOTICES.md)
 
-AGPL-3.0
-
-## Política de Privacidade
-
-Confira nossa Declaração de Não Coleta de Dadosm em confomidade com a Lei nº 13.709/2018 (LGPD) e com as melhores práticas de segurança da informação: [Política de Privacidade](./PRIVACY_POLICY.md)
-
+</div>

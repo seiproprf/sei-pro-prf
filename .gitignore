@@ -110,3 +110,9 @@ debug.log
 error.log 
 dist/js/sei-pro_new.js
 dist/js/sei-pro_new.js
+
+# Google Apps Script — contém email pessoal, manter apenas local
+google-apps-script.js
+dist/js/sei-pro-config-local.js
+
+dist.zip

@@ -1,6 +1,4 @@
 const loadSEIProAll = true;
-var logBackup = console.log;
-var logMessages = [];
 var pagesInfiniteSearch = [];
 var frmPesquisaProtocolo = ($('#seiSearch').length) ? '#seiSearch' : '#frmPesquisaProtocolo';
 var divPaginas = typeof isNewSEI !== 'undefined' && isNewSEI ? 'div.pesquisaPaginas' : 'div.paginas';
@@ -731,15 +729,15 @@ function observeUrlPage() {
     }
 }
 function initSlimPro() {
-    var htmlSlimPro =   '       <div data-ref="infraAcaoBarraSistema" style="display: inline-block;float: right;margin:3px 10px 0 0">'+
+    var htmlSlimPro =   '       <div data-ref="infraAcaoBarraSistema" style="display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;float:right;margin:3px 10px 0 0">'+
                         '           <div class="onoffswitch" style="display:inline-block;transform:scale(0.7)" onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+(localStorage.getItem('seiSlim') ? 'Desativar estilo avan\u00E7ado' : 'Ativar estilo avan\u00E7ado')+'\')">'+
                         '               <input type="checkbox" onchange="changeSlimPro(this)" name="onoffswitch" class="onoffswitch-checkbox" id="changeSlimPro" tabindex="0" '+(localStorage.getItem('seiSlim') ? 'checked' : '')+'>'+
                         '               <label class="onoff-switch-label" for="changeSlimPro" style="border-color: #ffffff7a;"></label>'+
                         '           </div>'+
-                        '           <i onclick="openStyleBoxSlimPro()" onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+(localStorage.getItem('seiSlim') ? 'Escolher cor principal' : 'Ativar estilo avan\u00E7ado')+'\')" class="fas fa-palette brancoColor" style="float: right;font-size: 16pt;cursor: pointer;"></i> '+
+                        '           <i onclick="openStyleBoxSlimPro()" onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+(localStorage.getItem('seiSlim') ? 'Escolher cor principal' : 'Ativar estilo avan\u00E7ado')+'\')" class="fas fa-palette brancoColor" style="font-size:16pt;cursor:pointer;float:none;line-height:1;transition:color .15s ease,opacity .15s ease;"></i> '+
                         '       </div>';
 
-    var htmlDarkMode =   '           <i onclick="setDarkModePro(this)" id="iconDarkMode" onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+(localStorage.getItem('darkModePro') ? 'Desativar modo noturno' : 'Ativar modo noturno')+'\')" class="fas fa-'+(localStorage.getItem('darkModePro') ? 'house-day' : 'house-night')+' brancoColor" style="font-size: 16pt;cursor: pointer;position: absolute;margin: 5px -35px;"></i> ';
+    var htmlDarkMode =   '           <i onclick="setDarkModePro(this)" id="iconDarkMode" onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+(localStorage.getItem('darkModePro') ? 'Desativar modo noturno' : 'Ativar modo noturno')+'\')" class="fas fa-'+(localStorage.getItem('darkModePro') ? 'house-day' : 'house-night')+' brancoColor" style="font-size:16pt;cursor:pointer;position:absolute;margin:5px -35px;line-height:1;transition:color .15s ease,opacity .15s ease;"></i> ';
 
     $('div[data-ref="infraAcaoBarraSistema"]').remove();
     $(typeof isNewSEI !== 'undefined' && isNewSEI ? '#divInfraBarraSistemaPadraoD' : '#divInfraBarraSistemaD').append(htmlSlimPro);
@@ -784,7 +782,7 @@ function setMarcadorUserColor() {
             oldColor = (oldColor !== null) ? oldColor : '';
         var htmlUserColor = '<div style="position: absolute;top: 0;left: 63%;">'+
                             '   <label id="lblUserColor" for="txaUserColor" style="display: block;" class="infraLabelOpcional">Cor Personalizada:</label>'+
-                            '   <input onchange="changeMarcadorUserColor(this)" type="color" value="'+oldColor+'">'+
+                            '   <input id="txaUserColor" onchange="changeMarcadorUserColor(this)" type="color" value="'+oldColor+'">'+
                             '</div>';
         txtNome.after(htmlUserColor);
         replaceColorsIcons($('#selStaIcone a.dd-option'));
@@ -883,29 +881,125 @@ function initConfigSEIPro() {
         }, 500);
     }
 }
-function initCaixaSelecaoUnidadesSEI(TimeOut = 9000) {
-    if (TimeOut <= 0) { return; }
-    if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('trocaunidade') && typeof getUnidadesPermissaoSEI === 'function') {
-        if (!$('#ifrArvore').length) { getUnidadesPermissaoSEI() }
-    } else {
-        setTimeout(function(){ 
-            initCaixaSelecaoUnidadesSEI(TimeOut - 100); 
-            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage')) console.log('Reload initCaixaSelecaoUnidadesSEI'); 
-        }, 500);
+function initOptionsCloseListenerSEI() {
+    if (window.__SEI_PRO_OPTIONS_CLOSE_LISTENER__) {
+        return;
     }
+    window.__SEI_PRO_OPTIONS_CLOSE_LISTENER__ = true;
+    window.addEventListener('message', function(event) {
+        var data = event && event.data ? event.data : null;
+        if (!data || data.source !== 'SEI_PRO_OPTIONS' || data.action !== 'close-options') {
+            return;
+        }
+        $('#ifrConfig').remove();
+        if (data.goHome) {
+            var urlHome = $(isNewSEI ? '#infraMenu' : '#main-menu').find('a[href*="controlador.php?acao=procedimento_controlar"]').attr('href');
+            if (typeof urlHome !== 'undefined' && urlHome) {
+                setTimeout(function() {
+                    window.location.href = urlHome;
+                }, 100);
+            }
+        }
+    });
 }
+function initCaixaSelecaoUnidadesSEI() {
+    if (typeof window.__SEI_PRO_CONFIG_READY__ !== 'boolean' || !window.__SEI_PRO_CONFIG_READY__) {
+        return;
+    }
+
+    if (typeof verifyConfigValue === 'function' && !verifyConfigValue('trocaunidade')) {
+        return;
+    }
+
+    var hasUnitLink = $('#lnkInfraUnidade').length > 0;
+    var hasTargetSlot = $('#divInfraBarraSistemaPadraoD .input-group.align-self-center').length > 0;
+    if (typeof getUnidadesPermissaoSEI !== 'function' || !hasUnitLink || !hasTargetSlot) {
+        return;
+    }
+
+    if (!$('#ifrArvore').length) { getUnidadesPermissaoSEI(); }
+}
+// ---------------------------------------------------------------------------
+// Branding PRF: oculta h6 da instituição e insere ícones antes de "Produção"
+// ---------------------------------------------------------------------------
+function initBrandingPRF() {
+    if (!isSEIProPRFHost()) return;
+    if (typeof isNewSEI === 'undefined' || !isNewSEI) return;
+
+    if ($('style[data-style="seipro-hide-prf-bar"]').length === 0) {
+        $('head').prepend(
+            '<style type="text/css" data-style="seipro-hide-prf-bar">' +
+            '#divInfraBarraSistema h6.pl-3.mb-0.mx-0.d-none.d-md-block.infraCorBarraSuperior { display: none !important; }' +
+            '</style>'
+        );
+    }
+
+    var hidePRFInstitutionBar = function() {
+        var $brandingTitle = $('#divInfraBarraSistema h6.pl-3.mb-0.mx-0.d-none.d-md-block.infraCorBarraSuperior');
+        $brandingTitle.each(function() {
+            if ($(this).text().trim() === 'POLÍCIA RODOVIÁRIA FEDERAL') {
+                this.style.setProperty('display', 'none', 'important');
+                this.setAttribute('aria-hidden', 'true');
+            }
+        });
+    };
+
+    hidePRFInstitutionBar();
+    setTimeout(hidePRFInstitutionBar, 300);
+    setTimeout(hidePRFInstitutionBar, 1500);
+    setTimeout(hidePRFInstitutionBar, 3000);
+
+    if ($('#seiProBrandingPRF').length > 0) {
+        return;
+    }
+
+    // URLs dos ícones (logo PRF e extensão)
+    var iconExtensao = typeof initUrlExtension !== 'undefined'
+        ? initUrlExtension('icons/icon-32.png')
+        : (typeof URL_SPRO !== 'undefined' ? URL_SPRO + 'icons/icon-32.png' : '');
+    var iconPRF = 'https://www.gov.br/prf/pt-br/noticias/estaduais/distrito-federal/2023/outubro/nota-de-esclarecimento-superintendencia-da-policia-rooviaria-federal-no-distrito-federal/prf.png/@@images/55b76939-9dff-4eab-9966-6e5fbb0efa61.png';
+
+    var htmlIcons =
+        '<span id="seiProBrandingPRF" style="display:inline-flex;align-items:center;' +
+            'margin:0 6px 0 0;vertical-align:middle;">' +
+            '<img src="' + iconPRF + '" ' +
+                'style="height:104px;width:104px;margin-right:6px;vertical-align:middle;object-fit:contain;" ' +
+                'title="Polícia Rodoviária Federal" onerror="this.style.display=\'none\'">' +
+            '<img src="' + iconExtensao + '" ' +
+                'style="height:32px;width:auto;margin-right:5px;vertical-align:middle;" ' +
+                'title="SEI Pro" onerror="this.style.display=\'none\'">' +
+        '</span>';
+
+    // Insere DEPOIS de "Produção": append ao final de divInfraBarraSistemaPadraoE
+    // (que contém logo SEI + texto Produção), para o resultado ser:
+    // [logo SEI] Produção [ícone PRF] [ícone extensão]
+    $('#divInfraBarraSistemaPadraoE').append(htmlIcons);
+}
+
 function initSeiProAll() {
+    initOptionsCloseListenerSEI();
     if (typeof jmespath === 'undefined' && typeof URL_SPRO !== 'undefined') $.getScript(URL_SPRO+"js/lib/jmespath.min.js");
     if (typeof DOMPurify === 'undefined' && typeof URL_SPRO !== 'undefined') $.getScript(URL_SPRO+"js/lib/purify.min.js");
     if (typeof moment === 'undefined' && typeof URL_SPRO !== 'undefined') $.getScript(URL_SPRO+"js/lib/moment.min.js");
     if (typeof $.tablesorter === 'undefined' && typeof URL_SPRO !== 'undefined') $.getScript(URL_SPRO+"js/lib/jquery.tablesorter.combined.min.js");
     if (typeof $().chosen === 'undefined' && typeof URL_SPRO !== 'undefined') $.getScript(URL_SPRO+"js/lib/chosen.jquery.min.js");
 
-    if (typeof checkHostLimit !== 'undefined' && !checkHostLimit()) initCaixaSelecaoUnidadesSEI();
+    if (typeof checkHostLimit !== 'undefined' && !checkHostLimit()) {
+        if (window.__SEI_PRO_CONFIG_READY__) {
+            initCaixaSelecaoUnidadesSEI();
+        } else if (!window.__SEI_PRO_CAIXA_UNIDADE_LISTENER__) {
+            window.__SEI_PRO_CAIXA_UNIDADE_LISTENER__ = true;
+            window.addEventListener('sei-pro-config-ready', function onSeiProConfigReady() {
+                window.removeEventListener('sei-pro-config-ready', onSeiProConfigReady);
+                window.__SEI_PRO_CAIXA_UNIDADE_LISTENER__ = false;
+                initCaixaSelecaoUnidadesSEI();
+            });
+        }
+    }
     initInfraImg();
     checkPageParent();
     setTimeout(() => { initMarcadorUserColor() }, 500);
-    if (!isNewSEI) initNewProcDefault();
+    if (typeof isNewSEI !== 'undefined' && !isNewSEI) initNewProcDefault();
     appendVersionSEIPro();
     initTableSorter();
     repairLnkControleProcesso();
@@ -919,6 +1013,7 @@ function initSeiProAll() {
     initQuickViewSearch();
     initObserveUrlPage();
     initSlimPro();
+    initBrandingPRF();
     initCheckLoadJqueryUI();
     initQRCodeLib();
     setOnClickExcluirProcBloco();
@@ -930,26 +1025,23 @@ function initSeiProAll() {
     // initReplaceNewIconsBar();
     // observeIfrArvore();
     //checkBlankPageSEI();
-    if (isSEI_5) $.getScript(URL_SPRO+"js/lib/modalLink.js");
+    if (typeof isSEI_5 !== 'undefined' && isSEI_5) $.getScript(URL_SPRO+"js/lib/modalLink.js");
 
-    if (typeof NAMESPACE_SPRO !== 'undefined' && NAMESPACE_SPRO != 'SEI Pro Lab') {
-        console.log = function() { 
-            logMessages.push.apply(logMessages, arguments);
-            logBackup.apply(console, arguments);
-        };
-        
-        window.onerror = function(a, b, c, d, e) {
-            debugScreen = true;
-            appendDebugReport();
-            console.log({
-                message: a,
-                source: b,
-                lineno: c,
-                colno: d,
-                error: e.message,
-                stack: e.stack.replace(/(?:\r\n|\r|\n)/g, "<br>"+"&emsp;".repeat(24))
-            });
-        };
-    }
+    // Ícone de reporte somente no SEI da PRF
+    if (typeof appendDebugReport === 'function') appendDebugReport();
+
+    if (typeof ensureSEIProLogCapture === 'function') ensureSEIProLogCapture();
+
+    window.addEventListener('error', function() {
+        if (!isSEIProPRFHost()) return;
+        debugScreen = true;
+        appendDebugReport(true); // com animação pulsante ao detectar erro
+    }, true);
+
+    window.addEventListener('unhandledrejection', function() {
+        if (!isSEIProPRFHost()) return;
+        debugScreen = true;
+        appendDebugReport(true);
+    }, true);
 }
 $(document).ready(function () { initSeiProAll() });

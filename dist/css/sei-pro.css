@@ -117,14 +117,112 @@ i.roxoColor {
 	color: #7562D8 !important;
 }
 i.cianoColor {
-	color: #34caef !important;
+    color: #34caef !important;
 }
 i.laranjaColor {
-	color: #E3B044 !important;
+    color: #E3B044 !important;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px;
+    float: right;
+    margin: 3px 10px 0 0 !important;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i,
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > .onoffswitch {
+    float: none !important;
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i {
+    line-height: 1;
+    transition: color .15s ease, opacity .15s ease;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i:hover {
+    color: #c0c0c0 !important;
+    opacity: 1 !important;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i.iconDebugScreen {
+    margin-left: 0 !important;
+}
+div[data-ref="infraAcaoBarraSistema"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px;
+}
+div[data-ref="infraAcaoBarraSistema"] > i,
+div[data-ref="infraAcaoBarraSistema"] > .onoffswitch {
+    float: none !important;
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+div[data-ref="infraAcaoBarraSistema"] > i {
+    line-height: 1;
+    transition: color .15s ease, opacity .15s ease;
+}
+div[data-ref="infraAcaoBarraSistema"] > i:hover {
+    color: #c0c0c0 !important;
+    opacity: 1 !important;
+}
+div[data-ref="infraAcaoBarraSistema"] > i.iconDebugScreen {
+    margin-left: 0 !important;
 }
 .infraCaption td, 
 caption.infraCaption {
     border-color: #bdbdbd !important;
+}
+.seiProSignatureSelection {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-left: 12px;
+    font-size: .92em;
+}
+.seiProSignatureSelection_label {
+    color: #666;
+    font-weight: normal;
+}
+.seiProSignatureSelection a.newLink {
+    float: none !important;
+    font-size: .95em;
+    margin: 0 2px;
+}
+.seiProSignatureBlocksIndicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #b3261e;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: middle;
+    box-shadow: 0 0 0 2px #fff;
+}
+.seiProSignatureBlocksIndicator.is-zero {
+    display: none;
+}
+.infraSidebarMenu .seiProSignatureBlocksIndicator {
+    margin-left: auto;
+}
+.seiProQuickPageFilterHidden {
+    display: none !important;
+}
+.seiProQuickPageHighlight {
+    background: #ffef86;
+    color: inherit;
+    border-radius: 2px;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    padding: 0 1px;
 }
 #divRecebidos.tagintable .infraCaption td {
     border-top: none;
@@ -2967,6 +3065,12 @@ div#divInfraBarraSistemaE.barSuspenso:before {
 .stickDadosArvore .priorityStickNote {
     color: #4285f4 !important;
 }
+.stickDadosArvore .removeStickConfirm {
+    color: #34a853 !important;
+}
+.stickDadosArvore .removeStickCancel {
+    color: #777 !important;
+}
 .stickDadosArvore.priority .priorityStickNote {
     color: #e46e64 !important;
 }
@@ -3527,6 +3631,10 @@ ul.sm-nowrap {
 #divComandos .botaoSEI.botaoSEI_hide {
     display: none !important;
 }
+body.seiProHideProcessoPaginacaoSuperior #divGeradosAreaPaginacaoSuperior,
+body.seiProHideProcessoPaginacaoSuperior #divRecebidosAreaPaginacaoSuperior {
+    display: none !important;
+}
 #newFiltro {
     display: inline-block; 
     vertical-align: top; 
@@ -3581,7 +3689,11 @@ body:not(.newSEI) div.infraTooltipTexto i {
     font-style:italic;
 }
 td.prazoBoxDisplay {
-    min-width: 115px;
+    width: 5em !important;
+    min-width: 5em !important;
+    max-width: 5em !important;
+    overflow: hidden;
+    text-align: center;
 }
 .chosen-container .chosen-results li.disabled-result {
     color: #a2a2a2 !important;
@@ -3592,7 +3704,34 @@ td.prazoBoxDisplay {
     border: none;
 }
 td.prazoBoxDisplay {
-    min-width: 150px !important;
+    width: 5em !important;
+    min-width: 5em !important;
+    max-width: 5em !important;
+}
+th.prazoBoxDisplay .tablesorter-header-inner {
+    display: flex !important;
+    width: 100%;
+    justify-content: flex-end;
+    padding-right: 0 !important;
+    text-align: right !important;
+}
+td.prazoBoxDisplay .dateboxDisplay,
+td.prazoBoxDisplay a.addControlePrazo {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+}
+td.prazoBoxDisplay a.addControlePrazo {
+    width: 100%;
+    overflow: hidden;
+    justify-content: center;
+}
+td.prazoBoxDisplay a.addControlePrazo span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .displayNone, #divInfraAreaTelaD .displayNone {
     display: none !important;
@@ -4388,4 +4527,66 @@ div#dialogBoxDocLote p {
 .chosen-container .chosen-results li {
     float: initial !important;
     padding: 5px 6px !important;
+}
+.sticknoteHomeInline {
+    display: block;
+    margin: 0;
+    padding: 5px 7px;
+    border-left: 3px solid #f0c36d;
+    background: #fff7df;
+    box-shadow: inset 0 0 0 1px rgba(240, 195, 109, 0.35);
+    color: #444;
+    font-size: 9pt;
+    line-height: 1.35;
+    border-radius: 4px;
+    min-width: 120px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.sticknoteHomeInline div {
+    margin: 0;
+}
+.sticknoteHomeInline.priority {
+    border-left-color: #df8b8d;
+    background: #fde1e2;
+    box-shadow: inset 0 0 0 1px rgba(223, 139, 141, 0.35);
+}
+.sticknoteHomeNoteCell {
+    width: 132px;
+    min-width: 132px;
+    max-width: 132px;
+    vertical-align: top;
+    padding: 4px 1px 4px 0 !important;
+}
+.sticknoteHomeIconCell {
+    width: 18px;
+    min-width: 18px;
+    max-width: 18px;
+    padding: 4px 0 4px 0 !important;
+    text-align: center;
+    vertical-align: top;
+}
+.sticknoteHomeDetailedNoteCell {
+    vertical-align: top;
+    padding: 4px 4px 4px 0 !important;
+}
+.sticknoteHomeProcessCell {
+    width: 8em;
+    min-width: 8em;
+    max-width: 8em;
+    white-space: nowrap;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+.sticknoteHomeProcessCell a.processoVisualizado {
+    display: inline-block;
+    white-space: nowrap;
+}
+.sticknoteHomeNoteCell .imagemStatus,
+.sticknoteHomeNoteCell .newLink {
+    display: none;
+}
+.sticknoteHomeInsertedCell + td {
+    padding-left: 0 !important;
 }

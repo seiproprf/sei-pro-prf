@@ -78,5 +78,26 @@ function setBgTableColor(this_) {
         $(this_).addClass('dark-mode-color-'+textColour);
     }
 }
+function debugListStylesheetsVisualizacaoHtml() {
+    if (typeof verifyConfigValue !== 'function' || !verifyConfigValue('debugpage')) {
+        return;
+    }
+    var stylesheets = $('link[rel="stylesheet"]').map(function() {
+        return {
+            href: $(this).attr('href') || '',
+            id: $(this).attr('id') || '',
+            className: $(this).attr('class') || '',
+            dataStyle: $(this).attr('data-style') || '',
+            outerHTML: this.outerHTML || ''
+        };
+    }).get();
+    console.log('SEI Pro stylesheet audit', stylesheets);
+    stylesheets.forEach(function(sheet) {
+        if (sheet.href && sheet.href.indexOf('controlador.php?acao=arvore_processar_html') !== -1) {
+            console.warn('SEI Pro suspected broken stylesheet URL', sheet.href, sheet.outerHTML);
+        }
+    });
+}
 loadStyleDesign();
 initLinhaNumerada();
+debugListStylesheetsVisualizacaoHtml();

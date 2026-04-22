@@ -8,6 +8,9 @@ const iconChatGPT = URL_SPRO + 'icons/menu/chatgpt.svg';
 // ÍCONE DA PLATAFORMA GEMINI (GOOGLE)
 const iconGemini = URL_SPRO + 'icons/menu/gemini.svg';
 
+// ÍCONE DA PLATAFORMA OLLAMA (LOCAL)
+const iconOllama = URL_SPRO + 'icons/menu/ollama.svg';
+
 // DEFINE A API SPEECHSYNTHESIS DO NAVEGADOR
 const synth = window.speechSynthesis;
 
@@ -28,13 +31,22 @@ let perfilOpenAI = localStorageRestorePro('configBasePro_openai') ?? false;
 // VARIÁVEL GLOBAL DE CONFIGURAÇÕES DAS CREDENCIAIS DE ACESSO À API DA Gemini
 const perfilGemini = localStorageRestorePro('configBasePro_gemini') ?? false;
 
-// VARIÁVEL GLOBAL DE CONFIGURAÇÃO PARA DEFINIR A PLATAFORMA ATUAL DE IA 
+// VARIÁVEL GLOBAL DE CONFIGURAÇÕES DO OLLAMA (LOCAL)
+let perfilOllama = localStorageRestorePro('configBasePro_ollama') ?? false;
+    if (perfilOllama && typeof perfilOllama === "object" && perfilOllama.URL_API) {
+        perfilOllama.URL_API = perfilOllama.URL_API
+            .replace("v1/chat/completions", "")
+            .replace(/\/+$/, "/");
+    }
+
+// VARIÁVEL GLOBAL DE CONFIGURAÇÃO PARA DEFINIR A PLATAFORMA ATUAL DE IA
 let currentPlataform = getOptionsPro('plataformAI_current');
-    currentPlataform = !!perfilOpenAI && !perfilGemini ? 'openai' : currentPlataform;
-    currentPlataform = !!perfilGemini && !perfilOpenAI ? 'gemini' : currentPlataform;
+    currentPlataform = !!perfilOpenAI && !perfilGemini && !perfilOllama ? 'openai' : currentPlataform;
+    currentPlataform = !!perfilGemini && !perfilOpenAI && !perfilOllama ? 'gemini' : currentPlataform;
+    currentPlataform = !!perfilOllama && !perfilOpenAI && !perfilGemini ? 'ollama' : currentPlataform;
 
 // VARIÁVEL GLOBAL DE SELEÇÃO DE PERFIL DE CREDENCIAIS DE ACESSO
-let perfilPlataform = currentPlataform == 'openai' ? perfilOpenAI : perfilGemini;
+let perfilPlataform = currentPlataform == 'openai' ? perfilOpenAI : currentPlataform == 'gemini' ? perfilGemini : perfilOllama;
     
 
 // MODELOS DISPONÍVEIS DA GEMINI ARMAZENADOS NA MÁQUINA OU PADRÕES PRÉ-DEFINIDOS
@@ -62,12 +74,34 @@ let modelsOpenAI = (typeof localStorageRestorePro('modelsOpenAI') !== 'undefined
         ['gpt-3.5-turbo-instruct'],
     ];
 
-let getModelAI = currentPlataform == 'openai' ? getOptionsPro('setModelOpenAI') || 'gpt-4' :  getOptionsPro('setModelGemini') || 'gemini-2.0-flash';
+// MODELOS DISPONÍVEIS NO OLLAMA ARMAZENADOS NA MÁQUINA OU PADRÕES PRÉ-DEFINIDOS
+let modelsOllama = (typeof localStorageRestorePro('modelsOllama') !== 'undefined' && localStorageRestorePro('modelsOllama') !== null)
+    ? localStorageRestorePro('modelsOllama')
+    : [
+        ['llama3.2'],
+        ['llama3.1'],
+        ['mistral'],
+        ['phi3'],
+        ['gemma2'],
+    ];
 
-// HISTÓRICO DE CONVERSA COM O MODELO 
-const defaultSystemInstruction = `Voc\u00EA \u00E9 um agente que analisa processos administrativos em um \u00F3rg\u00E3o p\u00FAblico (${capitalizeFirstLetter(nomeInstituicao)}), elabora pareceres e auxilia na reda\u00E7\u00E3o de documentos oficiais.`;
+let getModelAI = currentPlataform == 'openai'
+    ? ((perfilPlataform && perfilPlataform.MODEL_AI) || getOptionsPro('setModelOpenAI') || 'gpt-4')
+    : currentPlataform == 'ollama'
+    ? ((perfilPlataform && perfilPlataform.MODEL_AI) || getOptionsPro('setModelOllama') || 'llama3.2')
+    : ((perfilPlataform && perfilPlataform.MODEL_AI) || getOptionsPro('setModelGemini') || 'gemini-2.0-flash');
+
+// HISTÓRICO DE CONVERSA COM O MODELO
+const _storedSystemInstruction = localStorageRestorePro('aiSystemInstruction');
+const defaultSystemInstruction = (_storedSystemInstruction && _storedSystemInstruction !== '')
+    ? _storedSystemInstruction
+    : `Voc\u00EA \u00E9 um agente que analisa processos administrativos em um \u00F3rg\u00E3o p\u00FAblico (${capitalizeFirstLetter(nomeInstituicao)}), elabora pareceres e auxilia na reda\u00E7\u00E3o de documentos oficiais.`;
+
+// OLLAMA E OPENAI USAM O MESMO FORMATO DE MENSAGENS (COMPATÍVEL COM A API OPENAI)
+const isOpenAICompatible = () => currentPlataform === 'openai' || currentPlataform === 'ollama';
+
 const conversationSystem = () => {
-    return currentPlataform == 'openai' 
+    return isOpenAICompatible()
     ? [{ role: 'system', content: defaultSystemInstruction }]
     : [{ role: "model", parts: [{ text: defaultSystemInstruction }] }];
 }
@@ -76,19 +110,43 @@ let sendConversationHistory = false;
 
 // FUNÇÃO PARA MODULAR O OBJETO DE INTERAÇÃO DO CHAT, A DEPENDER DA PLATAFORMA
 const buildMessage = (role, text) => {
-    return currentPlataform === 'openai'
+    return isOpenAICompatible()
         ? { role, content: text }
         : { role: role === 'assistant' ? 'model' : role, parts: [{ text }] };
 }
 
 // FUNÇÃO PARA ADICIONAR A RESPOSTA DO CHAT NO HISTÓRICO DA CONVERSA
 const addAssistantReply = (text) => {
-    const role = currentPlataform === 'openai' ? 'assistant' : 'model';
+    const role = isOpenAICompatible() ? 'assistant' : 'model';
     const msg = buildMessage(role, text);
     conversationHistory.push(msg);
 }
 
 let stopType = getOptionsPro('setTypingAI') == '' ? true : false;
+
+// CONSTRÓI AS OPTIONS DO SELECT DE PROMPTS A PARTIR DO ARMAZENAMENTO LOCAL (OU PADRÕES)
+function buildPromptOptions() {
+    var stored = localStorageRestorePro('aiPromptsPro_prompts');
+    var prompts = stored || [
+        {id:'resume',                name:'Resuma:'},
+        {id:'dados_sensiveis',       name:'Encontre dados sens\u00edveis, de acordo com a LGPD'},
+        {id:'discorra',              name:'Discorra sobre:'},
+        {id:'erros_gramaticais',     name:'Encontre erros gramaticais:'},
+        {id:'amplie',                name:'Amplie o conte\u00fado'},
+        {id:'linguagem_simples',     name:'Reformule em linguagem simples'},
+        {id:'sugira_encaminhamento', name:'Sugira um encaminhamento:'},
+        {id:'crie_parecer',          name:'Crie um parecer t\u00e9cnico'},
+        {id:'base_legal',            name:'Descubra a base legal do tema'},
+        {id:'analise_critica',       name:'Fa\u00e7a uma an\u00e1lise cr\u00edtica sobre o tema'},
+        {id:'palavras_chave',        name:'Extraia as palavras-chave:'},
+        {id:'traduza',               name:'Traduza para o portugu\u00eas'},
+        {id:'topico',                name:'Crie uma estrutura de t\u00f3picos:'},
+        {id:'converte_ata',          name:'Converta em uma ata de reuni\u00e3o'}
+    ];
+    return prompts.map(function(p) {
+        return '<option value="' + p.id + '">' + p.name + '</option>';
+    }).join('');
+}
 
 // HTML SANITIZADO COM AVISO DE USO RESPONSÁVEL
 const consentAI = sanitizeHTML(`<table role="presentation" cellspacing="0" border="0" style="width:100%;float:none;" align="left">
@@ -199,11 +257,103 @@ const disclaimerGemini = sanitizeHTML(`<div id="plataformAI_info" style="white-s
     </div>
 </div>`);
 
-// FUNÇÃO PARA COPIAR O TEXTO GERADO PELA IA
+// HTML SANITIZADO COM INSTRUÇÕES DE USO DO OLLAMA / LITELLM (LOCAL/SERVIDOR)
+const disclaimerOllama = sanitizeHTML(`<div id="plataformAI_info" style="white-space: break-spaces;color: #616161;">
+    <div class="alertaAttencionPro dialogBoxDiv" style="font-size: 11pt;line-height: 12pt;color: #616161;">
+        <i class="fas fa-info-circle azulColor" style="margin-right: 5px;"></i> Configure o acesso ao <b>Ollama</b> (local) ou a um servidor compat\u00EDvel com a API OpenAI, como o <b>LiteLLM</b>.<br><br>
+        <span style="margin-left: 20px;"></span>Preencha os campos abaixo com as informa\u00E7\u00F5es do seu servidor:<br><br>
+    </div>
+    <table role="presentation" class="cke_dialog_ui_hbox" style="width:100%;">
+        <tbody>
+            <tr>
+                <td style="width:25%;padding:6px 10px;vertical-align:middle;font-size:10pt;color:#616161;">
+                    <label for="cke_inputOllamaUrl_textInput"><b>URL do servidor:</b></label>
+                </td>
+                <td style="padding:6px 10px;">
+                    <input tabindex="1" style="font-size: 1.1em;width:100%;" placeholder="http://localhost:11434/" value="http://localhost:11434/" class="cke_dialog_ui_input_text" id="cke_inputOllamaUrl_textInput" type="text">
+                </td>
+            </tr>
+            <tr>
+                <td style="width:25%;padding:6px 10px;vertical-align:middle;font-size:10pt;color:#616161;">
+                    <label for="cke_inputOllamaKey_textInput">
+                        <b>Chave de API:</b><br>
+                        <span style="font-size:9pt;font-weight:normal;">(opcional)</span>
+                    </label>
+                </td>
+                <td style="padding:6px 10px;position:relative;">
+                    <input tabindex="2" style="font-size: 1.1em;width:100%;" placeholder="Deixe em branco se n\u00E3o houver autentica\u00E7\u00E3o" class="cke_dialog_ui_input_text passReveal" id="cke_inputOllamaKey_textInput" type="password">
+                </td>
+            </tr>
+            <tr>
+                <td style="width:25%;padding:6px 10px;vertical-align:middle;font-size:10pt;color:#616161;">
+                    <label for="cke_inputOllamaModel_textInput">
+                        <b>Modelo padr\u00E3o:</b><br>
+                        <span style="font-size:9pt;font-weight:normal;">(opcional)</span>
+                    </label>
+                </td>
+                <td style="padding:6px 10px;">
+                    <input tabindex="3" style="font-size: 1.1em;width:100%;" placeholder="ex: llama3.2, mistral, gpt-4..." class="cke_dialog_ui_input_text" id="cke_inputOllamaModel_textInput" type="text">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding:10px;text-align:right;">
+                    <a style="user-select: none;" title="Salvar" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_cancel ollama_token" role="button" aria-labelledby="plataformAI_label" id="plataformAI_uiElement">
+                        <span id="plataformAI_label" class="cke_dialog_ui_button">Salvar</span>
+                    </a>
+                    <i id="plataformAI_load" class="fas fa-sync-alt fa-spin" style="margin-left: 10px; display:none"></i>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div id="plataformAI_alert" style="white-space: break-spaces;margin-top: 10px;font-style: italic; color: #616161;" class="alertaAttencionPro dialogBoxDiv">
+        <i class="fas fa-exclamation-triangle" style="margin-right: 5px;"></i>Compatível com Ollama, LiteLLM e qualquer servidor com API no padr\u00E3o OpenAI (<code>/v1/chat/completions</code>).
+    </div>
+</div>`);
+
+// FUNÇÃO PARA COPIAR O TEXTO GERADO PELA IA (SEM FORMATAÇÃO HTML)
 const copyResponseAI = (this_) => {
     const _this = $(this_);
     const id_response = _this.data('response');
     copyTextWithBR($(`#responseBot_${id_response} .response_bot_content`));
+};
+
+// FUNÇÃO PARA COPIAR O TEXTO GERADO PELA IA COM FORMATAÇÃO (PARA COLAR EM DOCUMENTOS)
+const copyHtmlResponseAI = (this_) => {
+    const _this = $(this_);
+    const id_response = _this.data('response');
+    const htmlContent = $(`#responseBot_${id_response} .response_bot_content`).html();
+    copyToClipboardHTML(htmlContent);
+    _this.find('i').attr('class', 'far fa-check azulColor');
+    setTimeout(() => _this.find('i').attr('class', 'far fa-file-alt'), 1500);
+};
+
+// FUNÇÃO PARA ADICIONAR DOCUMENTO À SELEÇÃO MÚLTIPLA
+const addDocToMultiList = () => {
+    const docSelect = $('#docAISelect');
+    const selected = docSelect.find('option:selected');
+    const val = selected.val();
+    if (!val || val === 'outro_processo' || val === 'add_documento' || !selected.text().trim()) return;
+    const data = selected.data() ?? {};
+    const name = selected.text().trim();
+    const $multiList = $('#docAIMultiList');
+    // Evita duplicatas
+    let duplicate = false;
+    $multiList.find('.doc-ai-tag').each(function() {
+        if ($(this).data('id_documento') === (data.id_documento || val) && $(this).data('num_processo') === (data.num_processo || '')) {
+            duplicate = true;
+        }
+    });
+    if (duplicate) return;
+    const $tag = $('<span class="doc-ai-tag"></span>')
+        .css({display:'inline-flex', alignItems:'center', background:'#e8f4fd', border:'1px solid #b0d0e8', borderRadius:'3px', padding:'2px 8px', fontSize:'11px', margin:'2px 3px', maxWidth:'100%', boxSizing:'border-box'})
+        .data('id_documento', data.id_documento || val)
+        .data('num_processo', data.num_processo || '')
+        .data('id_procedimento', data.id_procedimento || '')
+        .data('name', name)
+        .append(document.createTextNode(name + '\u00a0'))
+        .append($('<i class="fas fa-times-circle doc-ai-tag-remove"></i>').css({cursor:'pointer', color:'#888', fontSize:'10px'}));
+    $multiList.append($tag).css({display:'flex', flexWrap:'wrap', flexBasis:'100%', width:'100%', marginTop:'5px'});
+    resizeBoxAIActions();
 };
 
 // FUNÇÃO PARA CRIAR DOCUMENTO SEI A PARTIR DO TEXTO GERADO PELA IA
@@ -623,10 +773,16 @@ const getSessionTextProcesso = (num_processo_format) => {
         return contentPDF;
     };
 
-    const makeFooterPrompt = async (data_protocolo, respost_id) => {
+    const makeFooterPrompt = async (data_protocolo, respost_id, multiDocs = null) => {
         const input_prompt = $('#promptAIPersonal');
         let prompt_footer = '';
-        if (data_protocolo.type == 'personalizado' && !data_protocolo.send) {
+        if (multiDocs && multiDocs.length > 1) {
+            // SELEÇÃO MÚLTIPLA: itera por todos os documentos selecionados
+            for (const doc_data of multiDocs) {
+                const prompt_f = await getFooterPrompt(doc_data, respost_id);
+                if (prompt_f) prompt_footer += `\n${prompt_f}\n`;
+            }
+        } else if (data_protocolo.type == 'personalizado' && !data_protocolo.send) {
             const elements = input_prompt.find('.prompt_ref_doc');
             for (const v of elements) {
                 const data_input = $(v).data();
@@ -710,7 +866,22 @@ const getSessionTextProcesso = (num_processo_format) => {
 
         const selectDocAi = _parent.find('#docAISelect');
         const selectDocAiOption = selectDocAi.find('option:selected');
-        let data_protocolo = selectDocAiOption.data() ?? false;
+
+        // SUPORTE A SELEÇÃO MÚLTIPLA DE DOCUMENTOS
+        const multiTagDocs = $('#docAIMultiList .doc-ai-tag');
+        let multiDocs = null;
+        if (!set_protocolo && multiTagDocs.length > 1) {
+            multiDocs = [];
+            multiTagDocs.each(function() {
+                multiDocs.push({
+                    id_documento:   $(this).data('id_documento') || '',
+                    num_processo:   $(this).data('num_processo') || '',
+                    id_procedimento:$(this).data('id_procedimento') || ''
+                });
+            });
+        }
+
+        let data_protocolo = multiDocs ? multiDocs[0] : (selectDocAiOption.data() ?? false);
             data_protocolo = set_protocolo ? set_protocolo : data_protocolo;
 
         const selectPrompt = _parent.find('#promptAISelect');
@@ -718,9 +889,16 @@ const getSessionTextProcesso = (num_processo_format) => {
         const selectPromptVal = selectPrompt.val();
         let selectPromptText = selectPromptVal === 'personalizado' ? inputPrompt : selectPrompt.find('option:selected').text();
             selectPromptText = set_protocolo ? _this.text().trim() : selectPromptText;
-        let selectDocAiText = selectDocAiOption.text();
+        let selectDocAiText;
+        if (multiDocs) {
+            const names = [];
+            multiTagDocs.each(function() { names.push($(this).data('name')); });
+            selectDocAiText = names.map(n => `"${n}"`).join(', ');
+        } else {
+            selectDocAiText = selectDocAiOption.text();
             selectDocAiText = set_protocolo && set_protocolo.id_documento == 'all' ? `"Todo o processo"` : `"${selectDocAiText}"`;
             selectDocAiText = selectPromptVal === 'personalizado' ? '' : selectDocAiText;
+        }
         let type = selectPromptVal ?? false;
             type = set_protocolo ? set_protocolo.type : type;
 
@@ -736,7 +914,7 @@ const getSessionTextProcesso = (num_processo_format) => {
         // ADICIONA LOAD NO BOTÃO DE ENVIO
         btnSendAI.removeClass('newLink_confirm').find('i').attr('class','fas fa-spin fa-spinner');
 
-        const prompt_footer = await makeFooterPrompt(data_protocolo, respost_id);
+        const prompt_footer = await makeFooterPrompt(data_protocolo, respost_id, multiDocs);
 
             prompt_text = type == 'resume' 
                 ? `
@@ -841,7 +1019,7 @@ const getSessionTextProcesso = (num_processo_format) => {
 
             prompt_text = type == 'erros_gramaticais' 
                 ? `
-                    Encontre os erros gramaticais no texto abaixo, citando o trecho com erro e sua sugest\u00E3o de corre\u00E7\u00E3o: 
+                    Encontre os erros gramaticais no texto abaixo, citando o trecho com erro e sua sugest\u00E3o de corre\u00E7\u00E3o. Ao destacar o erro, coloque o trecho tachado. Na sugest\u00E3o de corre\u00E7\u00E3o, coloque o trecho do texto corrigido em negrito: 
 
                     ${prompt_footer}
                 ` 
@@ -865,13 +1043,26 @@ const getSessionTextProcesso = (num_processo_format) => {
                 ` 
                 : prompt_text;
 
-            prompt_text = type == 'personalizado' 
+            prompt_text = type == 'personalizado'
                 ? `
                     ${inputPrompt}
 
                     ${prompt_footer}
-                ` 
+                `
                 : prompt_text;
+
+            // PROMPTS PERSONALIZADOS (criados nas configurações): usa o texto armazenado
+            if (!prompt_text && type && type !== 'personalizado') {
+                const storedPrompts = localStorageRestorePro('aiPromptsPro_prompts');
+                const storedPrompt = storedPrompts ? storedPrompts.find(p => p.id === type) : null;
+                if (storedPrompt && storedPrompt.prompt) {
+                    prompt_text = `${storedPrompt.prompt}\n\n${prompt_footer}`;
+                } else {
+                    // Fallback: usa o texto do option como prompt
+                    const fallbackText = selectPrompt.find('option:selected').text();
+                    prompt_text = `${fallbackText}\n\n${prompt_footer}`;
+                }
+            }
 
         getResponseAI(prompt_text, respost_id);
     };
@@ -900,8 +1091,11 @@ const getSessionTextProcesso = (num_processo_format) => {
         : '';
         const actionsResponse = `
             ${htmlIconChat}
-            <div class="copy_response_ai" data-tooltip="Copiar texto" data-response="${respost_id}">
+            <div class="copy_response_ai" data-tooltip="Copiar texto simples" data-response="${respost_id}">
                 <a class="newLink"><i class="far fa-copy"></i></a>
+            </div>
+            <div class="copy_html_response_ai" data-tooltip="Copiar texto formatado (para colar em documentos)" data-response="${respost_id}">
+                <a class="newLink"><i class="far fa-file-alt"></i></a>
             </div>
             <div class="speech_response_ai" data-tooltip="Ouvir em voz alta" data-response="${respost_id}">
                 <a class="newLink"><i class="far fa-volume-down"></i></a>
@@ -939,8 +1133,8 @@ const getSessionTextProcesso = (num_processo_format) => {
 
     // GERA DIÁLOGO DE ANÁLISE DO BOT
     const loadResponseBoxHTML = (respost_id, preload) => {
-        const container = $('#response_ai');    
-        const iconChat = currentPlataform == 'openai' ? iconChatGPT : iconGemini;
+        const container = $('#response_ai');
+        const iconChat = currentPlataform == 'openai' ? iconChatGPT : currentPlataform == 'ollama' ? iconOllama : iconGemini;
         const htmlIconChat = `<img src="${iconChat}" style="width: 30px;border-radius: 5px;position: absolute;top: -3px;left: -50px;">`;
         const htmlResponseBox = `
             <div id="responseBot_${respost_id}" class="response_bot response_${currentPlataform} loading" data-preload="${preload}">
@@ -958,23 +1152,25 @@ const getSessionTextProcesso = (num_processo_format) => {
 
     // ENVIA REQUISIÇÃO A PLATAFORMA DE IA
     const sendAI = async (prompt_text, respost_id) => {
-        const model = currentPlataform == 'openai'
-            ? getOptionsPro('setModelOpenAI') || 'gpt-4'
+        const model = currentPlataform == 'openai' ? getOptionsPro('setModelOpenAI') || 'gpt-4'
+            : currentPlataform == 'ollama' ? getOptionsPro('setModelOllama') || 'llama3.2'
             : getOptionsPro('setModelGemini') || 'gemini-2.0-flash';
 
         const beta = getOptionsPro('setBetaModelsAI') == 'checked' ? 'beta' : '';
-    
+
         const url = currentPlataform == 'openai'
             ? perfilPlataform.URL_API + `v1/chat/completions`
+            : currentPlataform == 'ollama'
+            ? perfilPlataform.URL_API + `v1/chat/completions`
             : perfilPlataform.URL_API + `v1${beta}/models/${model}:generateContent?key=${perfilPlataform.KEY_USER}`;
-    
+
         const data = getDataBodyAI(JSON.stringify(prompt_text));
         const container = $('#response_ai');
-        
+
         loadResponseBoxHTML(respost_id, 'Obtendo resposta...');
 
         const responseBox = $(`#responseBot_${respost_id}`);
-    
+
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('POST', url);
@@ -982,13 +1178,17 @@ const getSessionTextProcesso = (num_processo_format) => {
             if (currentPlataform == 'openai') {
                 xhr.setRequestHeader('Authorization', `Bearer ${perfilPlataform.KEY_USER}`);
             }
-    
+            // Ollama pode requerer token se configurado com autenticação
+            if (currentPlataform == 'ollama' && perfilPlataform.KEY_USER) {
+                xhr.setRequestHeader('Authorization', `Bearer ${perfilPlataform.KEY_USER}`);
+            }
+
             xhr.onreadystatechange = () => {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         try {
                             let responseText = JSON.parse(xhr.responseText);
-                                responseText = currentPlataform == 'openai'
+                                responseText = isOpenAICompatible()
                                     ? responseText.choices[0].message.content
                                     : responseText.candidates[0].content.parts[0].text;
                                 responseText = checkDownloadResponse(responseText);
@@ -1050,10 +1250,16 @@ const getSessionTextProcesso = (num_processo_format) => {
             createDocResponseAI(this);
         });
         
-        // DELEGAÇÃO DE EVENTO PARA COPIAR RESPOSTAS
+        // DELEGAÇÃO DE EVENTO PARA COPIAR RESPOSTAS (TEXTO SIMPLES)
         $(document).off('click', '.copy_response_ai').on('click', '.copy_response_ai', function(event) {
             event.preventDefault();
             copyResponseAI(this);
+        });
+
+        // DELEGAÇÃO DE EVENTO PARA COPIAR RESPOSTAS (TEXTO FORMATADO PARA DOCUMENTOS)
+        $(document).off('click', '.copy_html_response_ai').on('click', '.copy_html_response_ai', function(event) {
+            event.preventDefault();
+            copyHtmlResponseAI(this);
         });
 
         // DELEGAÇÃO DE EVENTO PARA LER RESPOSTA EM VOZ ALTA
@@ -1145,7 +1351,7 @@ const getSessionTextProcesso = (num_processo_format) => {
     const appendBotMessageError = (error_text) => {
         const container = $('#response_ai');
         const respost_id = randomString(8);
-        const iconChat = currentPlataform == 'openai' ? iconChatGPT : iconGemini;
+        const iconChat = currentPlataform == 'openai' ? iconChatGPT : currentPlataform == 'ollama' ? iconOllama : iconGemini;
         const htmlIconChat = `<img src="${iconChat}" style="width: 30px;border-radius: 5px;position: absolute;top: -3px;left: -50px;">`;
         const response_bot = `
             <div id="responseBot_${respost_id}" class="response_bot response_${currentPlataform} loading">
@@ -1158,22 +1364,24 @@ const getSessionTextProcesso = (num_processo_format) => {
             container[0].scrollTop = container[0].scrollHeight;
     };
 
-    // COMPILA OBJETO DATA PARA ENVIO NO CORPO DA REQUISIÇÃO DA PLATAFORMA 
+    // COMPILA OBJETO DATA PARA ENVIO NO CORPO DA REQUISIÇÃO DA PLATAFORMA
     const getDataBodyAI = (prompt_text) => {
         const advancedConfigs = getOptionsPro('setAdvancedConfigs') == 'checked' ? true : false;
-        const model = currentPlataform == 'openai' ? getOptionsPro('setModelOpenAI') || 'gpt-4' :  getOptionsPro('setModelGemini') || 'gemini-2.0-flash';
+        const model = currentPlataform == 'openai' ? getOptionsPro('setModelOpenAI') || 'gpt-4'
+            : currentPlataform == 'ollama' ? getOptionsPro('setModelOllama') || 'llama3.2'
+            : getOptionsPro('setModelGemini') || 'gemini-2.0-flash';
         const temperature = getOptionsPro('setTemperatureAI') || '0.4';
         const maxTokens = getOptionsPro('setMaxTokenAI') || '6400';
         const topP = getOptionsPro('setTopPAI') || '1';
         const frequencyPenalty = getOptionsPro('setFrequencyPenaltyAI') || '0';
         const presencePenalty = getOptionsPro('setPresencePenaltyAI') || '0';
         const contentSystemInstruction = getOptionsPro('setSystemInstructionAI') || defaultSystemInstruction;
-        
-        const systemInstruction = currentPlataform == 'openai'
+
+        const systemInstruction = isOpenAICompatible()
             ? { role: 'system', content: contentSystemInstruction }
             : { role: 'user', parts: [{ text: contentSystemInstruction }] };
-    
-        const contentMessage = currentPlataform == 'openai'
+
+        const contentMessage = isOpenAICompatible()
             ? [systemInstruction, { role: 'user', content: JSON.parse(prompt_text) }]
             : [systemInstruction, { role: 'user', parts: [{ text: JSON.parse(prompt_text) }] }];
 
@@ -1181,7 +1389,7 @@ const getSessionTextProcesso = (num_processo_format) => {
             ? conversationHistory
             : contentMessage;
 
-        const dataAdvanced = currentPlataform == 'openai' 
+        const dataAdvanced = isOpenAICompatible()
             ? JSON.stringify({
                 model,
                 messages: message,
@@ -1202,7 +1410,7 @@ const getSessionTextProcesso = (num_processo_format) => {
                 }
             });
 
-        const dataSimply = currentPlataform == 'openai' 
+        const dataSimply = isOpenAICompatible()
             ? JSON.stringify({
                 model,
                 messages: message
@@ -1276,14 +1484,13 @@ const getSessionTextProcesso = (num_processo_format) => {
     // FUNÇÃO PARA ABRIR AÇÕES DA IA
     const loadBoxAIActions = () => {
         if (restrictConfigValue('ferramentasia')) {
-            if (perfilOpenAI || perfilGemini) {
+            if (perfilOpenAI || perfilGemini || perfilOllama) {
                 if (!getOptionsPro('consentimentoIA')) {
                     boxAIConcent();
                 } else {
                     boxAIActions();
                 }
             } else {
-                // boxAIStoreToken();
                 boxSelectPlataformAI();
             }
         }
@@ -1293,18 +1500,23 @@ const getSessionTextProcesso = (num_processo_format) => {
     const boxSelectPlataformAI = () => {
 
         const htmlBox = sanitizeHTML(`<div class="dialogBoxDiv" style="font-size: 11pt;line-height: 12pt;color: #616161;">
-            <i class="fas fa-info-circle azulColor" style="margin-right: 5px;"></i> Selecione a <b>Plataformas de Intelig\u00EAncia Artificial</b> de sua prefer\u00EAncia<br><br>
+            <i class="fas fa-info-circle azulColor" style="margin-right: 5px;"></i> Selecione a <b>Plataforma de Intelig\u00EAncia Artificial</b> de sua prefer\u00EAncia<br><br>
             <table role="presentation" class="cke_dialog_ui_hbox" style="width: 100%;">
                 <tbody>
                     <tr class="cke_dialog_ui_hbox">
-                        <td class="cke_dialog_ui_hbox_last" role="presentation" style="width:50%; padding:10px 0; text-align:center;">
-                            <a style="user-select: none;padding: 0.6em 1em !important;font-size: 1em;" title="Salvar" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_ok newLink newLink_confirm" role="button" id="selectPlataformAI_openai">
+                        <td role="presentation" style="width:33%; padding:10px 0; text-align:center;">
+                            <a style="user-select: none;padding: 0.6em 1em !important;font-size: 1em;" title="ChatGPT (OpenAI)" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_ok newLink newLink_confirm" role="button" id="selectPlataformAI_openai">
                                 <img src="${iconChatGPT}" style="width: 30px;vertical-align: middle;margin: 0 10px 0 0;background-color: #fff;border-radius: 5px;"><span id="selectPlataformAI_openai_label" style="color:#fff" class="cke_dialog_ui_button">ChatGPT (OpenAI)</span>
                             </a>
                         </td>
-                        <td class="cke_dialog_ui_hbox_first" role="presentation" style="width:50%; padding:10px 0; text-align:center;">
-                            <a style="user-select: none;padding: 0.6em 1em !important;font-size: 1em;" title="Salvar" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_ok newLink newLink_confirm" role="button" id="selectPlataformAI_gemini">
+                        <td role="presentation" style="width:33%; padding:10px 0; text-align:center;">
+                            <a style="user-select: none;padding: 0.6em 1em !important;font-size: 1em;" title="Gemini (Google)" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_ok newLink newLink_confirm" role="button" id="selectPlataformAI_gemini">
                                 <img src="${iconGemini}" style="width: 30px;vertical-align: middle;margin: 0 10px 0 0;background-color: #fff;border-radius: 5px;"><span id="selectPlataformAI_gemini_label" style="color:#fff" class="cke_dialog_ui_button">Gemini (Google)</span>
+                            </a>
+                        </td>
+                        <td role="presentation" style="width:33%; padding:10px 0; text-align:center;">
+                            <a style="user-select: none;padding: 0.6em 1em !important;font-size: 1em;" title="Ollama (Local)" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_ok newLink newLink_confirm" role="button" id="selectPlataformAI_ollama">
+                                <img src="${iconOllama}" style="width: 30px;vertical-align: middle;margin: 0 10px 0 0;background-color: #fff;border-radius: 5px;"><span id="selectPlataformAI_ollama_label" style="color:#fff" class="cke_dialog_ui_button">Ollama (Local)</span>
                             </a>
                         </td>
                     </tr>
@@ -1317,7 +1529,7 @@ const getSessionTextProcesso = (num_processo_format) => {
             .html(htmlBox)
             .dialog({
                 title: 'Sele\u00E7\u00E3o de Plataformas de Intelig\u00EAncia Artificial',
-                width: 850,
+                width: 950,
                 open: () => {
 
                     // DELEGAÇÃO DE EVENTOS PARA ELEMENTOS DINÂMICOS
@@ -1330,6 +1542,12 @@ const getSessionTextProcesso = (num_processo_format) => {
                         event.preventDefault();
                         boxAIStoreToken('openai');
                     });
+
+                    $(document).off('click', '#selectPlataformAI_ollama').on('click', '#selectPlataformAI_ollama', (event) => {
+                        event.preventDefault();
+                        boxAIStoreToken('ollama');
+                    });
+
                     setTimeout(() => { centralizeDialogBox(dialogBoxPro); });
                 }
             });
@@ -1337,7 +1555,7 @@ const getSessionTextProcesso = (num_processo_format) => {
 
     // FUNÇÃO PARA EXIBIR BOX DE TOKEN DA IA
     const boxAIStoreToken = (plataform = 'openai') => {
-        const disclaimerHtml = plataform == 'gemini' ? disclaimerGemini : disclaimerOpenAI;
+        const disclaimerHtml = plataform == 'gemini' ? disclaimerGemini : plataform == 'ollama' ? disclaimerOllama : disclaimerOpenAI;
 
         resetDialogBoxPro('dialogBoxPro');
         dialogBoxPro = $('#dialogBoxPro')
@@ -1409,6 +1627,7 @@ const getSessionTextProcesso = (num_processo_format) => {
         const getBetaModels = getOptionsPro('setBetaModelsAI');
         const getAdvancedConfigs = getOptionsPro('setAdvancedConfigs');
         const getSystemInstructionAI = getOptionsPro('setSystemInstructionAI') || defaultSystemInstruction;
+        const getCurrentModelOllama = getOptionsPro('setModelOllama') || '';
 
         const htmlBox = `
             <table style="font-size: 10pt;width: 100%;" class="seiProForm">
@@ -1419,9 +1638,9 @@ const getSessionTextProcesso = (num_processo_format) => {
                         </label>
                     </td>
                     <td>
-                        <div class="onoffswitch" style="display: inline-block;transform: scale(0.7);">
-                            <input id="configAI_typing_box" type="checkbox" name="onoffswitch" class="resume_doc onoffswitch-checkbox" ${getTypingAI}>
-                            <label class="onoff-switch-label" for="configAI_typing_box"></label>
+                        <div class="infraAncoraSigla" style="display: inline-block;transform: scale(0.7);">
+                            <input id="configAI_typing_box" type="checkbox" name="infraAncoraSigla" class="resume_doc infraLinkOrgao" ${getTypingAI}>
+                            <label class="infraTd" for="configAI_typing_box"></label>
                         </div>
                     </td>
                     <td class="label">
@@ -1430,15 +1649,15 @@ const getSessionTextProcesso = (num_processo_format) => {
                         </label>
                     </td>
                     <td>
-                        <div class="onoffswitch" style="display: inline-block;transform: scale(0.7);">
-                            <input id="configAI_betamodels" type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" ${getBetaModels}>
-                            <label class="onoff-switch-label" for="configAI_betamodels"></label>
+                        <div class="infraAncoraSigla" style="display: inline-block;transform: scale(0.7);">
+                            <input id="configAI_betamodels" type="checkbox" name="infraAncoraSigla" class="infraLinkOrgao" ${getBetaModels}>
+                            <label class="infraTd" for="configAI_betamodels"></label>
                         </div>
                     </td>
                 </tr>
                 <tr>
                     <td style="text-align: left;height: 40px;width: 20%;" class="label">
-                        <label for="docLoteSelect">
+                        <label for="configAI_model">
                             <i class="iconPopup iconSwitch fas fa-info-circle cinzaColor" style="float: right;" 
                             data-tooltip="O modelo que ir\u00E1 gerar a conclus\u00E3o. Alguns modelos s\u00E3o adequados para tarefas de linguagem natural, outros s\u00E3o especializados em c\u00F3digo."></i>
                             Modelo:
@@ -1453,10 +1672,23 @@ const getSessionTextProcesso = (num_processo_format) => {
                         </label>
                     </td>
                     <td style="width: 30%;">
-                        <div class="onoffswitch" style="display: inline-block;transform: scale(0.7);">
-                            <input id="configAI_advancedconfigs" type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" ${getAdvancedConfigs}>
-                            <label class="onoff-switch-label" for="configAI_advancedconfigs"></label>
+                        <div class="infraAncoraSigla" style="display: inline-block;transform: scale(0.7);">
+                            <input id="configAI_advancedconfigs" type="checkbox" name="infraAncoraSigla" class="infraLinkOrgao" ${getAdvancedConfigs}>
+                            <label class="infraTd" for="configAI_advancedconfigs"></label>
                         </div>
+                    </td>
+                </tr>
+                <tr id="configAI_ollama_model_row" ${currentPlataform == 'ollama' ? '' : 'style="display:none;"'}>
+                    <td style="text-align: left;height: 40px;width: 20%;" class="label">
+                        <label for="configAI_manual_model">
+                            <i class="iconPopup iconSwitch fas fa-info-circle cinzaColor" style="float: right;"
+                            data-tooltip="Digite o nome exato do modelo a ser usado. Substitui a sele\u00E7\u00E3o do dropdown acima. \u00DAtil para LiteLLM ou modelos personalizados."></i>
+                            Modelo manual:
+                        </label>
+                    </td>
+                    <td colspan="3">
+                        <input type="text" id="configAI_manual_model" style="width: 60%;margin: 0 !important;" placeholder="ex: llama3.2, mistral, gpt-4, claude-3..." value="${getCurrentModelOllama}">
+                        <span style="font-size:9pt;color:#888;margin-left:8px;">Sobrescreve a sele\u00E7\u00E3o acima</span>
                     </td>
                 </tr>
                 <tr class="configAI_advancedconfigs" ${getAdvancedConfigs == 'checked' ? '' : 'style="display:none;"'}>
@@ -1534,7 +1766,7 @@ const getSessionTextProcesso = (num_processo_format) => {
             .html(`<div class="alertBoxDiv" style="max-height: 500px;">${sanitizedHTML}</div>`)
             .dialog({
                 width: 700,
-                title: 'Intelig\u00EAncia artificial: Configura\u00E7\u00F5es Gerais '+(currentPlataform == 'openai' ? '(ChatGPT)' : '(Gemini)'),
+                title: 'Intelig\u00EAncia artificial: Configura\u00E7\u00F5es Gerais ' + (currentPlataform == 'openai' ? '(ChatGPT)' : currentPlataform == 'ollama' ? '(Ollama)' : '(Gemini)'),
                 open: function () {
                     
                     // DELEGAÇÃO DE EVENTO ONCLICK PARA SELETOR DE CONFIGURAÇÕES AVANÇADAS
@@ -1553,7 +1785,9 @@ const getSessionTextProcesso = (num_processo_format) => {
                     click: () => {
                         if (currentPlataform == 'openai')
                             setOptionsPro('setModelOpenAI', 'gpt-4');
-                        else 
+                        else if (currentPlataform == 'ollama')
+                            setOptionsPro('setModelOllama', 'llama3.2');
+                        else
                             setOptionsPro('setModelGemini', 'gemini-2.0-flash');
 
                         setOptionsPro('setTemperatureAI', '0.4');
@@ -1580,10 +1814,20 @@ const getSessionTextProcesso = (num_processo_format) => {
                     text: 'Salvar',
                     class: 'ui-state-active',
                     click: () => {
-                        if (currentPlataform == 'openai')
+                        if (currentPlataform == 'openai') {
                             setOptionsPro('setModelOpenAI', $('#configAI_model').val());
-                        else
+                        } else if (currentPlataform == 'ollama') {
+                            const manualModel = $('#configAI_manual_model').val().trim();
+                            const modelToSave = manualModel || $('#configAI_model').val();
+                            setOptionsPro('setModelOllama', modelToSave);
+                            // ADICIONA O MODELO MANUAL À LISTA SE AINDA NÃO ESTIVER
+                            if (manualModel && !modelsOllama.some(([m]) => m === manualModel)) {
+                                modelsOllama.unshift([manualModel]);
+                                localStorageStorePro('modelsOllama', modelsOllama);
+                            }
+                        } else {
                             setOptionsPro('setModelGemini', $('#configAI_model').val());
+                        }
 
                         setOptionsPro('setTemperatureAI', $('#configAI_temperature').val());
                         setOptionsPro('setMaxTokenAI', $('#configAI_max_tokens').val());
@@ -1607,24 +1851,36 @@ const getSessionTextProcesso = (num_processo_format) => {
 
         const bodyHeight = $('body').height();
 
-        // ÍCONE PARA A PLATAFORMA DE IA PRINCIPAL
-        const iconMainPlataform = getOptionsPro('plataformAI_current') == 'gemini' ? iconGemini : iconChatGPT;
-        
-        // ÍCONE PARA A PLATAFORMA DE IA SECUNDÁRIA
-        const iconSecondaryPlataform = getOptionsPro('plataformAI_current') == 'gemini' ? iconChatGPT : iconGemini;
+        // HELPER: RETORNA O ÍCONE DA PLATAFORMA
+        const getIconForPlatform = (p) => p == 'openai' ? iconChatGPT : p == 'ollama' ? iconOllama : iconGemini;
 
-        // BOTÃO PARA TROCA DE PLATAFORMAS
-        const btnChangePlataform = perfilOpenAI && perfilGemini
-            ? `<a class="newLink" id="btnChangeSelectedAI" data-tooltip="Alterar plataforma ativa" style="position: absolute;right: 205px;top: 15px;"><i class="fas fa-exchange-alt"></i></a>`
+        // LISTA DE PLATAFORMAS CONFIGURADAS E CÁLCULO DA PRÓXIMA NA ROTAÇÃO
+        const _configuredPlatforms = ['openai', 'gemini', 'ollama'].filter(p =>
+            (p == 'openai' && !!perfilOpenAI) ||
+            (p == 'gemini' && !!perfilGemini) ||
+            (p == 'ollama' && !!perfilOllama)
+        );
+        const _currentIdx = _configuredPlatforms.indexOf(currentPlataform);
+        const _nextPlatform = _configuredPlatforms.length > 1
+            ? _configuredPlatforms[(_currentIdx + 1) % _configuredPlatforms.length]
+            : (['openai', 'gemini', 'ollama'].find(p => p !== currentPlataform) || 'gemini');
+
+        // ÍCONE PARA A PLATAFORMA DE IA PRINCIPAL E SECUNDÁRIA
+        const iconMainPlataform = getIconForPlatform(currentPlataform);
+        const iconSecondaryPlataform = getIconForPlatform(_nextPlatform);
+
+        // BOTÃO PARA TROCA DE PLATAFORMAS (APARECE SE 2+ PLATAFORMAS CONFIGURADAS)
+        const btnChangePlataform = _configuredPlatforms.length > 1
+            ? `<a class="newLink" id="btnChangeSelectedAI" data-tooltip="Alterar plataforma ativa"><i class="fas fa-exchange-alt"></i></a>`
             : '';
 
         // CONTEÚDO DO BOTÃO DE SELEÇÃO DE PLATAFORMA PRINCIPAL
-        const btnMainPlataform = `<a class="newLink" id="btnMainPlataform" style="position: absolute;right: 150px;top: 10px;background-color: #fff;border-radius: 5px;padding: 0 20px 0 5px;">
+        const btnMainPlataform = `<a class="newLink" id="btnMainPlataform" style="position: relative;background-color: #fff;border-radius: 5px;padding: 0 20px 0 5px;">
                                         <img src="${iconMainPlataform}" style="width: 30px;background-color: #fff;border-radius: 5px;">
                                         <i class="fas fa-circle animate-flicker fa-xs verdeColor" style="position: absolute; right: 0px; top: 5px; transform: scale(0.6);"></i>
                                     </a>`;
         // CONTEÚDO DO BOTÃO DE SELEÇÃO DE PLATAFORMA SECUNDÁRIA
-        const btnSecondPlataform = `<a class="newLink" id="btnSecondPlataform" ${!btnChangePlataform ? `data-tooltip="Configurar plataforma alternativa"` : ''} data-plataform="${getOptionsPro('plataformAI_current') == 'gemini' ? 'openai' : 'gemini'}" style="position: absolute;right: 240px;top: 10px;background-color: #fff;border-radius: 5px;padding: 0 5px; opacity: ${btnChangePlataform ? 1 : 0.5};">
+        const btnSecondPlataform = `<a class="newLink" id="btnSecondPlataform" ${!btnChangePlataform ? `data-tooltip="Configurar plataforma alternativa"` : ''} data-plataform="${_nextPlatform}" style="background-color: #fff;border-radius: 5px;padding: 0 5px; opacity: ${btnChangePlataform ? 1 : 0.5};">
                                         <img src="${iconSecondaryPlataform}" style="width: 30px;background-color: #fff;border-radius: 5px;">
                                     </a>`;
         // CONTEÚDO HTML QUE SERÁ INSERIDO
@@ -1654,35 +1910,25 @@ const getSessionTextProcesso = (num_processo_format) => {
                 </div>
             </div>
             <div id="boxAIActions">
-                <div class="input_prompt">
+                <div class="input_prompt" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; position:relative;">
                     <select id="promptAISelect" class="prompt_type" style="width: 250px;">
                         <option value="personalizado">(...) Fa\u00E7a seu pr\u00F3prio prompt...</option>
-                        <option value="resume">Resuma:</option>
-                        <option value="dados_sensiveis">Encontre dados sens\u00EDveis, de acordo com a LGPD</option>
-                        <option value="discorra">Discorra sobre:</option>
-                        <option value="erros_gramaticais">Encontre erros gramaticais:</option>
-                        <option value="amplie">Amplie o conte\u00FAdo</option>
-                        <option value="linguagem_simples">Reformule em linguagem simples</option>
-                        <option value="sugira_encaminhamento">Sugira um encaminhamento:</option>
-                        <option value="crie_parecer">Crie um parecer t\u00E9cnico</option>
-                        <option value="base_legal">Descubra a base legal do tema</option>
-                        <option value="analise_critica">Fa\u00E7a uma an\u00E1lise cr\u00EDtica sobre o tema</option>
-                        <option value="palavras_chave">Extraia as palavras-chave:</option>
-                        <option value="traduza">Traduza para o portugu\u00EAs</option>
-                        <option value="topico">Crie uma estrutura de t\u00F3picos:</option>
-                        <option value="converte_ata">Converta em uma ata de reuni\u00E3o</option>
+                        ${buildPromptOptions()}
                     </select>
-                    <a class="newLink" id="btnReturnSelectPromptAI" style="margin-top: 3px; display:none;"><i class="fas fa-chevron-left"></i></a>
+                    <a class="newLink" id="btnReturnSelectPromptAI" style="display:none;"><i class="fas fa-chevron-left"></i></a>
                     <div id="promptAIPersonal" style="display:none;"></div>
                     <div id="favoritePromptAI" style="display:none;"><i class="far fa-star azulColor"></i></div>
                     <select id="docAISelect" class="prompt_doc" style="width: 300px;">
                         <option><i class="fas fa-sync fa-spin cinzaColor"></i> carregando dados...</option>
                     </select>
-                    <a class="newLink" id="btnConfigAI" data-tooltip="Configura\u00E7\u00F5es Gerais" style="margin-top: 3px;"><i class="fas fa-cog"></i></a>
-                    ${btnMainPlataform}
-                    ${btnChangePlataform}
+                    <a class="newLink" id="btnAddDocAI" data-tooltip="Adicionar \u00e0 sele\u00e7\u00e3o m\u00faltipla"><i class="fas fa-plus-circle"></i></a>
+                    <a class="newLink" id="btnConfigAI" data-tooltip="Configura\u00E7\u00F5es Gerais"><i class="fas fa-cog"></i></a>
+                    <span style="flex:1;"></span>
                     ${btnSecondPlataform}
-                    <a class="newLink" id="btnSendAI" style="float: right;padding: 8px 15px 7px 5px;"><i class="fas fa-paper-plane"></i> Enviar <sup style="opacity: 0.7;">(${navigator.platform.startsWith('Mac') ? '\u2318' : 'Ctr'} \u23CE)</sup></a>
+                    ${btnChangePlataform}
+                    ${btnMainPlataform}
+                    <a class="newLink" id="btnSendAI" style="padding: 8px 15px 7px 5px;"><i class="fas fa-paper-plane"></i> Enviar <sup style="opacity: 0.7;">(${navigator.platform.startsWith('Mac') ? '\u2318' : 'Ctr'} \u23CE)</sup></a>
+                    <div id="docAIMultiList" style="display:none; flex-basis:100%; margin-top:5px; flex-wrap:wrap;"></div>
                 </div>
             </div>`;
 
@@ -1692,7 +1938,7 @@ const getSessionTextProcesso = (num_processo_format) => {
         dialogBoxPro = $('#dialogBoxPro')
             .html(`<div class="dialogBoxAI">${sanitizedHtml}</div>`)
             .dialog({
-                title: 'Analisar texto por intelig\u00EAncia artificial '+(currentPlataform == 'openai' ? '(ChatGPT)' : '(Gemini)'),
+                title: 'Analisar texto por intelig\u00EAncia artificial ' + (currentPlataform == 'openai' ? '(ChatGPT)' : currentPlataform == 'ollama' ? '(Ollama)' : '(Gemini)'),
                 width: 980,
                 height: bodyHeight-200,
                 resizable: true,
@@ -1739,6 +1985,22 @@ const getSessionTextProcesso = (num_processo_format) => {
                         initAI(this);
                     });
                 
+                    // DELEGAÇÃO DE EVENTO PARA ADICIONAR DOCUMENTO À SELEÇÃO MÚLTIPLA
+                    $(document).off('click', '#btnAddDocAI').on('click', '#btnAddDocAI', function(event) {
+                        event.preventDefault();
+                        addDocToMultiList();
+                    });
+
+                    // DELEGAÇÃO DE EVENTO PARA REMOVER DOCUMENTO DA SELEÇÃO MÚLTIPLA
+                    $(document).off('click', '.doc-ai-tag-remove').on('click', '.doc-ai-tag-remove', function(event) {
+                        event.preventDefault();
+                        $(this).closest('.doc-ai-tag').remove();
+                        if ($('#docAIMultiList .doc-ai-tag').length === 0) {
+                            $('#docAIMultiList').hide();
+                        }
+                        resizeBoxAIActions();
+                    });
+
                     $(document).off('click', '#btnCancelResumeDocs').on('click', '#btnCancelResumeDocs', function(event) {
                         event.preventDefault();
                         cancelLoopGetAIAction();
@@ -1759,31 +2021,39 @@ const getSessionTextProcesso = (num_processo_format) => {
                 
                     $(document).off('click', '#btnChangeSelectedAI').on('click', '#btnChangeSelectedAI', function(event) {
                         event.preventDefault();
-                        if (getOptionsPro('plataformAI_current') == 'gemini') {
-                            currentPlataform = 'openai';
-                            perfilPlataform = perfilOpenAI;
-                            getModelAI = getOptionsPro('setModelOpenAI') || 'gpt-4';
-                            $('#btnSecondPlataform').attr('data-plataform', 'gemini').find('img').attr('src', iconGemini);
-                            $('#btnMainPlataform').find('img').attr('src', iconChatGPT);
-                            setOptionsPro('plataformAI_current', 'openai');
-                        } else {
-                            currentPlataform = 'gemini';
-                            perfilPlataform = perfilGemini;
-                            getModelAI = getOptionsPro('setModelGemini') || 'gemini-2.0-flash';
-                            $('#btnSecondPlataform').attr('data-plataform', 'openai').find('img').attr('src', iconChatGPT);
-                            $('#btnMainPlataform').find('img').attr('src', iconGemini);
-                            setOptionsPro('plataformAI_current', 'gemini');
-                        }
+                        // CICLA ENTRE TODAS AS PLATAFORMAS CONFIGURADAS
+                        const configured = ['openai', 'gemini', 'ollama'].filter(p =>
+                            (p == 'openai' && !!perfilOpenAI) ||
+                            (p == 'gemini' && !!perfilGemini) ||
+                            (p == 'ollama' && !!perfilOllama)
+                        );
+                        const idx = configured.indexOf(currentPlataform);
+                        const nextPlataform = configured[(idx + 1) % configured.length];
+                        const nextNextPlataform = configured[(configured.indexOf(nextPlataform) + 1) % configured.length];
+
+                        currentPlataform = nextPlataform;
+                        perfilPlataform = nextPlataform == 'openai' ? perfilOpenAI : nextPlataform == 'ollama' ? perfilOllama : perfilGemini;
+                        getModelAI = getOptionsPro(nextPlataform == 'openai' ? 'setModelOpenAI' : nextPlataform == 'ollama' ? 'setModelOllama' : 'setModelGemini')
+                            || (nextPlataform == 'openai' ? 'gpt-4' : nextPlataform == 'ollama' ? 'llama3.2' : 'gemini-2.0-flash');
+
+                        const _getIconFor = (p) => p == 'openai' ? iconChatGPT : p == 'ollama' ? iconOllama : iconGemini;
+                        $('#btnMainPlataform').find('img').attr('src', _getIconFor(nextPlataform));
+                        $('#btnSecondPlataform').attr('data-plataform', nextNextPlataform).find('img').attr('src', _getIconFor(nextNextPlataform));
+
+                        setOptionsPro('plataformAI_current', nextPlataform);
                         conversationHistory = conversationSystem();
                         updateModelsAI();
                         $('#configAI_model').html(sanitizeHTML(optionsModels()));
-                        dialogBoxPro.dialog('option', 'title', 'Analisar texto por intelig\u00EAncia artificial '+(currentPlataform == 'openai' ? '(ChatGPT)' : '(Gemini)'));
+                        dialogBoxPro.dialog('option', 'title', 'Analisar texto por intelig\u00EAncia artificial (' + (nextPlataform == 'openai' ? 'ChatGPT' : nextPlataform == 'ollama' ? 'Ollama' : 'Gemini') + ')');
                     });
                 
                     $(document).off('click', '#btnSecondPlataform').on('click', '#btnSecondPlataform', function(event) {
                         event.preventDefault();
                         const plataform = $(this).attr('data-plataform');
-                        if (!btnChangePlataform) boxAIStoreToken(plataform);
+                        const hasCredentials = (plataform == 'openai' && !!perfilOpenAI)
+                            || (plataform == 'gemini' && !!perfilGemini)
+                            || (plataform == 'ollama' && !!perfilOllama);
+                        if (!hasCredentials) boxAIStoreToken(plataform);
                     });
                 
                     $(document).on('change', '#promptAISelect', function() {
@@ -2107,10 +2377,20 @@ const getSessionTextProcesso = (num_processo_format) => {
         sel.addRange(range);
     };
 
-    // ABRE A CAIXA DE CONFIGURAÇÕES DO MODELO DE IA
+    // MONTA AS OPÇÕES DO SELECT DE MODELO, INCLUINDO MODELO PERSONALIZADO SE NÃO ESTIVER NA LISTA
     let optionsModels = () => {
-        const selectModelAI = getOptionsPro(currentPlataform == 'openai' ? 'setModelOpenAI' : 'setModelGemini')
-        const listModels = currentPlataform == 'openai' ? modelsOpenAI : modelsGemini;
+        const selectModelAI = getOptionsPro(
+            currentPlataform == 'openai' ? 'setModelOpenAI' :
+            currentPlataform == 'ollama' ? 'setModelOllama' :
+            'setModelGemini'
+        );
+        let listModels = currentPlataform == 'openai' ? modelsOpenAI
+            : currentPlataform == 'ollama' ? modelsOllama
+            : modelsGemini;
+        // SE O MODELO SALVO NÃO ESTÁ NA LISTA (EX: MODELO MANUAL), INCLUI COMO PRIMEIRA OPÇÃO
+        if (selectModelAI && !listModels.some(([m]) => m === selectModelAI)) {
+            listModels = [[selectModelAI], ...listModels];
+        }
         return $.map(listModels, ([model]) => {
             const selected = selectModelAI === model ? 'selected' : '';
             return `<option ${selected} value="${model}">${model}</option>`;
@@ -2132,30 +2412,47 @@ const getSessionTextProcesso = (num_processo_format) => {
 // FUNÇÃO PARA ATUALIZAR A LISTA DE MODELOS DISPONÍVEIS NA API
 const updateModelsAI = () => {
     const beta = getOptionsPro('setBetaModelsAI') == 'checked' ? 'beta' : '';
-    const url = currentPlataform == 'openai' ? perfilPlataform.URL_API+`v1/models` :  perfilPlataform.URL_API+`v1${beta}/models?key=${perfilPlataform.KEY_USER}`;    
+
+    let url;
+    if (currentPlataform == 'openai') {
+        url = perfilPlataform.URL_API + `v1/models`;
+    } else if (currentPlataform == 'ollama') {
+        url = perfilPlataform.URL_API + `v1/models`;
+    } else {
+        url = perfilPlataform.URL_API + `v1${beta}/models?key=${perfilPlataform.KEY_USER}`;
+    }
+
     const xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.setRequestHeader("Content-Type", "application/json");
     if (currentPlataform == 'openai') xhr.setRequestHeader("Authorization", `Bearer ${perfilPlataform.KEY_USER}`);
+    if (currentPlataform == 'ollama' && perfilPlataform.KEY_USER) xhr.setRequestHeader("Authorization", `Bearer ${perfilPlataform.KEY_USER}`);
+
     xhr.onreadystatechange = () => {
         if (xhr.status === 200 && (xhr.readyState === 4 || xhr.readyState == 3)) {
             let responseAiModels = tryParseJsonObject(xhr.responseText);
 
             if (responseAiModels) {
-                responseAiModels = currentPlataform == 'openai' 
-                    ? jmespath.search(responseAiModels.data, `[?owned_by!='openai-internal'] ${beta == '' ? `| [?owned_by!='openai-dev']` : ''} | [*].id`)
-                    : jmespath.search(responseAiModels.models, "[*].name");
-                responseAiModels = currentPlataform == 'openai' 
-                    ? responseAiModels.map(model => [model])
-                    : responseAiModels.map(model => [model.replace("models/", "")]);
-
                 if (currentPlataform == 'openai') {
+                    responseAiModels = jmespath.search(responseAiModels.data, `[?owned_by!='openai-internal'] ${beta == '' ? `| [?owned_by!='openai-dev']` : ''} | [*].id`);
+                    responseAiModels = responseAiModels.map(model => [model]);
                     modelsOpenAI = responseAiModels;
                     localStorageStorePro('modelsOpenAI', responseAiModels);
+                } else if (currentPlataform == 'ollama') {
+                    // Ollama retorna lista compatível com OpenAI: { data: [{ id, ... }] }
+                    responseAiModels = jmespath.search(responseAiModels.data, "[*].id");
+                    responseAiModels = responseAiModels.map(model => [model]);
+                    if (responseAiModels.length) {
+                        modelsOllama = responseAiModels;
+                        localStorageStorePro('modelsOllama', responseAiModels);
+                    }
                 } else {
+                    responseAiModels = jmespath.search(responseAiModels.models, "[*].name");
+                    responseAiModels = responseAiModels.map(model => [model.replace("models/", "")]);
                     modelsGemini = responseAiModels;
                     localStorageStorePro('modelsGemini', responseAiModels);
                 }
+                $('#configAI_model').html(sanitizeHTML(optionsModels()));
             }
         } else if (xhr.status !== 200 && xhr.readyState === 2) {
             console.error("Erro ao buscar modelos:", xhr.readyState, xhr.status, xhr.responseText);
@@ -2164,13 +2461,25 @@ const updateModelsAI = () => {
     xhr.send();
 };
 
-// FUNÇÃO PARA SALVAR O TOKEN DO OPENAI
+// FUNÇÃO PARA SALVAR O TOKEN DO OPENAI / GEMINI / OLLAMA
 const saveTokenOpenAI = (this_, mode = 'insert', plataform = false) => {
     const _this = $(this_);
     const _parent = _this.closest('#plataformAI_info');
-    const token = _parent.find('#cke_inputSecretKey_textInput').val();
-    const type_plataform = plataform ? plataform : $('#plataformAI_uiElement').hasClass('gemini_token') ? 'gemini' : 'openai';
-    const url_plataform = type_plataform == 'gemini' ?  'https%3A%2F%2Fgenerativelanguage.googleapis.com%2F' : 'https%3A%2F%2Fapi.openai.com%2F'
+    const type_plataform = plataform ? plataform
+        : $('#plataformAI_uiElement').hasClass('gemini_token') ? 'gemini'
+        : $('#plataformAI_uiElement').hasClass('ollama_token') ? 'ollama'
+        : 'openai';
+
+    let token, url_plataform, ollamaInitialModel;
+    if (type_plataform == 'ollama') {
+        token = _parent.find('#cke_inputOllamaKey_textInput').val() || ''; // API key opcional (LiteLLM, Ollama com auth)
+        const ollamaUrl = (_parent.find('#cke_inputOllamaUrl_textInput').val() || 'http://localhost:11434/').replace(/\/+$/, '') + '/';
+        url_plataform = encodeURIComponent(ollamaUrl);
+        ollamaInitialModel = (_parent.find('#cke_inputOllamaModel_textInput').val() || '').trim();
+    } else {
+        token = _parent.find('#cke_inputSecretKey_textInput').val();
+        url_plataform = type_plataform == 'gemini' ? 'https%3A%2F%2Fgenerativelanguage.googleapis.com%2F' : 'https%3A%2F%2Fapi.openai.com%2F';
+    }
 
     $('#plataformAI_load').show();
     if ($('#frmCheckerProcessoPro').length === 0) {
@@ -2200,6 +2509,14 @@ const saveTokenOpenAI = (this_, mode = 'insert', plataform = false) => {
             removeOptionsPro('plataformAI_current');
         } else {
             setOptionsPro('plataformAI_current', type_plataform);
+            // SALVA O MODELO INICIAL DO OLLAMA/LITELLM SE INFORMADO PELO USUÁRIO
+            if (type_plataform == 'ollama' && ollamaInitialModel) {
+                setOptionsPro('setModelOllama', ollamaInitialModel);
+                if (!modelsOllama.some(([m]) => m === ollamaInitialModel)) {
+                    modelsOllama.unshift([ollamaInitialModel]);
+                    localStorageStorePro('modelsOllama', modelsOllama);
+                }
+            }
         }
     });
 };

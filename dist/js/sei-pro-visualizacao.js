@@ -23,6 +23,9 @@ function initSeiProVisualizacao() {
     if (typeof parent.insertIconDocCertidao === 'function' && typeof parent.linksArvore !== 'undefined') {
         parent.insertIconDocCertidao();
     }
+    if (typeof parent.insertIconPublicacaoEletronica === 'function') {
+        parent.insertIconPublicacaoEletronica();
+    }
     if (typeof parent.setTipoPrescricaoProcesso === 'function' && parent.checkTipoPrescricaoProcesso()) {
         parent.appendIconCtrPrescricao();
     }

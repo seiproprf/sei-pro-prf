@@ -17,7 +17,7 @@ function loadFontIcons(elementTo, target = $('html')) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
-            datastyle: "seipro-fonticon",
+            "data-style": "seipro-fonticon",
             href: getUrlExtension("css/fontawesome.pro.min.css") 
         }).appendTo(elementTo);
         
@@ -80,6 +80,10 @@ if (typeof jmespath === 'undefined') $.getScript(getUrlExtension("js/lib/jmespat
 if (typeof DOMPurify === 'undefined') $.getScript(getUrlExtension("js/lib/purify.min.js"));
 if (typeof Dropzone === 'undefined') $.getScript(getUrlExtension("js/lib/dropzone.min.js"));
 if (typeof moment === 'undefined') $.getScript(getUrlExtension("js/lib/moment.min.js"));
-if (typeof loadFunctionsPro === 'undefined') $.getScript(getUrlExtension("js/sei-functions-pro.js"));
-if (typeof loadSEIProArvore === 'undefined') $.getScript(getUrlExtension("js/sei-pro-arvore.js"));
-
+if (typeof loadFunctionsPro === 'undefined') {
+    $.getScript(getUrlExtension("js/sei-functions-pro.js")).then(function() {
+        if (typeof loadSEIProArvore === 'undefined') $.getScript(getUrlExtension("js/sei-pro-arvore.js"));
+    });
+} else if (typeof loadSEIProArvore === 'undefined') {
+    $.getScript(getUrlExtension("js/sei-pro-arvore.js"));
+}

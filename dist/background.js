@@ -1,6 +1,5 @@
 /******************************************************************************
  SPro: Extensão para o Firefox e Chrome que adiciona ao Sistema Eletrônico de Informações (SEI) funções avançadas.
- Autor: Pedro Henrique Soares (pedrohsoares.adv@gmail.com)
 *******************************************************************************/
 
 function handleInstalled(details) {
@@ -35,8 +34,8 @@ if (isChrome) { var browser = chrome; } /* Chrome: */
 
 browser.runtime.onInstalled.addListener(handleInstalled);
 
-if(!isChrome) {
+if (!isChrome) {
   browser.runtime.getBrowserInfo().then(function (info) {
-    browser.storage.local.set({version: info.version}).then(null, null);
+    browser.storage.local.set({ version: info.version }).then(null, null);
   });
 }

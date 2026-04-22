@@ -289,7 +289,7 @@ function customPopupHtmlProjeto(task, arrayProjetos = arrayConfigAtividades.proj
                 '</a>';
         htmlAutoProgress = (etapa.data_inicio_execucao != '0000-00-00 00:00:00' && etapa.data_fim_execucao == '0000-00-00 00:00:00' && !etapa.id_demandas && permiteEdicao && task.show_full_popup) ? htmlAutoProgress : '';
     var htmlPercent = (etapa.data_inicio_execucao != '0000-00-00 00:00:00' && etapa.data_fim_execucao == '0000-00-00 00:00:00' && !etapa.id_demandas && permiteEdicao && task.show_full_popup) 
-            ? '<input onchange="changePercentRange(this)" data-id_etapa="'+etapa.id_etapa+'" data-id_projeto="'+etapa.id_projeto+'" oninput="changePercentRange(this)" type="range" value="'+(etapa.progresso_execucao || 0)+'" min="0" max="100" step="25" style="width: calc( 100% - 20px) !important; border: none; padding: 0 !important;">' 
+            ? '<input onchange="changePercentRange(this)" data-id_etapa="'+etapa.id_etapa+'" data-id_projeto="'+etapa.id_projeto+'" oninput="changePercentRange(this)" type="range" value="'+(etapa.progresso_execucao || 0)+'" min="0" max="100" step="25" style="width: calc( 100% - 20px) !important; border: none; padding: 0 !important;" name="progresso_execucao">' 
             : 
                 (etapa.data_inicio_execucao == '0000-00-00 00:00:00' && etapa.data_fim_execucao == '0000-00-00 00:00:00' && !etapa.id_demandas && permiteEdicao && task.show_full_popup) 
                 ? 
@@ -1685,7 +1685,7 @@ function shareProjeto(this_, arrayProjetos = arrayConfigAtividades.projetos) {
                                                                     : $.inArray(v.id_user, projetos_compartilhados) !== -1 ? '' : '<option value="'+v.id_user+'">'+v.nome_completo+'</option>';
 
                                                         }).join('');
-                                _this.html(`<select data-old="`+oldVal+`" data-type="unidade" data-mode="insert_`+data.key+`" onchange="shareTableNewItem(this)"><option value="0">&nbsp;</option>`+htmlOptions).find('select').focus().chosen({
+                                _this.html(`<select data-old="`+oldVal+`" data-type="unidade" data-mode="insert_`+data.key+`" onchange="shareTableNewItem(this)" name="shareTableNewItem"><option value="0">&nbsp;</option>`+htmlOptions).find('select').focus().chosen({
                                     placeholder_text_single: ' ',
                                     no_results_text: 'Nenhum resultado encontrado',
                                     normalize_search_text: function(text) {

@@ -33,7 +33,7 @@ function handleClientLoadPro(TimeOut = 3000) {
         console.log('notConfig handleClientLoadPro'); 
         return;
     } else {
-        setTimeout(function(){ 
+        setTimeout(function(){
             handleClientLoadPro(TimeOut - 100); 
             if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload handleClientLoadPro'); 
         }, 500);
@@ -41,6 +41,41 @@ function handleClientLoadPro(TimeOut = 3000) {
 }
 
 //// Agrupamento de lista de processos
+function getGroupTableLabelFromLink(linkElem, acaoType) {
+    var $link = $(linkElem);
+    var href = $link.attr('href');
+    if (typeof href === 'undefined' || href === '') {
+        return false;
+    }
+
+    var title = '';
+    if (acaoType == 'users') {
+        title = $link.text().trim();
+        if (!title && typeof getAtribuicaoDisplayLabel === 'function') {
+            title = getAtribuicaoDisplayLabel($link.attr('title'), '', checkConfigValue('nomesusuarios'));
+        }
+    } else if (acaoType == 'checkpoints') {
+        var checkpointTooltip = extractTooltipToArray($link.attr('onmouseover'));
+        title = (checkpointTooltip && typeof checkpointTooltip[0] !== 'undefined') ? checkpointTooltip[0] : '';
+    } else if (acaoType == 'tags' || acaoType == 'types') {
+        var typeTooltip = extractTooltipToArray($link.attr('onmouseover'));
+        title = (typeTooltip && typeof typeTooltip[1] !== 'undefined') ? typeTooltip[1] : '';
+    } else if (acaoType == 'senddepart') {
+        var dadosRecebido = getArrayProcessoRecebido(href);
+        title = (dadosRecebido && typeof dadosRecebido.unidadesendfull !== 'undefined') ? dadosRecebido.unidadesendfull : '';
+    } else if (acaoType == 'acompanhamentoesp') {
+        var dadosAcomp = getArrayProcessoRecebido(href);
+        title = (dadosAcomp && typeof dadosAcomp.acompanhamentoesp !== 'undefined') ? dadosAcomp.acompanhamentoesp : '';
+    } else if (acaoType == 'deadline') {
+        title = $link.closest('tr').find('td.prazoBoxDisplay .dateboxDisplay').data('time-sorter');
+        title = (typeof title !== 'undefined' && title !== null) ? String(title).trim() : '';
+        if (title !== '' && typeof moment === 'function') {
+            title = moment(title, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm');
+        }
+    }
+
+    return (typeof title !== 'undefined' && title !== null) ? String(title).trim() : '';
+}
 function getListTypes(acaoType) {
     var orderbyTableGroup = getOptionsPro('orderbyTableGroup') ? getOptionsPro('orderbyTableGroup') : 'asc';
     var arrayTag = [''];
@@ -59,16 +94,7 @@ function getListTypes(acaoType) {
     $('#divRecebidos').find('table a').each(function(index){
         var link = $(this).attr('href');
         if ( typeof link !== 'undefined' && link.indexOf(acaoType_) !== -1 ) {
-            var tag = ( acaoType == 'tags' || acaoType == 'types' ) ? $(this).attr('onmouseover').split("','")[1].replace("');","") : '';
-                tag = ( acaoType == 'users' ) ? $(this).text() : tag;
-                tag = ( acaoType == 'checkpoints' ) ? $(this).attr('onmouseover').split("'")[1] : tag;
-                tag = ( acaoType == 'senddepart' ) ? getArrayProcessoRecebido($(this).attr('href')).unidadesendfull : tag;
-                tag = ( acaoType == 'acompanhamentoesp' ) 
-                        ? typeof getArrayProcessoRecebido($(this).attr('href')).acompanhamentoesp !== 'undefined' ? getArrayProcessoRecebido($(this).attr('href')).acompanhamentoesp : ''
-                        : tag;
-                tag = ( acaoType == 'deadline' ) ? $(this).closest('tr').find('td.prazoBoxDisplay .dateboxDisplay').data('time-sorter') : tag;
-                tag = ( (acaoType == 'deadline' || acaoType == 'senddepart') && typeof tag === 'undefined') ? '' : tag;
-                tag = ( acaoType == 'deadline' && tag != '') ? moment(tag, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm') : tag;
+            var tag = getGroupTableLabelFromLink(this, acaoType);
                 if ( acaoType == 'arrivaldate' || acaoType == 'acessdate' || acaoType == 'senddate' || acaoType == 'createdate' || acaoType == 'deadline' ) {
                     var startDateNow = moment();
                     var startDateYesterday = moment().subtract(1, 'days');
@@ -338,6 +364,10 @@ function removeAllTags(forceFilter = false, n) {
         .trigger('filterReset')
         .trigger('update')
         .find('.filterTableProcessos').removeClass('newLink_active');
+    applyHomeFilterFallback('', 'clean');
+    if (!forceFilter) {
+        sessionStorageRemovePro('setFiltersTableHome');
+    }
     initControlePrazo();
     initViewEspecifacaoProcesso();
     addAcompanhamentoEspIcon();
@@ -345,16 +375,25 @@ function removeAllTags(forceFilter = false, n) {
     // console.log('### removeAllTags', n, checkLoadedTableSorter(), storeGroupTablePro(), forceFilter, sessionStorageRestorePro('setFiltersTableHome'));
     if (forceFilter && sessionStorageRestorePro('setFiltersTableHome')) {
         setTimeout(function(){ 
-            $.each(tableHomePro, function(i){
-                $.tablesorter.setFilters( tableHomePro[i][0], sessionStorageRestorePro('setFiltersTableHome'), true );
-                tableHomePro[i].trigger('update');
-            });
+            var storedFiltersHome = sessionStorageRestorePro('setFiltersTableHome');
+            if ($.isArray(storedFiltersHome)) {
+                $.each(tableHomePro, function(i){
+                    $.tablesorter.setFilters( tableHomePro[i][0], storedFiltersHome, true );
+                    tableHomePro[i].trigger('update');
+                });
+            } else if (storedFiltersHome && typeof storedFiltersHome.value !== 'undefined' && typeof storedFiltersHome.type !== 'undefined') {
+                var filterHome = $('#filterTableHome');
+                if (filterHome.length > 0) {
+                    filterHome.val(storedFiltersHome.value);
+                    getFilterTableHome(filterHome[0]);
+                }
+            }
         }, 1000);
     }
 }
 function getTagName(tagName, type) {
 	var tagName_ = (typeof tagName !== 'undefined' && tagName != '' ) ? removeAcentos(tagName).replace(/\ /g, '') : 'SemGrupo' ;
-		tagName = (typeof tagName === 'undefined' && tagName == '' ) ? ' ' : tagName;
+		tagName = (typeof tagName === 'undefined' || tagName == '' ) ? ' ' : tagName;
         tagName = ( (type == 'arrivaldate' || type == 'acessdate' || type == 'senddate' || type == 'createdate' || type == 'deadline') && tagName.indexOf('.') !== -1 ) ? tagName.split('.')[1] : tagName;
         tagName = ( type == 'tags' && tagName.indexOf('#') !== -1 ) ? tagName.replace(extractHexColor(tagName),'') : tagName;
     return tagName_;
@@ -364,7 +403,7 @@ function getUniqueTableTag(i, tagName, type) {
     var txtTagName = ( (type == 'arrivaldate' || type == 'acessdate' || type == 'senddate' || type == 'createdate' || type == 'deadline') && tagName.indexOf('.') !== -1 ) ? tagName.split('.')[1] : tagName;
 	var tbRecebidos = $('#divRecebidos table');
 	var countTd = tbRecebidos.find('tr:not(.tablesorter-headerRow)').eq(1).find('td').length;
-	var iconSelect = '<label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label><a id="lnkInfraCheck" onclick="getSelectAllTr(this, \''+tagName_+'\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Tudo\')" onmouseout="return infraTooltipOcultar();"><img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" class="infraImg"></a></th>';
+	var iconSelect = '<span class="lblInfraCheck" aria-hidden="true"></span><a id="lnkInfraCheck" onclick="getSelectAllTr(this, \''+tagName_+'\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Tudo\')" onmouseout="return infraTooltipOcultar();"><img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" class="infraImg"></a></th>';
 	var tagCount = $('#divRecebidos table tbody').find('tr[data-tagname="'+tagName_+'"]:visible').length;
     var collapseBtn =   '<span class="tagintable">'+
                         '   <a class="controleTableTag newLink" data-htagname="'+tagName_+'" onclick="toggleGroupTablePro(this)" data-action="show" onmouseover="return infraTooltipMostrar(\'Mostrar Agrupamento\');" onmouseout="return infraTooltipOcultar();" style="font-size: 11pt;'+(getOptionsPro('panelGroup_'+tagName_) ? '' : 'display:none;' )+'">'+
@@ -372,7 +411,7 @@ function getUniqueTableTag(i, tagName, type) {
                         '   </a>'+
                         '   <a class="controleTableTag newLink" data-htagname="'+tagName_+'" onclick="toggleGroupTablePro(this)" data-action="hide" onmouseover="return infraTooltipMostrar(\'Recolher Agrupamento\');" onmouseout="return infraTooltipOcultar();" style="font-size: 11pt;'+(getOptionsPro('panelGroup_'+tagName_) ? 'display:none;' : '' )+'">'+
                         '       <i class="fas fa-minus-square cinzaColor"></i>'+
-                        '   </a>';
+                        '   </a>'+
                         '</span>';
 	var htmlBody = '<tr class="infraCaption tagintable"><td colspan="'+(countTd+3)+'"><span '+actionTest+'>'+tagCount+' registros:</span></td></tr>'
 					+'<tr data-htagname="'+tagName_+'" class="tagintable tableHeader">'
@@ -405,13 +444,14 @@ function getTableOnTag(type) {
     	var dataTag = $(this).attr('data-tagname');
     		dataTag = ( dataTag == '' ) ? 'SemGrupo' : dataTag;
     	if ( typeof dataTag !== 'undefined' && $(this).find('td').eq(2).find('a').length > 0 ) {
-    		var desc = $(this).find('td').eq(2).find('a').attr('onmouseover').split("','");    
-            var txt_desc = (typeof desc[0] !== 'undefined') ? desc[0].replace("return infraTooltipMostrar('", "") : '';
-            var txt_tipo_proc = (typeof desc[1] !== 'undefined') ? desc[0].replace("return infraTooltipMostrar('", "") : '';
+            var descAttr = $(this).find('td').eq(2).find('a').attr('onmouseover');
+            var desc = (typeof descAttr !== 'undefined' && descAttr !== '') ? extractTooltipToArray(descAttr) : false;
+            var txt_desc = (desc && typeof desc[0] !== 'undefined') ? desc[0] : '';
+            var txt_tipo_proc = (desc && typeof desc[1] !== 'undefined') ? desc[1] : '';
             var editDesc = '<a class="newLink newLink_active followLink followLinkDesc content_btnsave" onclick="editFieldProc(this)" style="right: 0;top: 0;" onmouseover="return infraTooltipMostrar(\'Editar descri\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-edit" style="font-size: 100%;"></i></a>';        
     		var htmlDesc = (type == 'all')
                 ? '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td>'
-                : '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td><td class="tagintable">'+desc[1].replace("');","")+'</td>';
+                : '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td><td class="tagintable">'+txt_tipo_proc+'</td>';
             var dataRecebido = getArrayProcessoRecebido($(this).find('td').eq(2).find('a').attr('href'));
             var textBoxDesc =   (type == 'arrivaldate' || type == 'acessdate') 
                                 ? dataRecebido.descricao+' em: '+moment(dataRecebido.datahora, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm')+'<br>'
@@ -502,7 +542,6 @@ function updateGroupTablePro(valueSelect, mode) {
     } else {
         if (mode == 'remove') {
             localStorageRemovePro('selectGroupTablePro');
-            console.log('localStorageRemovePro');
         } else {
             localStorageStorePro('selectGroupTablePro', [{unidade: siglaUnidadeAtual, selected: valueSelect}]);
             // console.log('selectGroup',[{unidade: unidade, selected: valueSelect}]);
@@ -527,8 +566,44 @@ function storeGroupTablePro() {
 }
 function insertGroupTable(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
-    if (typeof checkConfigValue !== 'undefined' && (checkConfigValue('agruparlista') || verifyConfigValue('removepaginacao')) ) {
-        if (checkConfigValue('agruparlista')) { 
+    if (
+        typeof window.__SEI_PRO_CONFIG_READY__ === 'boolean' &&
+        !window.__SEI_PRO_CONFIG_READY__
+    ) {
+        setTimeout(function(){ 
+            insertGroupTable(TimeOut - 100); 
+            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload insertGroupTable => config'); 
+        }, 500);
+        return;
+    }
+    if (typeof checkConfigValue === 'undefined' || typeof verifyConfigValue === 'undefined') {
+        setTimeout(function(){ 
+            insertGroupTable(TimeOut - 100); 
+            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload insertGroupTable => helpers'); 
+        }, 500);
+        return;
+    }
+    var enableGroupTable = checkConfigValue('agruparlista');
+    var enablePaginationRemoval = verifyConfigValue('removepaginacao');
+    var enableAssignmentFilter = checkConfigValue('filtroporatribuicao');
+
+    if (!enableGroupTable && !enablePaginationRemoval && !enableAssignmentFilter) {
+        hideProcessoPaginacaoSuperior();
+        return;
+    }
+
+    if ($('#tblProcessosDetalhado').length == 0 && $('#newFiltro').length == 0) {
+        var htmlControl = '<div id="newFiltro">';
+
+        if (enableGroupTable || enablePaginationRemoval) {
+            htmlControl += selectFilterTableHome(!enableAssignmentFilter);
+        }
+
+        if (enableAssignmentFilter) {
+            htmlControl += selectAssignmentFilterHome();
+        }
+
+        if (enableGroupTable) { 
             var statusTableTags =           ( storeGroupTablePro() == 'tags' ) ? 'selected' : '';
             var statusTableTypes =          ( storeGroupTablePro() == 'types' ) ? 'selected' : '';
             var statusTableUsers =          ( storeGroupTablePro() == 'users' ) ? 'selected' : '';
@@ -541,52 +616,56 @@ function insertGroupTable(TimeOut = 9000) {
             var statusTableCreatedate =     ( storeGroupTablePro() == 'createdate' ) ? 'selected' : '';
             var statusTableAcompEsp =       ( storeGroupTablePro() == 'acompanhamentoesp' ) ? 'selected' : '';
             var statusTableAll =            ( storeGroupTablePro() == 'all' ) ? 'selected' : '';
-            var filterTableHome = selectFilterTableHome();
             var panelKanbanHome = selectPanelKanbanHome();
-            var htmlControl =    '<div id="newFiltro">'+
-                                 '  '+filterTableHome+
-                                 '  '+panelKanbanHome+
-                                 '   <select id="selectGroupTablePro" class="groupTable selectPro" onchange="updateGroupTable(this)" data-placeholder="Agrupar processos...">'+
-                                 '     <option value="">&nbsp;</option>'+
-                                 '     <option value="">Sem agrupamento</option>'+
-                                 '     <option value="all" '+statusTableAll+'>Agrupar processos recebidos/gerados</option>'+
-                                 '     <option value="deadline" '+statusTableDeadline+'>Agrupar processos por prazo</option>'+
-                                 '     <option value="createdate" '+statusTableCreatedate+'>Agrupar processos por data de autua\u00E7\u00E3o</option>'+
-                                 '     <option value="arrivaldate" '+statusTableArrivaldate+'>Agrupar processos por data de recebimento</option>'+
-                                 '     <option value="senddate" '+statusTableSenddate+'>Agrupar processos por data de envio</option>'+
-                                 '     <option value="acessdate" '+statusTableAcessdate+'>Agrupar processos por data do \u00FAltimo acesso</option>'+
-                                 '     <option value="tags" '+statusTableTags+'>Agrupar processos por marcadores</option>'+
-                                 '     <option value="types" '+statusTableTypes+'>Agrupar processos por tipo</option>'+
-                                 '     <option value="users" '+statusTableUsers+'>Agrupar processos por respons\u00E1vel</option>'+
-                                 '     <option value="checkpoints" '+statusTableCheckpoints+'>Agrupar processos por ponto de controle</option>'+
-                                 '     <option value="senddepart" '+statusTableDepartSend+'>Agrupar processos por unidade de envio</option>'+
-                                 '     <option value="acompanhamentoesp" '+statusTableAcompEsp+'>Agrupar processos por acompanhamento especial</option>'+
-                                 '  </select>'+
-                                 '  <a class="newLink" onclick="getTableProcessosCSV()" id="processoToCSV" onmouseover="return infraTooltipMostrar(\'Exportar informa\u00E7\u00F5es de processos em planilha CSV\');" onmouseout="return infraTooltipOcultar();" style="margin: 0;font-size: 10pt;float: right;"><i class="fas fa-file-download cinzaColor"></i></a>'+
-                                 '</div>';
 
-            if ( $('#selectGroupTablePro').length == 0 && $('#tblProcessosDetalhado').length == 0) { 
-                $('#divFiltro').after(htmlControl).css('width','50%');
-                setTimeout(function(){ 
-                    updateGroupTable($('#selectGroupTablePro'));
-                    if ($('#selectGroupTablePro_chosen').length == 0 && verifyConfigValue('substituiselecao')) {
-                        initChosenFilterHome();
-                    }
-                }, 500);
-            }
-            if ( $('#idSelectTipoBloco').length != 0 ) { 
-                $("#idSelectTipoBloco").appendTo("#newFiltro");
-                $("#idSelectBloco").appendTo("#newFiltro");
-            }
-        } else {
+            htmlControl += '   <select id="selectGroupTablePro" class="groupTable selectPro" onchange="updateGroupTable(this)" data-placeholder="Agrupar processos...">'+
+                           '     <option value="">&nbsp;</option>'+
+                           '     <option value="">Sem agrupamento</option>'+
+                           '     <option value="all" '+statusTableAll+'>Agrupar processos recebidos/gerados</option>'+
+                           '     <option value="deadline" '+statusTableDeadline+'>Agrupar processos por prazo</option>'+
+                           '     <option value="createdate" '+statusTableCreatedate+'>Agrupar processos por data de autua\u00E7\u00E3o</option>'+
+                           '     <option value="arrivaldate" '+statusTableArrivaldate+'>Agrupar processos por data de recebimento</option>'+
+                           '     <option value="senddate" '+statusTableSenddate+'>Agrupar processos por data de envio</option>'+
+                           '     <option value="acessdate" '+statusTableAcessdate+'>Agrupar processos por data do \u00FAltimo acesso</option>'+
+                           '     <option value="tags" '+statusTableTags+'>Agrupar processos por marcadores</option>'+
+                           '     <option value="types" '+statusTableTypes+'>Agrupar processos por tipo</option>'+
+                           '     <option value="users" '+statusTableUsers+'>Agrupar processos por respons\u00E1vel</option>'+
+                           '     <option value="checkpoints" '+statusTableCheckpoints+'>Agrupar processos por ponto de controle</option>'+
+                           '     <option value="senddepart" '+statusTableDepartSend+'>Agrupar processos por unidade de envio</option>'+
+                           '     <option value="acompanhamentoesp" '+statusTableAcompEsp+'>Agrupar processos por acompanhamento especial</option>'+
+                           '  </select>'+
+                           '  '+panelKanbanHome+
+                           '  <a class="newLink" onclick="getTableProcessosCSV()" id="processoToCSV" onmouseover="return infraTooltipMostrar(\'Exportar informa\u00E7\u00F5es de processos em planilha CSV\');" onmouseout="return infraTooltipOcultar();" style="margin: 0;font-size: 10pt;float: right;"><i class="fas fa-file-download cinzaColor"></i></a>';
+        }
+
+        htmlControl += '</div>';
+        $('#divFiltro').after(htmlControl).css('width','50%');
+
+        if ($('#idSelectTipoBloco').length != 0 ) { 
+            $("#idSelectTipoBloco").appendTo("#newFiltro");
+            $("#idSelectBloco").appendTo("#newFiltro");
+        }
+    }
+
+    if ($('#newFiltro').length > 0 && enableAssignmentFilter && $('#filterAssignmentTableHome').length == 0) {
+        $('#newFiltro').prepend(selectAssignmentFilterHome());
+    }
+
+    setTimeout(function(){ 
+        if (enableGroupTable && $('#selectGroupTablePro').length > 0) {
+            updateGroupTable($('#selectGroupTablePro'));
+        } else if (enablePaginationRemoval) {
             initProcessoPaginacao($('#selectGroupTablePro'));
         }
-    } else {
-        setTimeout(function(){ 
-            insertGroupTable(TimeOut - 100); 
-            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload insertGroupTable'); 
-        }, 500);
-    }
+
+        if (enableAssignmentFilter && $('#filterAssignmentTableHome').length > 0) {
+            restoreAssignmentFilterHome();
+        }
+
+        if (verifyConfigValue('substituiselecao') && $('#newFiltro .selectPro').length > 0) {
+            initChosenFilterHome();
+        }
+    }, 500);
 }
 function initChosenFilterHome(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
@@ -619,14 +698,35 @@ function removeCacheGroupTable(this_) {
     //$('#selectGroupTablePro').val('');
     //updateGroupTable($('#selectGroupTablePro'));
 }
+function hideProcessoPaginacaoSuperior() {
+    if (typeof verifyConfigValue !== 'function') { return; }
+    $('body').toggleClass('seiProHideProcessoPaginacaoSuperior', !!verifyConfigValue('ocultarpaginacaosuperior'));
+}
+function bindProcessoPaginacaoSuperiorVisibility() {
+    hideProcessoPaginacaoSuperior();
+}
+if (typeof window !== 'undefined') {
+    if (window.__SEI_PRO_CONFIG_READY__) {
+        bindProcessoPaginacaoSuperiorVisibility();
+    } else {
+        window.addEventListener('sei-pro-config-ready', bindProcessoPaginacaoSuperiorVisibility, { once: true });
+    }
+}
 function updateGroupTable(this_) {
+    hideProcessoPaginacaoSuperior();
     if (typeof checkConfigValue !== 'undefined' && verifyConfigValue('removepaginacao')) {
         initProcessoPaginacao(this_);
     } else {
         initUpdateGroupTable(this_);
     }
+    if (typeof checkConfigValue === 'function' && checkConfigValue('filtroporatribuicao')) {
+        setTimeout(function(){
+            restoreAssignmentFilterHome();
+        }, 1200);
+    }
 }
 function initUpdateGroupTable(this_) {
+    hideProcessoPaginacaoSuperior();
     if (typeof checkConfigValue !== 'undefined' && checkConfigValue('agruparlista')) {
         var valueSelect = $(this_).val();
         initTableTag(valueSelect);
@@ -683,13 +783,13 @@ function initTableTag(type = '') {
         urgenteProMoveOnTop();
         checkboxRangerSelectShift();
         if (type != '' && type != 'all' && $('#tblProcessosRecebidos tbody a.urgentePro[href*="controlador.php?acao=procedimento_trabalhar"]').length > 0) {
-            $('#tblProcessosRecebidos tr.tagintable[data-htagname="(URGENTE)"').remove();
+            $('#tblProcessosRecebidos tr.tagintable[data-htagname="(URGENTE)"]').remove();
             $('#tblProcessosRecebidos tr.urgentePro').show().attr('data-tagname','(URGENTE)');
             var colspan = $('#tblProcessosRecebidos tr:not(.tableHeader)').eq(1).find('td').length;
                 colspan = (typeof colspan !== 'undefined' && colspan > 0) ? colspan+2 : 7;
             var htmlHeadUrgente =   '<tr data-htagname="(URGENTE)" class="tagintable tableHeader">'+
                                     '   <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" width="5%" align="center">'+
-                                    '       <label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label>'+
+	                                    '       <span class="lblInfraCheck" aria-hidden="true"></span>'+
                                     '       <a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'(URGENTE)\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Tudo\')" onmouseout="return infraTooltipOcultar();">'+
                                     '           <img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" class="infraImg">'+
                                     '       </a>'+
@@ -708,55 +808,231 @@ function urgenteProMoveOnTop() {
 function checkLoadedTableSorter() {
     return typeof tableHomePro !== 'undefined' && typeof tableHomePro[0] !== 'undefined' && typeof tableHomePro[0].data('tablesorter') !== 'undefined' && typeof tableHomePro[0].data('tablesorter').$filters !== 'undefined';
 }
-function getFilterTableHome(this_) {
-    if (tableHomePro.length > 0 && $('.filterTableProcessos').length > 0) {
-        if (!checkLoadedTableSorter()) removeAllTags(false, 2);
-        if ($('#selectGroupTablePro').val() != '') {
-            $('#selectGroupTablePro').val('').trigger('change').trigger('chosen:updated');
-        }
-        var _this = $(this_);
-        var value = _this.val();
-        var data = _this.find('option:selected').data();
-        var filters = [];
-        if (data.type == 'user') {
-            filters[3] = (value == '' ? '""' : '('+value+')');
-        } else if (data.type == 'proc') {
-            value = (value != '') ? extractOnlyAlphaNum(removeAcentos(value)) : value;
-            filters[2] = (value == '' ? '""' : value);
-        } else if (data.type == 'tag') {
-            value = (value != '') ? extractOnlyAlphaNum(removeAcentos(value)) : value;
-            filters[1] = (value == '' ? '' : 'Marcador? '+value);
-            filters[1] = value == 'null' ? '!Marcador?' : filters[1];
-        } else if (data.type == 'clean') {
-            $.each(tableHomePro, function(i){
-                tableHomePro[i].trigger('filterReset');
-            });
-            _this.val('');
-            if (verifyConfigValue('substituiselecao')) {
-                forcePlaceHoldChosen();
-                _this.chosen("destroy").chosen();
+function normalizeHomeFilterText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9 ]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+function normalizeHomeFilterKey(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/gi, '')
+        .toLowerCase();
+}
+function updateHomeFilterCaption(table, filteredRows) {
+    var caption = table.find('caption.infraCaption').eq(0);
+    if (caption.length === 0) {
+        return;
+    }
+
+    var baseCaption = caption.data('seiProCaptionBase');
+    if (typeof baseCaption === 'undefined' || baseCaption === null || baseCaption === '') {
+        baseCaption = caption.text();
+        caption.data('seiProCaptionBase', baseCaption);
+    }
+
+    var visibleRows = (typeof filteredRows === 'number' && !isNaN(filteredRows))
+        ? filteredRows
+        : table.find('tbody tr').filter(function(){
+            var row = $(this);
+            return row.is(':visible') && !row.hasClass('tableHeader') && !row.hasClass('tagintable') && !row.hasClass('infraCaption');
+        }).length;
+    var singular = (visibleRows === 1) ? 'registro' : 'registros';
+    var updatedCaption = String(baseCaption).replace(/\(\s*\d+\s+registros?\s*\)/i, '('+visibleRows+' '+singular+')');
+
+    if (updatedCaption === baseCaption) {
+        updatedCaption = String(baseCaption).replace(/\d+/, visibleRows);
+    }
+
+    caption.text(updatedCaption);
+}
+function updateVisibleHeadersForHomeFilter(table) {
+    var currentHeader = null;
+    var hasVisibleRows = false;
+
+    table.find('tbody tr').each(function(){
+        var row = $(this);
+        if (row.hasClass('tableHeader') || row.hasClass('tagintable') || row.hasClass('infraCaption')) {
+            if (currentHeader !== null) {
+                currentHeader.toggle(hasVisibleRows);
             }
+            currentHeader = row;
+            hasVisibleRows = false;
+            return;
         }
-        if (filters.length > 0) {
-            setTimeout(function(){ 
-                $.each(tableHomePro, function(i){
-                    $.tablesorter.setFilters( tableHomePro[i][0], filters, true );
-                });
-                sessionStorageStorePro('setFiltersTableHome', filters);
-            }, 100);
-        } else {
-            sessionStorageRemovePro('setFiltersTableHome');
+
+        if (!row.hasClass('seiProHomeFilterHidden')) {
+            hasVisibleRows = true;
         }
-        // console.log('getFilterTableHome', data, filters);
-    } else {
-        tableHomeDestroy(true);
+    });
+
+    if (currentHeader !== null) {
+        currentHeader.toggle(hasVisibleRows);
     }
 }
-function selectFilterTableHome() {
-    var tableProc = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
-        tableProc.find('a[href*="acao=procedimento_atribuicao_listar"]').map(function(){ return $(this).text() }).get();
+function getHomeRowTagValue(row) {
+    var tagName = row.attr('data-tagname');
+    if (typeof tagName !== 'undefined' && tagName !== null && tagName !== '') {
+        return String(tagName);
+    }
 
-    var users = tableProc.find('a[href*="acao=procedimento_atribuicao_listar"]').map(function(){ return $(this).text() }).get();
+    var markerLink = row.find('a[href*="acao=andamento_marcador_gerenciar"]').first();
+    if (markerLink.length > 0) {
+        var markerTooltip = extractTooltipToArray(markerLink.attr('onmouseover'));
+        var markerName = (markerTooltip && typeof markerTooltip[1] !== 'undefined' && markerTooltip[1] !== '') ? markerTooltip[1] : '';
+        if (markerName === '') {
+            var ariaLabel = markerLink.attr('aria-label');
+            if (typeof ariaLabel !== 'undefined' && ariaLabel !== '') {
+                markerName = ariaLabel.split('/').pop().trim();
+            } else {
+                markerName = markerLink.text().trim();
+            }
+        }
+        if (markerName !== '') {
+            return String(markerName);
+        }
+    }
+
+    return 'SemGrupo';
+}
+function rowMatchesHomeFilter(row, value, dataType) {
+    var normalizedValue = normalizeHomeFilterText(value);
+
+    if (dataType == 'user') {
+        return normalizeHomeFilterText(getProcessoAtribuicaoValue(row)) === normalizedValue;
+    }
+
+    if (dataType == 'tag') {
+        var tagName = getHomeRowTagValue(row);
+        if (value === 'null') {
+            return tagName === 'SemGrupo' || row.find('a[href*="acao=andamento_marcador_gerenciar"]').length === 0;
+        }
+        return normalizeHomeFilterKey(tagName) === normalizeHomeFilterKey(value);
+    }
+
+    if (dataType == 'proc') {
+        if (normalizedValue === 'nao visualizado') {
+            return row.find('a.processoNaoVisualizado, a.processoNaoVisualizadoSigiloso').length > 0;
+        }
+        var processLink = row.find('a[href*="controlador.php?acao=procedimento_trabalhar"]').first();
+        var processText = processLink.text() || '';
+        var tooltip = extractTooltipToArray(processLink.attr('onmouseover'));
+        var tooltipText = (tooltip && tooltip.length > 0) ? tooltip.join(' ') : '';
+        var rowText = normalizeHomeFilterText(processText + ' ' + tooltipText + ' ' + row.text());
+        return rowText.indexOf(normalizedValue) !== -1;
+    }
+
+    return true;
+}
+function applyHomeFilterFallback(value, dataType) {
+    var tables = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+    var normalizedType = String(dataType || 'clean');
+    var normalizedValue = String(value || '');
+
+    tables.each(function(){
+        var table = $(this);
+        table.find('tbody tr').each(function(){
+            var row = $(this);
+            if (row.hasClass('tableHeader') || row.hasClass('tagintable') || row.hasClass('infraCaption')) {
+                row.removeClass('seiProHomeFilterHidden');
+                return;
+            }
+
+            var show = (normalizedType === 'clean' || normalizedValue === 'all') ? true : rowMatchesHomeFilter(row, normalizedValue, normalizedType);
+            row.toggle(show);
+            row.toggleClass('seiProHomeFilterHidden', !show);
+        });
+
+        updateVisibleHeadersForHomeFilter(table);
+        updateHomeFilterCaption(table);
+    });
+}
+function getFilterTableHome(this_) {
+    var _this = $(this_);
+    var value = _this.val() || '';
+    var data = _this.find('option:selected').data() || {};
+    var filters = [];
+    var tagFilterSelected = data.type == 'tag';
+    var hasTablesorterHome = checkLoadedTableSorter() && tableHomePro.length > 0;
+    var clearFilters = ['', '', '', '', ''];
+
+    if ($('#selectGroupTablePro').val() != '') {
+        $('#selectGroupTablePro').val('').trigger('change').trigger('chosen:updated');
+    }
+
+    if (value === 'all' || data.type === 'clean') {
+        applyHomeFilterFallback('', 'clean');
+        $.each(tableHomePro, function(i){
+            if (tableHomePro[i] && typeof tableHomePro[i].trigger === 'function') {
+                tableHomePro[i].trigger('filterReset').trigger('update');
+            }
+        });
+        sessionStorageRemovePro('setFiltersTableHome');
+        if (verifyConfigValue('substituiselecao')) {
+            forcePlaceHoldChosen();
+            _this.trigger('chosen:updated');
+        }
+        return;
+    }
+
+    if (data.type == 'user') {
+        filters[3] = (value == '' ? '""' : '('+value+')');
+    } else if (data.type == 'proc') {
+        filters[2] = (value == '' ? '""' : extractOnlyAlphaNum(removeAcentos(value)));
+    } else if (data.type == 'tag') {
+        filters[1] = (value == 'null') ? '!Marcador?' : (value == '' ? '' : 'Marcador? '+extractOnlyAlphaNum(removeAcentos(value)));
+    }
+
+    if (tagFilterSelected && hasTablesorterHome) {
+        setTimeout(function() {
+            $.each(tableHomePro, function(i){
+                $.tablesorter.setFilters(tableHomePro[i][0], clearFilters, true);
+                tableHomePro[i].trigger('update');
+            });
+            applyHomeFilterFallback(value, data.type);
+            sessionStorageStorePro('setFiltersTableHome', {value: value, type: data.type});
+        }, 100);
+    } else {
+        applyHomeFilterFallback(value, data.type);
+
+        if (hasTablesorterHome && filters.length > 0) {
+            setTimeout(function() {
+                $.each(tableHomePro, function(i){
+                    $.tablesorter.setFilters(tableHomePro[i][0], filters, true);
+                });
+                sessionStorageStorePro('setFiltersTableHome', filters);
+            });
+        } else {
+            sessionStorageStorePro('setFiltersTableHome', {value: value, type: data.type});
+        }
+    }
+
+    if (verifyConfigValue('substituiselecao')) {
+        forcePlaceHoldChosen();
+        _this.trigger('chosen:updated');
+    }
+}
+function normalizeProcessoAtribuicaoText(link) {
+    var target = $(link);
+    var title = target.attr('title');
+    if (typeof title !== 'undefined' && title !== '') {
+        title = title.replace('Atribu\u00EDdo para', '').trim().split(/(\s).+\s/).join("");
+        if (title) {
+            return title;
+        }
+    }
+    return target.text().trim();
+}
+function selectFilterTableHome(includeUserFilters = true) {
+    var tableProc = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+        tableProc.find('a[href*="acao=procedimento_atribuicao_listar"]').map(function(){ return normalizeProcessoAtribuicaoText(this) }).get();
+
+    var users = tableProc.find('a[href*="acao=procedimento_atribuicao_listar"]').map(function(){ return normalizeProcessoAtribuicaoText(this) }).get();
         users = (typeof users !== 'undefined' && users !== null) ? uniqPro(users) : [];
 
     var tipos = tableProc.find('a[href*="acao=procedimento_trabalhar"]').map(function(){ 
@@ -782,7 +1058,7 @@ function selectFilterTableHome() {
                 '   <option value="all" data-type="clean">Todos os processos</option>'+
                 '   <option value="(N\u00E3o visualizado)" data-type="proc">Processos n\u00E3o visualizados</option>';
 
-        if (users.length > 0) {
+        if (includeUserFilters && users.length > 0) {
             html += '   <optgroup label="Por atribui\u00E7\u00E3o">'+
                     '       <option value="" data-type="user">Processos sem atribui\u00E7\u00E3o</option>';
             $.each(users, function(i, v){
@@ -811,20 +1087,373 @@ function selectFilterTableHome() {
         html += '</select>';
     return html;
 }
+function getAssignmentFilterOptionsHome() {
+    var tableProc = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+    var users = tableProc.find('a[href*="acao=procedimento_atribuicao_listar"]').map(function(){
+        return normalizeProcessoAtribuicaoText(this);
+    }).get();
+
+    users = (typeof users !== 'undefined' && users !== null) ? uniqPro(users.filter(function(user){ return user !== ''; })) : [];
+
+    return users;
+}
+function selectAssignmentFilterHome() {
+    var users = getAssignmentFilterOptionsHome();
+    var html =  '<select id="filterAssignmentTableHome" class="selectPro" style="width:250px;margin-right:20px !important;" onchange="getFilterAssignmentTableHome(this)" data-placeholder="Filtrar atribui\u00E7\u00E3o...">'+
+                '   <option value="">&nbsp;</option>'+
+                '   <option value="">Todos os processos</option>'+
+                '   <option value="__unassigned__">Processos sem atribui\u00E7\u00E3o</option>';
+    $.each(users, function(i, v){
+        html += '   <option value="'+v+'">Atribu\u00EDdos \u00E0 '+v+'</option>';
+    });
+    html += '</select>';
+    return html;
+}
+function getProcessoAtribuicaoValue(row) {
+    var link = row.find('a[href*="acao=procedimento_atribuicao_listar"]').first();
+    if (link.length === 0) {
+        return '';
+    }
+    return normalizeProcessoAtribuicaoText(link);
+}
+function updateVisibleHeadersForAssignmentFilter(table) {
+    var currentHeader = null;
+    var hasVisibleRows = false;
+
+    table.find('tbody tr').each(function(){
+        var row = $(this);
+        if (row.hasClass('tableHeader') || row.hasClass('tagintable')) {
+            if (currentHeader !== null) {
+                currentHeader.toggle(hasVisibleRows);
+            }
+            currentHeader = row;
+            hasVisibleRows = false;
+            return;
+        }
+
+        if (currentHeader !== null && row.is(':visible')) {
+            hasVisibleRows = true;
+        }
+    });
+
+    if (currentHeader !== null) {
+        currentHeader.toggle(hasVisibleRows);
+    }
+}
+function applyAssignmentFilterHomeFallback(value) {
+    var filterValue = value || '';
+    var tables = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+
+    tables.each(function(){
+        var table = $(this);
+        table.find('tbody tr').not('.tableHeader').not('.tagintable').not('.infraCaption').each(function(){
+            var row = $(this);
+            var assignedTo = getProcessoAtribuicaoValue(row);
+            var show = true;
+
+            if (filterValue === '__unassigned__') {
+                show = assignedTo === '';
+            } else if (filterValue !== '') {
+                show = assignedTo === filterValue;
+            }
+
+            row.toggle(show);
+        });
+
+        updateVisibleHeadersForAssignmentFilter(table);
+    });
+}
+function getFilterAssignmentTableHome(this_) {
+    var value = $(this_).val() || '';
+    sessionStorageStorePro('filterAssignmentTableHome', value);
+
+    if (typeof tableHomePro !== 'undefined' && tableHomePro.length > 0 && typeof $.tablesorter !== 'undefined') {
+        $.each(tableHomePro, function(i){
+            var tableElement = tableHomePro[i][0];
+            var filters = $.tablesorter.storage(tableElement, 'tablesorter-filters') || [];
+            filters[3] = value === '__unassigned__' ? '""' : (value !== '' ? '('+value+')' : '');
+            $.tablesorter.setFilters(tableElement, filters, true);
+        });
+    } else {
+        applyAssignmentFilterHomeFallback(value);
+    }
+}
+function restoreAssignmentFilterHome() {
+    var target = $('#filterAssignmentTableHome');
+    if (target.length === 0) {
+        return;
+    }
+
+    var savedValue = sessionStorageRestorePro('filterAssignmentTableHome');
+    if (typeof savedValue === 'undefined' || savedValue === null) {
+        savedValue = '';
+    }
+
+    target.val(savedValue);
+    if (verifyConfigValue('substituiselecao')) {
+        target.trigger('chosen:updated');
+    }
+    getFilterAssignmentTableHome(target);
+}
+function normalizeQuickPageFilterText(text) {
+    text = (typeof text === 'string') ? text : '';
+    text = removeAcentos(text.toLowerCase());
+    return text.replace(/\s+/g, ' ').trim();
+}
+function getQuickPageFilterTokens(text) {
+    var query = normalizeQuickPageFilterText(text);
+    return query === '' ? [] : uniqPro(query.split(' ').filter(function(token){ return token !== ''; }));
+}
+function getQuickPageFilterProcessRows(table) {
+    return table.find('tbody tr').not('.tableHeader').not('.tagintable').not('.infraCaption');
+}
+function updateQuickPageFilterHeaders(table) {
+    var currentHeader = null;
+    var hasVisibleRows = false;
+
+    table.find('tbody tr').each(function(){
+        var row = $(this);
+        if (row.hasClass('tableHeader') || row.hasClass('tagintable')) {
+            if (currentHeader !== null) {
+                currentHeader.toggleClass('seiProQuickPageFilterHidden', !hasVisibleRows);
+            }
+            currentHeader = row;
+            hasVisibleRows = false;
+            return;
+        }
+
+        if (!row.hasClass('seiProQuickPageFilterHidden') && row.is(':visible')) {
+            hasVisibleRows = true;
+        }
+    });
+
+    if (currentHeader !== null) {
+        currentHeader.toggleClass('seiProQuickPageFilterHidden', !hasVisibleRows);
+    }
+}
+function applyQuickPageFilterToControlTables(value) {
+    var tokens = getQuickPageFilterTokens(value);
+    var tables = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+
+    tables.each(function(){
+        var table = $(this);
+        getQuickPageFilterProcessRows(table).each(function(){
+            var row = $(this);
+            var haystack = row.data('seiproQuickPageFilterText');
+
+            if (!haystack) {
+                haystack = normalizeQuickPageFilterText(row.text());
+                row.data('seiproQuickPageFilterText', haystack);
+            }
+
+            var matches = tokens.length === 0 || tokens.every(function(token){
+                return haystack.indexOf(token) !== -1;
+            });
+
+            row.toggleClass('seiProQuickPageFilterHidden', !matches);
+        });
+
+        updateQuickPageFilterHeaders(table);
+    });
+}
+function getQuickPageHighlightContainer() {
+    if ($('#divInfraAreaTelaD').length > 0) return $('#divInfraAreaTelaD');
+    if ($('#divInfraAreaTela').length > 0) return $('#divInfraAreaTela');
+    return $('body');
+}
+function clearQuickPageHighlights() {
+    $('.seiProQuickPageHighlight').each(function(){
+        var highlight = $(this);
+        highlight.replaceWith(document.createTextNode(highlight.text()));
+    });
+}
+function shouldSkipQuickPageHighlightNode(node) {
+    if (!node || !node.parentNode) return true;
+    var parent = node.parentNode;
+    if (parent.nodeType !== 1) return true;
+    if ($(parent).closest('#navInfraBarraNavegacao, #divInfraBarraSistema, #frmProtocoloPesquisaRapida, #divInfraSidebarMenu, #divInfraBarraLocalizacao').length > 0) return true;
+    if ($(parent).closest('.seiProQuickPageHighlight').length > 0) return true;
+    var tagName = parent.tagName;
+    if (!tagName) return true;
+    tagName = tagName.toLowerCase();
+    if (['script', 'style', 'textarea', 'input', 'select', 'option', 'button', 'noscript'].indexOf(tagName) !== -1) return true;
+    if ($(parent).is('[contenteditable="true"]') || $(parent).closest('[contenteditable="true"]').length > 0) return true;
+    return !node.nodeValue || !node.nodeValue.trim();
+}
+function getNormalizedIndexMap(text) {
+    var normalized = '';
+    var map = [];
+
+    for (var i = 0; i < text.length; i++) {
+        var normalizedChar = removeAcentos(text.charAt(i).toLowerCase());
+        if (typeof normalizedChar !== 'string') normalizedChar = text.charAt(i).toLowerCase();
+        for (var j = 0; j < normalizedChar.length; j++) {
+            normalized += normalizedChar.charAt(j);
+            map.push(i);
+        }
+    }
+
+    return {
+        normalized: normalized,
+        map: map
+    };
+}
+function mergeQuickPageHighlightRanges(ranges) {
+    if (!ranges.length) return [];
+
+    ranges.sort(function(a, b){
+        return a.start - b.start || a.end - b.end;
+    });
+
+    var merged = [ranges[0]];
+    for (var i = 1; i < ranges.length; i++) {
+        var current = ranges[i];
+        var last = merged[merged.length - 1];
+        if (current.start <= last.end) {
+            last.end = Math.max(last.end, current.end);
+        } else {
+            merged.push(current);
+        }
+    }
+
+    return merged;
+}
+function buildQuickPageHighlightRanges(text, tokens) {
+    if (!tokens.length || !text) return [];
+
+    var mapData = getNormalizedIndexMap(text);
+    var normalized = mapData.normalized;
+    var indexMap = mapData.map;
+    var ranges = [];
+
+    tokens.forEach(function(token){
+        var startIndex = 0;
+        while (startIndex < normalized.length) {
+            var foundIndex = normalized.indexOf(token, startIndex);
+            if (foundIndex === -1) break;
+
+            var rawStart = indexMap[foundIndex];
+            var rawEndIndex = foundIndex + token.length - 1;
+            var rawEnd = indexMap[rawEndIndex] + 1;
+
+            ranges.push({ start: rawStart, end: rawEnd });
+            startIndex = foundIndex + token.length;
+        }
+    });
+
+    return mergeQuickPageHighlightRanges(ranges);
+}
+function highlightQuickPageTextNode(node, tokens) {
+    var text = node.nodeValue;
+    var ranges = buildQuickPageHighlightRanges(text, tokens);
+    if (!ranges.length) return;
+
+    var fragment = document.createDocumentFragment();
+    var cursor = 0;
+
+    ranges.forEach(function(range){
+        if (range.start > cursor) {
+            fragment.appendChild(document.createTextNode(text.slice(cursor, range.start)));
+        }
+
+        var span = document.createElement('span');
+        span.className = 'seiProQuickPageHighlight';
+        span.textContent = text.slice(range.start, range.end);
+        fragment.appendChild(span);
+        cursor = range.end;
+    });
+
+    if (cursor < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(cursor)));
+    }
+
+    node.parentNode.replaceChild(fragment, node);
+}
+function applyQuickPageHighlight(value) {
+    var tokens = getQuickPageFilterTokens(value);
+    clearQuickPageHighlights();
+
+    if (!tokens.length) {
+        return;
+    }
+
+    var container = getQuickPageHighlightContainer().get(0);
+    if (!container) return;
+
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+        acceptNode: function(node) {
+            return shouldSkipQuickPageHighlightNode(node) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    var textNodes = [];
+    while (walker.nextNode()) {
+        textNodes.push(walker.currentNode);
+    }
+
+    textNodes.forEach(function(node){
+        highlightQuickPageTextNode(node, tokens);
+    });
+}
+function initQuickPageFilterTopSearch() {
+    if (typeof checkConfigValue !== 'function' || !checkConfigValue('filtrarpaginapelapesquisarapida')) {
+        return;
+    }
+
+    var input = $('#txtPesquisaRapida');
+    if (input.length === 0 || input.data('seiProQuickPageFilterBound')) {
+        return;
+    }
+
+    input.data('seiProQuickPageFilterBound', true);
+    input.attr('title', 'Digite para filtrar a página atual. Enter mantém a pesquisa rápida nativa.');
+
+    var debounceId = null;
+    input.on('input.seiProQuickPageFilter', function(){
+        var currentValue = this.value;
+        clearTimeout(debounceId);
+        debounceId = setTimeout(function(){
+            if ($('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').length > 0) {
+                applyQuickPageFilterToControlTables(currentValue);
+                clearQuickPageHighlights();
+            } else {
+                applyQuickPageHighlight(currentValue);
+            }
+        }, 120);
+    });
+
+    input.on('keydown.seiProQuickPageFilter', function(event){
+        if (event.key === 'Escape') {
+            this.value = '';
+            clearTimeout(debounceId);
+            applyQuickPageFilterToControlTables('');
+            clearQuickPageHighlights();
+        }
+    });
+
+    if (input.val()) {
+        if ($('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').length > 0) {
+            applyQuickPageFilterToControlTables(input.val());
+        } else {
+            applyQuickPageHighlight(input.val());
+        }
+    }
+}
 function initDadosProcesso(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
-    if (typeof getParamsUrlPro !== 'undefined' && typeof getDadosIframeProcessoPro !== 'undefined'  && typeof $("#ifrArvore").contents().find('#topmenu').find(`a[target="${ifrVisualizacao_}"]`).eq(0).attr('href') !== 'undefined' ) { 
+    if (typeof getParamsUrlPro !== 'undefined' && typeof getDadosIframeProcessoPro === 'function') { 
         var id_procedimento = getParamsUrlPro(window.location.href).id_procedimento;
             id_procedimento = (typeof id_procedimento === 'undefined') ? getParamsUrlPro($('#ifrArvore').attr('src')).id_procedimento : id_procedimento;
             id_procedimento = (typeof id_procedimento === 'undefined') ? getParamsUrlPro(window.location.href).id_protocolo : id_procedimento;
-            // idProcedimento = (typeof idProcedimento !== 'undefined') ? idProcedimento : getParamsUrlPro($("#ifrArvore").contents().find('#topmenu').find(`a[target="${ifrVisualizacao_}"]`).eq(0).attr('href')).id_procedimento;
-            // console.log(id_procedimento, 'processo');
+        if (typeof id_procedimento !== 'undefined' && id_procedimento !== '') {
             getDadosIframeProcessoPro(id_procedimento, 'processo');
-    } else {
-        setTimeout(function(){ 
-            initDadosProcesso(TimeOut - 100); 
-            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload initDadosProcesso'); 
-        }, 500);
+            return;
+        } else {
+            setTimeout(function(){ 
+                initDadosProcesso(TimeOut - 100); 
+                if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload initDadosProcesso'); 
+            }, 500);
+        }
     }
 }
 
@@ -1217,7 +1846,8 @@ function insertDivPanelControleProc() {
 
     if ($('.controleProcPro').length == 0) {
         $('#divInfraBarraLocalizacao').css('width', '100%').addClass('titlePanelHome').append(htmlToggleTable).prepend(htmlIconTable);
-        $(idControleProc).css({'width': '100%', 'display': statusView});
+        $(idControleProc).css('width', '100%');
+        if (!isNewSEI) $(idControleProc).css('display', statusView);
         $('#panelHomePro').prepend(htmlDivPanel);
         $('#frmProcedimentoControlar').moveTo('#processosSEIPro');
         $('#divInfraBarraLocalizacao').moveTo('#processosSEIPro');
@@ -1407,18 +2037,25 @@ function setTableSorterHome() {
             tableSorterHome.each(function(i){
 
                 if (!$(this).hasClass('infraTableOrdenacao')) {
+                    $(this).find('thead tr.tablesorter-filter-row').remove();
                     corrigeTableSEI(this);
                    if (isNewSEI) {
-                        tableSorterHome.find('th:nth-child(2)').each(function(){
+                        $(this).find('thead [colspan]').each(function(){
                             var _this = $(this);
-                            if (_this.attr('colspan') == 3) {
-                                    _this.removeAttr('colspan');
-                                var beforeTh = _this.clone().text('');
-                                var aftereTh = _this.clone().text('');
-                                    _this.before(beforeTh);
-                                    _this.after(aftereTh);
+                            var colspan = parseInt(_this.attr('colspan'));
+                            if (colspan > 1) {
+                                _this.removeAttr('colspan');
+                                for (var i = 1; i < colspan; i++) {
+                                    _this.after(_this.clone().text(''));
+                                }
                             }
                         });
+                        var theadCols = $(this).find('thead tr:first th, thead tr:first td').length;
+                        var tbodyCols = $(this).find('tbody tr:not(.tableHeader):first td').length;
+                        var theadRow = $(this).find('thead tr:first');
+                        for (var j = theadCols; j < tbodyCols; j++) {
+                            theadRow.append('<th></th>');
+                        }
                        $('#ancLiberarMeusProcessos').click(function(){
                            verMeusProcessos('T')
                        });
@@ -1501,14 +2138,20 @@ function setTableSorterHome() {
                             checkboxRangerSelectShift();
                         }).on("filterEnd", function (event, data) {
                             checkboxRangerSelectShift();
-                            var caption = $(this).find("caption").eq(0);
-                            var tx = caption.text();
-                                caption.text(tx.replace(/\d+/g, data.filteredRows));
+                            updateHomeFilterCaption($(this), data.filteredRows);
                                 $(this).find("tbody > tr:visible > td > input").prop('disabled', false);
                                 $(this).find("tbody > tr:hidden > td > input").prop('disabled', true);
                         });
+                    tableHomeThis.find("caption").each(function(){
+                        $(this).data('seiProCaptionBase', $(this).text());
+                    });
                         
                     tableHomePro.push(tableHomeThis);
+
+                    var _tableId = _this.attr('id') || 'tblProcessos';
+                    _this.find('.tablesorter-filter-row input.tablesorter-filter').each(function() {
+                        $(this).attr('name', _tableId + '_filter_col' + ($(this).attr('data-column') || '0'));
+                    });
 
                     var filter = _this.find('.tablesorter-filter-row').get(0);
                     if (typeof filter !== 'undefined') {
@@ -1541,9 +2184,21 @@ function setTableSorterHome() {
                 if (typeof filterStore !== 'undefined' && filterStore !== null && filterStore.length > 0) {
                     var filterUser = filterStore[3];
                         filterUser = (typeof filterUser !== 'undefined' && filterUser !== null) ? filterUser.replace('(','').replace(')','') : false;
+                        filterUser = filterUser === '""' ? '__unassigned__' : filterUser;
                     if (filterUser) {
-                        $('#filterTableHome').val(filterUser).trigger('chosen:updated');
+                        if ($('#filterAssignmentTableHome').length > 0) {
+                            $('#filterAssignmentTableHome').val(filterUser).trigger('chosen:updated');
+                        } else {
+                            $('#filterTableHome').val(filterUser).trigger('chosen:updated');
+                        }
+                    } else if ($('#filterAssignmentTableHome').length > 0) {
+                        $('#filterAssignmentTableHome').val('').trigger('chosen:updated');
+                    } else {
+                        $('#filterTableHome').val('').trigger('chosen:updated');
                     }
+                }
+                if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('mostraranotacaocontrole')) {
+                    renderSticknoteHomeInline();
                 }
             }, 1000);
         }
@@ -1581,7 +2236,7 @@ function forceTableHomeDestroy(Timeout = 3000) {
 }
 function forceOnLoadBody() {
     var onload = new Function($('body').attr('onload'));
-    if (isNewSEI && typeof $.modalLink === 'undefined' && !$('.sparkling-modal-frame').length) {
+    if (typeof isNewSEI !== 'undefined' && isNewSEI && typeof $.modalLink === 'undefined' && !$('.sparkling-modal-frame').length) {
         $.get($('script[src*="jquery.modalLink"]').attr('src'), function(){
             onload();
         });
@@ -1604,10 +2259,11 @@ function observeAreaTela(TimeOut = 9000) {
 function replaceSticknoteHome() {
     var arraySticknoteHome = [];
     $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').find('a[href*="acao=anotacao_registrar"]').each(function(){
-        var tooltip = $(this).attr('onmouseover');
+        var _this = $(this);
+        var tooltip = _this.attr('onmouseover');
             tooltip = (typeof tooltip !== 'undefined') ? tooltip.split("'") : false; 
         if (tooltip) {
-            var id_protocolo = $(this).attr('href');
+            var id_protocolo = _this.attr('href');
                 id_protocolo = (typeof id_protocolo !== 'undefined') ? getParamsUrlPro(id_protocolo).id_protocolo : false;
             var texttip = tooltip[1];
             var usertip = tooltip[3];
@@ -1624,7 +2280,10 @@ function replaceSticknoteHome() {
                     return v;
                 } 
             }).join('');
-            $(this).attr('onmouseover', 'return infraTooltipMostrar(\''+_return+'\',\''+usertip+'\');');
+            _this
+                .attr('onmouseover', 'return infraTooltipMostrar(\''+_return+'\',\''+usertip+'\');')
+                .attr('data-sticknote-text', texttip)
+                .attr('data-sticknote-user', usertip);
             if (id_protocolo) {
                 arraySticknoteHome.push({id_protocolo: id_protocolo, usertip: usertip, texttip: texttip});
             }
@@ -1632,11 +2291,232 @@ function replaceSticknoteHome() {
     });
     setOptionsPro('arraySticknoteHome', arraySticknoteHome);
 }
+function normalizeSticknoteHomeText(value) {
+    value = (typeof value === 'string') ? value : '';
+    return value
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+function formatDadosAnotacaoHome(value, type) {
+    var result = '';
+    if (type == 'paragraph') {
+        value = normalizeSticknoteHomeText(value);
+        if (value.indexOf('\n') !== -1) {
+            $.each(value.split('\n'), function(i, v){
+                if (v != '') {
+                    var check = (v.indexOf('[ ]') !== -1) ? ' class="stickNoteCheck"' : '';
+                        check = (v.indexOf('[X]') !== -1) ? ' class="stickNoteCheck stickNoteChecked"' : check;
+                    var text = (v.indexOf('[ ]') !== -1) ? v.replace('[ ]','').trim() : v;
+                        text = (v.indexOf('[X]') !== -1) ? v.replace('[X]','').trim() : text;
+                    result += '<div'+check+'>'+replaceTextToProcessoSEI(text)+'</div>';
+                } else if (i != 0 || i != value.length-1) {
+                    result += '<div><br></div>';
+                }
+            });
+        } else if (value != '') {
+            var checkSingle = (value.indexOf('[ ]') !== -1) ? ' class="stickNoteCheck"' : '';
+                checkSingle = (value.indexOf('[X]') !== -1) ? ' class="stickNoteCheck stickNoteChecked"' : checkSingle;
+            var textSingle = (value.indexOf('[ ]') !== -1) ? value.replace('[ ]','').trim() : value;
+                textSingle = (value.indexOf('[X]') !== -1) ? value.replace('[X]','').trim() : textSingle;
+            result = '<div'+checkSingle+'>'+replaceTextToProcessoSEI(textSingle)+'</div>';
+        }
+    }
+    return result;
+}
+function getSticknoteHomeLinks() {
+    return $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').find('a[href*="acao=anotacao_registrar"]');
+}
+function getSticknoteHomeText(link) {
+    var _this = $(link);
+    var texttip = _this.attr('data-sticknote-text');
+    if (typeof texttip !== 'undefined') {
+        return texttip;
+    }
+    var tooltip = _this.attr('onmouseover');
+        tooltip = (typeof tooltip !== 'undefined') ? tooltip.split("'") : false;
+    return (tooltip && typeof tooltip[1] !== 'undefined') ? tooltip[1] : '';
+}
+function getSticknoteHomePriority(link) {
+    var _this = $(link);
+    var priority = _this.attr('data-sticknote-priority');
+    if (typeof priority !== 'undefined') {
+        return priority === 'true';
+    }
+    return false;
+}
+function loadSticknoteHomePriority(link) {
+    var _this = $(link);
+    var href = _this.attr('href');
+    if (!href || _this.attr('data-sticknote-priority-loading') === 'true') {
+        return;
+    }
+    _this.attr('data-sticknote-priority-loading', 'true');
+    $.ajax({ url: href }).done(function(html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var priority = doc.querySelector('#chkSinPrioridade');
+        priority = priority ? priority.checked : false;
+        _this.attr('data-sticknote-priority', priority ? 'true' : 'false');
+        renderSticknoteHomeInline();
+    }).always(function() {
+        _this.removeAttr('data-sticknote-priority-loading');
+    });
+}
+function renderSticknoteHomeInline() {
+    var tableProc = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+    tableProc.find('.sticknoteHomeDetailedNoteCell .sticknoteHomeInline').each(function() {
+        $(this).replaceWith($(this).html());
+    });
+    tableProc.find('.sticknoteHomeInline').remove();
+    tableProc.removeClass('sticknoteHomeLayout');
+    tableProc.find('.sticknoteHomeInsertedCell').remove();
+    tableProc.find('.sticknoteHomeInsertedHead').remove();
+    tableProc.find('.sticknoteHomeIconCell').removeClass('sticknoteHomeIconCell');
+    tableProc.find('.sticknoteHomeDetailedNoteCell').removeClass('sticknoteHomeDetailedNoteCell sticknoteHomeNoteCell');
+    tableProc.find('.sticknoteHomeProcessCell').removeClass('sticknoteHomeProcessCell');
+    tableProc.find('td[data-sticknote-home-icon="true"]').removeAttr('data-sticknote-home-icon').css({'width':'','min-width':'','max-width':''});
+    tableProc.find('td[data-sticknote-orig-width]').each(function() {
+        var orig = $(this).attr('data-sticknote-orig-width');
+        if (orig) $(this).attr('width', orig); else $(this).removeAttr('width');
+        $(this).removeAttr('data-sticknote-orig-width');
+    });
+    tableProc.find('thead tr th[data-sticknote-orig-colspan], tr.tableHeader th[data-sticknote-orig-colspan]').each(function() {
+        var orig = $(this).attr('data-sticknote-orig-colspan');
+        if (orig) $(this).attr('colspan', orig); else $(this).removeAttr('colspan');
+        $(this).removeAttr('data-sticknote-orig-colspan');
+    });
+    if (!verifyConfigValue('mostraranotacaocontrole')) {
+        return;
+    }
+    tableProc.addClass('sticknoteHomeLayout');
+    tableProc.find('a[href*="acao=procedimento_trabalhar"]').each(function() {
+        var processLink = $(this);
+        var table = processLink.closest('table');
+        var processCell = processLink.closest('td');
+        if (!processCell.length) return;
+        processCell.addClass('sticknoteHomeProcessCell');
+        if (!table.is('#tblProcessosDetalhado')) {
+            $('<td class="sticknoteHomeInsertedCell sticknoteHomeNoteCell"></td>').insertBefore(processCell);
+        }
+    });
+    tableProc.each(function() {
+        var $table = $(this);
+        if ($table.is('#tblProcessosDetalhado')) return;
+        var processRow = $table.find('tbody tr').not('.tableHeader, .infraCaption, .tablesorter-filter-row').has('a[href*="acao=procedimento_trabalhar"]').first();
+        var processCellIdx = -1;
+        if (processRow.length) {
+            processCellIdx = processRow.find('td').index(processRow.find('a[href*="acao=procedimento_trabalhar"]').first().closest('td'));
+        }
+        if (processCellIdx <= 0) return;
+        var headRow = $table.find('thead tr').last();
+        var processHead = headRow.find('th').eq(processCellIdx);
+        if (processHead.length) {
+            $('<th class="tituloControle sticknoteHomeInsertedHead"></th>').insertBefore(processHead);
+        }
+    });
+    var detailedNoteColIdx = -1;
+    var detailedTable = $('#tblProcessosDetalhado');
+    if (detailedTable.length) {
+        var detailedHeadRow = detailedTable.find('thead tr').last();
+        if (!detailedHeadRow.length) {
+            detailedHeadRow = detailedTable.find('tbody tr').has('th').first();
+        }
+        detailedHeadRow.find('th').each(function(i) {
+            var label = $(this).text().replace(/\s+/g, ' ').trim().toLowerCase();
+            if (label.indexOf('anotação') !== -1 || label.indexOf('anotacao') !== -1) {
+                detailedNoteColIdx = i;
+                return false;
+            }
+        });
+        if (detailedNoteColIdx >= 0) {
+            detailedTable.find('tbody tr').not('.tableHeader, .infraCaption, .tablesorter-filter-row').has('td').each(function() {
+                var noteCell = $(this).find('td').eq(detailedNoteColIdx);
+                if (!noteCell.length) return;
+                var noteText = noteCell.text().replace(/\u00a0/g, ' ').trim();
+                if (noteText === '') return;
+                noteCell.addClass('sticknoteHomeDetailedNoteCell sticknoteHomeNoteCell');
+                if (!noteCell.find('.sticknoteHomeInline').length) {
+                    noteCell.wrapInner('<div class="sticknoteHomeInline"></div>');
+                }
+            });
+        }
+    }
+    getSticknoteHomeLinks().each(function() {
+        var _this = $(this);
+        var texttip = getSticknoteHomeText(_this);
+        var processLink = _this.closest('tr').find('a[href*="acao=procedimento_trabalhar"]').eq(0);
+        if (!processLink.length) {
+            return;
+        }
+        if (typeof texttip === 'undefined' || texttip.trim() == '') {
+            return;
+        }
+        var table = processLink.closest('table');
+        if (table.is('#tblProcessosDetalhado')) {
+            return;
+        }
+        var iconCell = _this.closest('td');
+        var noteCell = false;
+        iconCell
+            .addClass('sticknoteHomeIconCell')
+            .attr('data-sticknote-home-icon', 'true')
+            .css({'width':'','min-width':'','max-width':''});
+        noteCell = processLink.closest('td').prev('.sticknoteHomeInsertedCell');
+        if (!noteCell.length) {
+            noteCell = $('<td class="sticknoteHomeInsertedCell sticknoteHomeNoteCell"></td>').insertBefore(processLink.closest('td'));
+        }
+        var priority = getSticknoteHomePriority(_this);
+        noteCell.find('.sticknoteHomeInline').remove();
+        noteCell.prepend('<div class="sticknoteHomeInline '+(priority ? 'priority' : '')+'">'+formatDadosAnotacaoHome(texttip, 'paragraph')+'</div>');
+        if (typeof _this.attr('data-sticknote-priority') === 'undefined') {
+            loadSticknoteHomePriority(_this);
+        }
+    });
+    tableProc.each(function() {
+        var $table = $(this);
+        if ($table.is('#tblProcessosDetalhado')) return;
+        var iconColIdx = -1;
+        var iconCellByClass = $table.find('.sticknoteHomeIconCell').first();
+        if (iconCellByClass.length) {
+            iconColIdx = iconCellByClass.closest('tr').find('td').index(iconCellByClass);
+        } else {
+            $table.find('tbody tr').each(function() {
+                $(this).find('td').each(function(i) {
+                    if ($(this).attr('width') === '20%') { iconColIdx = i; return false; }
+                });
+                if (iconColIdx >= 0) return false;
+            });
+        }
+        if (iconColIdx < 0) return;
+        $table.find('tbody tr').each(function() {
+            var cell = $(this).find('td').eq(iconColIdx);
+            if (!cell.length) return;
+            if (!cell.attr('data-sticknote-orig-width')) {
+                cell.attr('data-sticknote-orig-width', cell.attr('width') || '');
+            }
+            cell.attr('width', '28');
+        });
+        $table.find('thead tr th[colspan], tbody tr.tableHeader th[colspan]').each(function() {
+            var th = $(this);
+            var colspan = parseInt(th.attr('colspan'), 10);
+            if (!th.attr('data-sticknote-orig-colspan')) {
+                th.attr('data-sticknote-orig-colspan', th.attr('colspan') || '');
+            }
+            if (!Number.isNaN(colspan)) {
+                th.attr('colspan', colspan + 1);
+            }
+        });
+    });
+}
 function initReplaceSticknoteHome(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }
     if (typeof checkConfigValue !== 'undefined') { 
-        if (checkConfigValue('infoarvore')) {
+        if (checkConfigValue('mostraranotacaocontrole')) {
             replaceSticknoteHome();
+            renderSticknoteHomeInline();
         }
     } else {
         setTimeout(function(){ 
@@ -1758,9 +2638,8 @@ function setObserveUrlChange() {
 function selectPanelKanbanHome() {
     var type = storeGroupTablePro();
         type = (!type || type == 'all' || type == '') ? false : true;
-        type = true;
-    var html =  '<div id="processosProActions" class="panelHome panelHomeProcessos" style="'+(type ? '' : 'display:none;')+' position: absolute;z-index: 999;right: 0;width: auto;margin: 15px 0 0 0;">'+
-                '    <div class="btn-group processosBtnPanel" role="group" style="float: right;margin-right: 10px;">'+
+    var html =  '<div id="processosProActions" class="panelHome panelHomeProcessos" style="'+(type ? 'display: inline-block;' : 'display:none;')+' vertical-align: middle; margin-left: 10px; width: auto;">'+
+                '    <div class="btn-group processosBtnPanel" role="group" style="margin-right: 10px;">'+
                 '       <button type="button" onclick="getPanelProc(this)" data-value="Tabela" class="btn btn-sm btn-light '+(getOptionsPro('panelProcessosView') == 'Tabela' || !getOptionsPro('panelProcessosView') ? 'active' : '')+'"><i class="fas fa-table" style="color: #888;"></i> <span class="text">Tabela</span></button>'+
                 '       <button type="button" onclick="getPanelProc(this)" title="D\u00EA um duplo clique para atualizar o quadro" ondblclick="removeDataPanelProc(this)" data-value="Quadro" class="btn btn-sm btn-light '+(getOptionsPro('panelProcessosView') == 'Quadro' ? 'active' : '')+'"><i class="fas fa-project-diagram" style="color: #888;"></i> <span class="text">Quadro</span></button>'+
                 '    </div>'+
@@ -1827,12 +2706,9 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
             if (getOptionsPro('arrayListUsersSEI') && getOptionsPro('arrayListUsersSEI').length > 0) {
                 $('#processosProActions [data-value="Quadro"] i').attr('class','fas fa-project-diagram');
                 var itensKanban = $.map(getOptionsPro('arrayListUsersSEI'),function(v){
-                    var nameuser = (checkConfigValue('nomesusuarios') && v.name.indexOf('-') !== -1) 
-                        ? v.name.split('-')[1].trim().split(/(\s).+\s/).join("") 
-                        : (v.name.indexOf('-') !== -1) 
-                            ? v.name.split('-')[0].trim() 
-                            : v.name
-                    return nameuser;
+                    return (typeof getAtribuicaoDisplayLabel === 'function')
+                        ? getAtribuicaoDisplayLabel(v.name, v.name, checkConfigValue('nomesusuarios'))
+                        : v.name;
                 });
                 itensKanban.unshift('');
             } else if (loop > 0) {
@@ -1862,13 +2738,14 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
             var itens = tr.map(function(){ 
                     var tagName = $(this).data('tagname');
                     var idTag = 'id_'+tagName;
-                    var nameLabel = jmespath.search(itensKanban, "[?id=='"+tagName+"'] | [0].name");
-                        nameLabel = nameLabel !== null && nameLabel != ''  ? nameLabel : 'Sem Grupo';
+                    var itemBoard = $.grep(itensKanban, function(item){ return item.id == tagName; })[0];
+                    var nameLabel = (itemBoard && itemBoard.name !== '') ? itemBoard.name : 'Sem Grupo';
                     var linkProc = $(this).find('a[href*="acao=procedimento_trabalhar"]');
                     var tip = extractTooltipToArray(linkProc.attr('onmouseover'));
                         tip = (typeof tip !== 'undefined') ? tip : false;
-                    var id_protocolo = getParamsUrlPro(linkProc.attr('href')).id_procedimento;
-                    if (typeof id_protocolo !== 'undefined') {
+                    var linkParams = getParamsUrlPro(linkProc.attr('href'));
+                    var id_protocolo = (linkParams && typeof linkParams.id_procedimento !== 'undefined') ? linkParams.id_procedimento : false;
+                    if (id_protocolo !== false && id_protocolo !== 'false' && id_protocolo !== '' && id_protocolo !== null && typeof id_protocolo !== 'undefined') {
                         return {
                             id: idTag,
                             title: nameLabel,
@@ -1889,21 +2766,28 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
             $('#newFiltro').after('<div id="processosKanban" style="display: inline-block;margin-top: 60px;width: 100%;"></div>');
 
             var bords_list = $.map(itensKanban, function(v, i){
-                var item = jmespath.search(itens, "[?id=='id_"+v.id+"']");
+                var item = $.grep(itens, function(row){ return row.id == 'id_'+v.id; });
                 var title = v.name == '' ? 'Sem Grupo' : v.name;
                     title = ((type == 'arrivaldate' || type == 'acessdate' || type == 'senddate' || type == 'createdate' || type == 'deadline') && title.indexOf('.') !== -1 ) ? title.split('.')[1] : title;
-                var order_board = getOptionsPro('panelProcessosOrder_'+type) ? jmespath.search(getOptionsPro('panelProcessosOrder_'+type), "[?id=='"+v.id+"'] | [0].order") : i;
+                var boardOrderStore = getOptionsPro('panelProcessosOrder_'+type);
+                var boardOrderItem = (boardOrderStore && $.isArray(boardOrderStore)) ? $.grep(boardOrderStore, function(row){ return row.id == v.id; })[0] : null;
+                var order_board = boardOrderItem && typeof boardOrderItem.order !== 'undefined' ? boardOrderItem.order : i;
                     order_board = order_board === null ? 9999 : order_board;
-                var collapse_board = getOptionsPro('panelProcessosOrder_'+type) ? jmespath.search(getOptionsPro('panelProcessosOrder_'+type), "[?id=='"+v.id+"'] | [0].collapse") : null;
-                    collapse_board = collapse_board === null ? false : collapse_board;
+                var collapse_board = boardOrderItem && typeof boardOrderItem.collapse !== 'undefined' ? boardOrderItem.collapse : false;
 
                 var itens_board = $.map(item,function(value, index){
+                    if (!value || !value.id_protocolo || value.id_protocolo === 'false') {
+                        return;
+                    }
 
                     var iten_urgente = value.especificacao && value.especificacao.toLowerCase().indexOf('(urgente)') !== -1 ? true : false;
                     var item_pinboard = false;
-                    var order_item = getOptionsPro('panelProcessosOrder_'+type) ? jmespath.search(getOptionsPro('panelProcessosOrder_'+type), "[?id=='"+v.id+"'].itens | [0] | [?id=='"+value.id_protocolo+"'] | [0]") : index;
-                        item_pinboard = order_item === null ? item_pinboard : order_item.pinboard;
-                        order_item = order_item === null ? 9999 : order_item.order;
+                    var order_item = false;
+                    if (boardOrderItem && $.isArray(boardOrderItem.itens)) {
+                        order_item = $.grep(boardOrderItem.itens, function(row){ return row.id == String(value.id_protocolo); })[0] || false;
+                    }
+                        item_pinboard = order_item === null || order_item === false ? item_pinboard : order_item.pinboard;
+                        order_item = order_item === null || order_item === false ? 9999 : order_item.order;
                         order_item = iten_urgente ? -1 : order_item;
                     var pinBoard = '<span style="float: right;margin: -5px -10px 0 0;" class="kanban-pinboard info_noclick"><a class="newLink info_noclick '+(item_pinboard ? 'newLink_active' : '')+'" onclick="pinKanbanItensProc(this, '+value.id_protocolo+')" onmouseover="return infraTooltipMostrar(\''+(item_pinboard ? 'Remover do topo' : 'Fixar no topo')+'\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-thumbtack cinzaColor"></i></a></span>';
                     
@@ -1937,6 +2821,10 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                     }
                 });
                 itens_board.sort(function(a,b){ return a.order - b.order;});
+
+                if (v.id == 'SemGrupo' && itens_board.length === 0) {
+                    return null;
+                }
 
                 return {
                     id: v.id,
@@ -1983,8 +2871,10 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                     if (type == 'users' && sourceEl != targetEl) {
                         var arrayListUsersSEI = getOptionsPro('arrayListUsersSEI');
                         if (arrayListUsersSEI) {
-                            var idUser = jmespath.search(arrayListUsersSEI, "[?contains(name,'"+targetEl+"')] | [0].value");
-                                idUser = idUser !== null ? idUser : false;
+                            var userMatch = $.grep(arrayListUsersSEI, function(item){
+                                return item.name && item.name.indexOf(targetEl) !== -1;
+                            })[0];
+                            var idUser = userMatch ? userMatch.value : false;
                                 idUser = idUser == 'SemGrupo' ? 'null' : idUser;
                             var linkAtribuicao = tableProc.find('a[href*="&id_usuario_atribuicao='+idUser+'"]').attr('href');
                                 elemProc.prepend('<i class="fas fa-sync fa-spin cinzaColor" style="margin-right: 5px;"></i>');
@@ -2010,7 +2900,7 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                                             }) : false;
                             listMarcadores = listMarcadores !== null ? listMarcadores : false;    
 
-                        var arrayMarcador = listMarcadores ? jmespath.search(listMarcadores, "[?name=='"+targetEl+"'] | [0]") : false;  
+                        var arrayMarcador = listMarcadores ? $.grep(listMarcadores, function(item){ return item.name == targetEl; })[0] : false;
                         var valueMarcador = arrayMarcador !== null && arrayMarcador ? arrayMarcador.value : false;  
                         var elemIconTag = elemIcons.find('a[href*="acao=andamento_marcador_gerenciar"]');
                         var elemIconTagTable = tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(1).find('a[href*="acao=andamento_marcador_gerenciar"]');
@@ -2027,7 +2917,8 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
 
                                 updateDadosArvoreMult('Gerenciar Marcador', valuesIframe, id_protocolo, function(){ 
                                     var arrayListMarcadores = sessionStorageRestorePro('dadosMarcadoresProcessoPro');
-                                    var styleMarcador = arrayListMarcadores && valueMarcador ? jmespath.search(arrayListMarcadores, "[?icon=='"+arrayMarcador.img+"'] | [0].style") : null;
+                                    var markerStyle = arrayListMarcadores && valueMarcador ? $.grep(arrayListMarcadores, function(item){ return item.icon == arrayMarcador.img; })[0] : null;
+                                    var styleMarcador = markerStyle && typeof markerStyle.style !== 'undefined' ? markerStyle.style : null;
                                         styleMarcador = styleMarcador !== null ? styleMarcador : '';
                                     if (targetEl != 'SemGrupo' && sourceEl != 'SemGrupo') {
                                         elemIconTag.attr('style', styleMarcador).attr('onmouseover', 'return infraTooltipMostrar(\''+valueText+'\',\''+titleSource+'\');').find('img').attr('src', arrayMarcador.img);
@@ -2050,8 +2941,8 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                     } else if (type == 'types' && sourceEl != targetEl && targetEl != 'SemGrupo') {
                         elemProc.prepend('<i class="fas fa-sync fa-spin cinzaColor" style="margin-right: 5px;"></i>');
                         initListTypesSEI(function (){
-                            var idTypeProc = (typeof arrayListTypesSEI.selectTipoProc !== 'undefined') ? jmespath.search(arrayListTypesSEI.selectTipoProc,"[?name=='"+titleSource+"'] | [0].value") : null;
-                                idTypeProc = idTypeProc !== null ? idTypeProc : false;
+                            var tipoMatch = (typeof arrayListTypesSEI.selectTipoProc !== 'undefined') ? $.grep(arrayListTypesSEI.selectTipoProc, function(item){ return item.name == titleSource; })[0] : null;
+                            var idTypeProc = tipoMatch ? tipoMatch.value : false;
                                 if (idTypeProc) {
                                     updateDadosArvore('Consultar/Alterar Processo', 'selTipoProcedimento', idTypeProc, id_protocolo, function(){ 
                                         elemTypes.text(titleSource);
@@ -2150,6 +3041,9 @@ function collapseKanbanBoardProc(this_) {
         updateOrderKanbanBoardProc();
 }
 function updateCountKanbanBoardProc() {
+    if (!kanbanProcessos || !kanbanProcessos.options || !$.isArray(kanbanProcessos.options.boards)) {
+        return;
+    }
     $.each(kanbanProcessos.options.boards, function(i, v){
         var elemBoard = $('#processosKanban .kanban-board[data-id="'+v.id+'"]');
         var countBoard = elemBoard.find('.kanban-item:visible').length;
@@ -2499,8 +3393,10 @@ function getMapaControleProcesso() {
             id_procedimento = typeof id_procedimento !== 'undefined' ? parseInt(id_procedimento.replace('P','')) : false;
         let protocolo = _td.eq(2).text();
         let link_atribuicao = _td.eq(3).find('a[href*="controlador.php?acao=procedimento_atribuicao_listar"]');
-        let nome_atribuicao = link_atribuicao.attr('title');
-            nome_atribuicao = typeof nome_atribuicao !== 'undefined' ? nome_atribuicao.replace('Atribuído para ','') : false;
+        let nome_atribuicao = (typeof getAtribuicaoDisplayLabel === 'function')
+            ? getAtribuicaoDisplayLabel(link_atribuicao.attr('title'), link_atribuicao.text(), true)
+            : link_atribuicao.attr('title');
+            nome_atribuicao = typeof nome_atribuicao !== 'undefined' ? nome_atribuicao : false;
         let usuario_atribuicao = link_atribuicao.text().trim();
         let descricao = _td.eq(4).text();
         let tipo_processo = _td.eq(5).text();
@@ -2637,7 +3533,7 @@ var getTableDistribAutomatica = async () => {
                         '        <thead>'+
                         '            <tr class="tableHeader">'+
                         '                <th class="tituloControle " width="5%" align="center">'+
-                        '                   <label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label>'+
+	                        '                   <span class="lblInfraCheck" aria-hidden="true"></span>'+
                         '                   <a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'SemGrupo\');" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Todos\')" onmouseout="return infraTooltipOcultar();">'+
                         '                       <img src="/infra_css/imagens/check.gif" id="imgRecebidosCheck" class="infraImg">'+
                         '                   </a>'+
@@ -2783,19 +3679,37 @@ function setAtribuicaoAutomatica() {
 }
 function setControlePrazo(force = false) {
     var tblProcessos = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+    var prazoColumnWidth = '5em';
+    var thead = tblProcessos.find('thead');
     if (
         tblProcessos.find('tbody tr').not('.tableHeader').find('td.prazoBoxDisplay').length == 0 ||
         tblProcessos.find('thead tr').find('th.prazoBoxDisplay').length < 2 ||
         force == true
         ) {
+        if (thead.length == 0) {
+            tblProcessos.each(function(){
+                var headerRow = $(this).find('tbody tr').not('.tableHeader').first();
+                if (headerRow.length > 0 && headerRow.find('a[href*="procedimento_trabalhar"]').length == 0) {
+                    var caption = $(this).children('caption').last();
+                    if (caption.length > 0) {
+                        caption.after('<thead></thead>');
+                    } else {
+                        $(this).prepend('<thead></thead>');
+                    }
+                    headerRow.prependTo($(this).find('thead'));
+                }
+            });
+            thead = tblProcessos.find('thead');
+        }
+
             tblProcessos.find('.prazoBoxDisplay').remove();
             tblProcessos.find('tbody tr').not('.tableHeader').append('<td class="prazoBoxDisplay" style="text-align: center;"></td>');
 
-        if ( tblProcessos.find('thead').length > 0 ) {
-            tblProcessos.find('thead tr').append('<th class="tituloControle tablesorter-header prazoBoxDisplay '+(isNewSEI ? 'infraTh' : '')+'" style="width: 140px;min-width: 140px;"> Prazos</th>');
+        if ( thead.length > 0 ) {
+            thead.find('tr').append('<th class="tituloControle tablesorter-header prazoBoxDisplay '+(isNewSEI ? 'infraTh' : '')+'" style="width: '+prazoColumnWidth+';min-width: '+prazoColumnWidth+';max-width: '+prazoColumnWidth+';"> Prazos</th>');
         } else {
             $('#tblProcessosRecebidos tbody tr:first, #tblProcessosGerados tbody tr:first, #tblProcessosDetalhado tbody tr:first').find('.prazoBoxDisplay').remove();
-            $('#tblProcessosRecebidos tbody tr:first, #tblProcessosGerados tbody tr:first, #tblProcessosDetalhado tbody tr:first').not('.tableHeader').append('<th class="tituloControle tablesorter-header prazoBoxDisplay '+(isNewSEI ? 'infraTh' : '')+'" style="width: 140px;min-width: 140px;"> Prazos</th>');
+            $('#tblProcessosRecebidos tbody tr:first, #tblProcessosGerados tbody tr:first, #tblProcessosDetalhado tbody tr:first').not('.tableHeader').append('<th class="tituloControle tablesorter-header prazoBoxDisplay '+(isNewSEI ? 'infraTh' : '')+'" style="width: '+prazoColumnWidth+';min-width: '+prazoColumnWidth+';max-width: '+prazoColumnWidth+';"> Prazos</th>');
         }
     }
     tblProcessos.find('tbody tr').each(function(){
@@ -2916,7 +3830,17 @@ function initUploadFilesInProcess() {
     }
 }
 function getListIdProtocoloSelected() {
-    var listId = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').find(elemCheckbox+':checked').map(function(){ return $(this).val() }).get();
+    var tableProc = $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado');
+    var listId = tableProc.find(elemCheckbox+':checked').map(function(){ return $(this).val() }).get();
+    if (listId.length === 0) {
+        listId = tableProc.find('tr.infraTrMarcada').map(function(){
+            var value = $(this).find(elemCheckbox).val();
+            if (typeof value !== 'undefined' && value !== null && value !== '') {
+                return value;
+            }
+            return $(this).attr('id') ? $(this).attr('id').replace(/^P/, '') : false;
+        }).get();
+    }
     return (listId.length > 0) ? listId : false;
 }
 function setUploadFilesInProcess(load_upload = true) {
@@ -2934,7 +3858,7 @@ function loadIframeProcessUpload(idProcedimento, load_upload = true) {
     
     $('#frmCheckerProcessoPro').attr('src', url).unbind().on('load', function(){
         var ifrArvore = $('#frmCheckerProcessoPro').contents().find('#ifrArvore');
-            contentW = ifrArvore[0].contentWindow;
+            contentW = (typeof getIframeArvoreWindow === 'function') ? getIframeArvoreWindow() : (typeof ifrArvore[0] !== 'undefined' && ifrArvore[0] ? ifrArvore[0].contentWindow : null);
             $(divComandos+' .iconUpload_new').removeClass('iconLoading');
             if (load_upload) {
                 getUploadFilesInProcess();
@@ -3115,9 +4039,17 @@ function storeVersionSEI() {
     else if (typeof setSeiVersionPro !== 'undefined') setSeiVersionPro();
 }
 function initSeiPro() {
+    if (typeof checkHostLimit !== 'function') {
+        setTimeout(function(){
+            initSeiPro();
+            if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage')) console.log('Reload initSeiPro checkHostLimit');
+        }, 300);
+        return;
+    }
 	if ( $('#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado').length > 0 ) {
+        bindProcessoPaginacaoSuperiorVisibility();
         if (typeof URL_SPRO !== 'undefined' && typeof SimpleTableCellEdition === 'undefined') $.getScript((URL_SPRO+"js/lib/jquery-table-edit.min.js"));
-        if (typeof URL_SPRO !== 'undefined' && typeof moment.duration === 'undefined') $.getScript((URL_SPRO+"js/lib/moment-duration-format.min.js"));
+        if (typeof URL_SPRO !== 'undefined' && (typeof moment === 'undefined' || typeof moment.duration === 'undefined')) $.getScript((URL_SPRO+"js/lib/moment-duration-format.min.js"));
         initTableSorterHome();
         insertGroupTable();
         replaceSelectAll();
@@ -3137,6 +4069,8 @@ function initSeiPro() {
         initAllMarcadoresHome();
         initUrgentePro();
         initNaoVisualizadoPro();
+        initQuickPageFilterTopSearch();
+        if (typeof initProcessNotificationsPro === 'function') initProcessNotificationsPro();
         storeLinkUsuarioSistema();
         storeVersionSEI();
         if (typeof checkDadosAcompEspecial !== 'undefined') checkDadosAcompEspecial();
@@ -3148,6 +4082,7 @@ function initSeiPro() {
         //observeHistoryBrowserPro();
 	}
     initReloadModalLink();
+    if (typeof initSmartSignatureSelectionPro === 'function') initSmartSignatureSelectionPro();
     if (typeof isNewSEI !== 'undefined' && isNewSEI) {
         // localStorageRemovePro('seiSlim');
         

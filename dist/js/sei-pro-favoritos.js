@@ -299,27 +299,66 @@ function getDadosSelectDoc(this_, id_procedimento) {
     }
     console.log(_this, id_procedimento);
 }
-function initDadosSelectDoc(id_procedimento, TimeOut = 9000) {
-    if (TimeOut <= 0) { return; }
-    if (typeof dadosProcessoPro !== 'undefined' && 
-        dadosProcessoPro && 
-        Object.keys(dadosProcessoPro).length > 0 && 
-        dadosProcessoPro.constructor === Object && 
-        typeof dadosProcessoPro.listAndamento !== 'undefined' &&
-        dadosProcessoPro.listAndamento !== null &&
-        dadosProcessoPro.hasOwnProperty('listAndamento') &&
-        typeof dadosProcessoPro.listAndamento.id_procedimento !== 'undefined' &&
-        dadosProcessoPro.listAndamento.id_procedimento !== null &&
-        dadosProcessoPro.listAndamento.hasOwnProperty('id_procedimento') &&
-        dadosProcessoPro.listAndamento.id_procedimento == id_procedimento
-        ) { 
-        updateSelectFavorites(id_procedimento);
-    } else {
-        setTimeout(function(){ 
-            initDadosSelectDoc(id_procedimento, TimeOut - 100); 
-            if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage'))console.log('Reload initDadosSelectDoc'); 
-        }, 500);
+function favoriteProcessDataReady(id_procedimento, dados) {
+    return (
+        typeof dados !== 'undefined' &&
+        dados &&
+        Object.keys(dados).length > 0 &&
+        dados.constructor === Object &&
+        typeof dados.listAndamento !== 'undefined' &&
+        dados.listAndamento !== null &&
+        dados.hasOwnProperty('listAndamento') &&
+        typeof dados.listAndamento.id_procedimento !== 'undefined' &&
+        dados.listAndamento.id_procedimento !== null &&
+        dados.listAndamento.hasOwnProperty('id_procedimento') &&
+        String(dados.listAndamento.id_procedimento) == String(id_procedimento) &&
+        typeof dados.propProcesso !== 'undefined' &&
+        dados.propProcesso !== null
+    );
+}
+function waitFavoriteProcessData(id_procedimento, callback, onTimeout, requireDocs = false) {
+    var eventName = 'sei-pro-process-session-updated';
+    var resolved = false;
+    var timeoutId = null;
+    var handler = function(event) {
+        var detail = (event && event.detail) ? event.detail : {};
+        if (typeof detail.id_procedimento !== 'undefined' && detail.id_procedimento !== null && String(detail.id_procedimento) !== String(id_procedimento)) {
+            return;
+        }
+        var dados = pullDadosProcessoSession();
+        if (favoriteProcessDataReady(id_procedimento, dados) && (!requireDocs || typeof dados.listDocumentosAssinados !== 'undefined')) {
+            resolved = true;
+            window.removeEventListener(eventName, handler);
+            if (timeoutId) clearTimeout(timeoutId);
+            if (typeof callback === 'function') callback(dados);
+        }
+    };
+
+    var dados = pullDadosProcessoSession();
+    if (favoriteProcessDataReady(id_procedimento, dados) && (!requireDocs || typeof dados.listDocumentosAssinados !== 'undefined')) {
+        if (typeof callback === 'function') callback(dados);
+        return true;
     }
+
+    window.addEventListener(eventName, handler);
+    timeoutId = setTimeout(function(){
+        if (!resolved) {
+            window.removeEventListener(eventName, handler);
+            if (typeof onTimeout === 'function') onTimeout();
+        }
+    }, 15000);
+
+    return false;
+}
+function initDadosSelectDoc(id_procedimento) {
+    waitFavoriteProcessData(id_procedimento, function(dados){
+        dadosProcessoPro = dados;
+        $('#configDatesBox_selectdoc').closest('tr').find('td').eq(0).removeClass('editCellLoading');
+        updateSelectFavorites(id_procedimento);
+    }, function(){
+        $('#configDatesBox_selectdoc').closest('tr').find('td').eq(0).removeClass('editCellLoading');
+        if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage')) console.log('Timeout initDadosSelectDoc => '+id_procedimento);
+    }, true);
 }
 function updateSelectFavorites(id_procedimento) {
     $('#configDatesBox_selectdoc').closest('tr').find('td').eq(0).removeClass('editCellLoading');
@@ -599,17 +638,40 @@ function updateCountTableFav() {
 function getStoreFavoritePro() {
     return ( typeof localStorageRestorePro('configDataFavoritesPro') !== 'undefined' && !$.isEmptyObject(localStorageRestorePro('configDataFavoritesPro')) ) ? localStorageRestorePro('configDataFavoritesPro') : {favorites: [], config: {colortags: []} };
 }
+function getFavoriteProcessAnchor(ifrArvore) {
+    if (!ifrArvore || !ifrArvore.length) return $();
+    var targetSelectors = [
+        '#topmenu a[target="' + ifrVisualizacao_ + '"]',
+        '#topmenu a[target="ifrConteudoVisualizacao"]',
+        '#topmenu a[target="ifrVisualizacao"]'
+    ];
+    for (var i = 0; i < targetSelectors.length; i++) {
+        var anchor = ifrArvore.find(targetSelectors[i]).eq(0);
+        if (anchor.length > 0) return anchor;
+    }
+    return $();
+}
+function getFavoriteVisualizacaoContents() {
+    var visualizacao = $($ifrVisualizacao);
+    if (visualizacao.length > 0) return visualizacao.contents();
+    var fallback = $('#ifrConteudoVisualizacao, #ifrVisualizacao').eq(0);
+    return fallback.length > 0 ? fallback.contents() : false;
+}
 function insertIconFavorites() {
-    const target = isSEI_5 ? `a[target="ifrVisualizacao"]` : `a[target="${ifrVisualizacao_}"]`;
+    const target = `a[target="${ifrVisualizacao_}"], a[target="ifrConteudoVisualizacao"], a[target="ifrVisualizacao"]`;
+    if (!$('#ifrArvore').length) return;
     waitLoadPro($('#ifrArvore').contents(), '#topmenu', target, appendIconFavorites);
 }
 function appendIconFavorites() {
+    if (!$('#ifrArvore').length) return;
     var ifrArvore = $('#ifrArvore').contents(); 
-    var iconProc = ifrArvore.find('#topmenu a[target="ifrVisualizacao"]').eq(0);
+    var iconProc = getFavoriteProcessAnchor(ifrArvore);
+    if (!iconProc.length || !iconProc.attr('href')) return;
     var id_procedimento = String(getParamsUrlPro(iconProc.attr('href')).id_procedimento);
+    if (!id_procedimento || id_procedimento === 'undefined') return;
     var iconStar = htmlIconFavorites(id_procedimento);
     ifrArvore.find('.iconFavoritePro').remove();
-    ifrArvore.find('#topmenu a[target="ifrVisualizacao"]').eq(0).after(iconStar);    
+    iconProc.after(iconStar);    
 }
 function actFavoritePro(this_, mode) {
     if (this_) {
@@ -619,9 +681,10 @@ function actFavoritePro(this_, mode) {
         var ifrVisualizacao = false;
     } else {
         var _this = false;
-        var ifrArvore = $('#ifrArvore').contents(); 
-        var ifrVisualizacao = $($ifrVisualizacao).contents(); 
-        var iconProc = ifrArvore.find('#topmenu a[target="ifrVisualizacao"]').eq(0);
+        var ifrArvore = $('#ifrArvore').length ? $('#ifrArvore').contents() : false; 
+        var ifrVisualizacao = getFavoriteVisualizacaoContents(); 
+        var iconProc = getFavoriteProcessAnchor(ifrArvore);
+        if (!iconProc.length || !iconProc.attr('href')) return false;
         var id_procedimento = String(getParamsUrlPro(iconProc.attr('href')).id_procedimento);
     }
     checkDataFavoritePro(this_, mode, id_procedimento);
@@ -652,21 +715,69 @@ function actFavoritePro(this_, mode) {
     }
 }
 function checkDataFavoritePro(this_, mode, id_procedimento, TimeOut = 9000) {
-    if (TimeOut <= 0) { return; }
-    if (mode == 'remove' || (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro.hasOwnProperty('listAndamento') && dadosProcessoPro.hasOwnProperty('propProcesso') && dadosProcessoPro.hasOwnProperty('tiposDocumentos'))) { 
+    var target = (this_) ? $(this_) : $('#ifrArvore').contents().find('#iconFavoritePro_'+id_procedimento);
+    var storeWhenReady = function(dados) {
+        dadosProcessoPro = dados;
+        if (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro && !dadosProcessoPro.hasOwnProperty('tiposDocumentos')) dadosProcessoPro.tiposDocumentos = [];
+        if (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro && !dadosProcessoPro.hasOwnProperty('listDocumentosAssinados')) dadosProcessoPro.listDocumentosAssinados = [];
         storeFavoritePro(mode, id_procedimento);
-    } else {
-        setTimeout(function(){ 
-            var target = (this_) ? $(this_) : $('#ifrArvore').contents().find('#iconFavoritePro_'+id_procedimento);
-            target.fadeOut(100).fadeIn(100).fadeOut(100).fadeIn(100);
-            if (typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage')) console.log('Reload checkDataFavoritePro => '+TimeOut); 
-            if (TimeOut == 9000 && mode == 'add') {
-                getDadosIframeProcessoPro(id_procedimento, 'favorites');
-            }
-            checkDataFavoritePro(this_, mode, id_procedimento, TimeOut - 100);
-        }, 500);
+        target.fadeOut(100).fadeIn(100);
+    };
+
+    if (mode == 'remove') {
+        storeWhenReady();
+        return true;
     }
+
+    if (waitFavoriteProcessData(id_procedimento, storeWhenReady, function(){
+        if(typeof verifyConfigValue !== 'undefined' && verifyConfigValue('debugpage')) console.log('Timeout checkDataFavoritePro => '+id_procedimento);
+    })) {
+        return true;
+    }
+
+    if (mode == 'add') {
+        getDadosIframeProcessoPro(id_procedimento, 'favorites');
+    }
+
+    return false;
 }
+function syncFavoriteProProcessData(id_procedimento, dados) {
+    if (typeof id_procedimento === 'undefined' || id_procedimento === null || id_procedimento === '') return;
+    if (typeof dados === 'undefined' || !dados || typeof dados.propProcesso === 'undefined' || dados.propProcesso === null) return;
+    var storeFavorites = getStoreFavoritePro();
+    if (!storeFavorites || typeof storeFavorites.favorites === 'undefined' || !storeFavorites.favorites.length) return;
+
+    var favoriteIndex = storeFavorites.favorites.findIndex((obj => String(obj.id_procedimento) == String(id_procedimento)));
+    if (favoriteIndex === -1) return;
+
+    var andamento = dados.listAndamento || {};
+    var prop = dados.propProcesso || {};
+    var item = storeFavorites.favorites[favoriteIndex];
+    item.id_procedimento = andamento.id_procedimento || item.id_procedimento;
+    item.processo = andamento.processo || item.processo;
+    item.andamento = andamento.andamento || item.andamento || [];
+    item.documentos = dados.listDocumentosAssinados || item.documentos || [];
+    item.tipo_procedimento = prop.hdnNomeTipoProcedimento || item.tipo_procedimento || '';
+    item.assuntos = prop.selAssuntos_select || item.assuntos || [];
+    item.interessados = prop.selInteressadosProcedimento || item.interessados || [];
+    item.descricao = prop.txtDescricao || item.descricao || '';
+    storeFavorites.favorites[favoriteIndex] = item;
+    localStorageStorePro('configDataFavoritesPro', storeFavorites);
+    saveConfigFav();
+}
+function bindFavoriteProcessSync() {
+    if (window.__seiProFavoriteProcessSyncBound) return;
+    window.__seiProFavoriteProcessSyncBound = true;
+    window.addEventListener('sei-pro-process-session-updated', function(event){
+        var detail = (event && event.detail) ? event.detail : {};
+        var id_procedimento = detail.id_procedimento;
+        if (typeof id_procedimento === 'undefined' || id_procedimento === null || id_procedimento === '') return;
+        var dados = pullDadosProcessoSession();
+        if (!favoriteProcessDataReady(id_procedimento, dados)) return;
+        syncFavoriteProProcessData(id_procedimento, dados);
+    });
+}
+bindFavoriteProcessSync();
 function storeFavoritePro(mode, id_procedimento) {
     if (mode == 'add') {
         var storeFavorites = addFavoritePro();
@@ -830,15 +941,17 @@ function saveCategoryFavorite(this_, value) {
 }
 function addFavoritePro() {
     var storeFavorites = getStoreFavoritePro();
+    var andamento = (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro.listAndamento) ? dadosProcessoPro.listAndamento : {};
+    var prop = (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro.propProcesso) ? dadosProcessoPro.propProcesso : {};
         storeFavorites['favorites'].push({
-            id_procedimento: dadosProcessoPro.listAndamento.id_procedimento,
-            processo: dadosProcessoPro.listAndamento.processo,
-            andamento: dadosProcessoPro.listAndamento.andamento,
-            documentos: dadosProcessoPro.listDocumentosAssinados,
-            tipo_procedimento: dadosProcessoPro.propProcesso.hdnNomeTipoProcedimento,
-            assuntos: dadosProcessoPro.propProcesso.selAssuntos_select,
-            interessados: dadosProcessoPro.propProcesso.selInteressadosProcedimento,
-            descricao: dadosProcessoPro.propProcesso.txtDescricao,
+            id_procedimento: andamento.id_procedimento,
+            processo: andamento.processo,
+            andamento: andamento.andamento || [],
+            documentos: dadosProcessoPro.listDocumentosAssinados || [],
+            tipo_procedimento: prop.hdnNomeTipoProcedimento || '',
+            assuntos: prop.selAssuntos_select || [],
+            interessados: prop.selInteressadosProcedimento || [],
+            descricao: prop.txtDescricao || '',
             order: -1,
             categoria: ''
         });
@@ -867,7 +980,7 @@ function setPanelFavorites(mode) {
                                     '   <caption class="infraCaption" style="text-align: left;">'+countFavorite+'</caption>'+
                                     '   <thead>'+
                                     '       <tr class="tableHeader">'+
-                                    '           <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" style="width: 50px;" align="center"><label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label><a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'SemGrupo\');"><img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" title="Selecionar Tudo" alt="Selecionar Tudo" class="infraImg"></a></th>'+
+                                    '           <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" style="width: 50px;" align="center"><span class="lblInfraCheck" aria-hidden="true"></span><a id="lnkInfraCheck" onclick="getSelectAllTr(this, \'SemGrupo\');"><img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" title="Selecionar Tudo" alt="Selecionar Tudo" class="infraImg"></a></th>'+
                                     '           <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" style="width: 210px;">Processo</th>'+
                                     '           <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+' tituloFilter" data-filter-type="date" style="width: 150px;">Prazo</th>'+
                                     '           <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+' tituloFilter" data-filter-type="etiqueta" style="width: 150px;">Etiqueta</th>'+
@@ -910,7 +1023,7 @@ function setPanelFavorites(mode) {
                                             '               <a class="newLink followLink followLinkDates followLinkDatesEdit" onclick="showDatesFav(this, \'show\')" onmouseover="return infraTooltipMostrar(\'Editar prazo\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-pencil-alt" style="font-size: 100%;"></i></a>'+
                                             '               <a class="newLink followLink followLinkDates followLinkDatesAdd" onclick="showDatesFav(this, \'show\')" onmouseover="return infraTooltipMostrar(\'Adicionar prazo\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-stopwatch" style="font-size: 100%;"></i></a>'+
                                             '               <span class="info_dates_fav_txt" style="display:none;">'+
-                                            '                   <input value="'+datesFav+'" onblur="showDatesFav(this, \'hide\')"  onkeypress="keyDatesFav(event)" type="date" class="favoriteDatesPro">'+
+                                            '                   <input value="'+datesFav+'" onblur="showDatesFav(this, \'hide\')"  onkeypress="keyDatesFav(event)" type="date" class="favoriteDatesPro" name="favoriteDatesPro">'+
                                             '                   <a class="newLink" onclick="showDatesFav(this, \'hide\')" style="padding: 2px; margin: 0 2px;" onmouseover="return infraTooltipMostrar(\'Salvar\');" onmouseout="return infraTooltipOcultar();">'+
                                             '                      <i class="fas fa-thumbs-up" style="font-size: 100%;"></i>'+
                                             '                   </a>'+
@@ -923,7 +1036,7 @@ function setPanelFavorites(mode) {
                                             '               <span class="info_tags_follow">'+tagsFavHtml+
                                             '               </span>'+
                                             '               <span class="info_tags_follow_txt" style="display:none">'+
-                                            '                   <input value="'+tagsFav+'" class="favoriteTagsPro">'+
+                                            '                   <input value="'+tagsFav+'" class="favoriteTagsPro" name="favoriteTagsPro">'+
                                             '               </span>'+
                                             '               <a class="newLink followLink followLinkTags followLinkTagsEdit" onclick="showFollowEtiqueta(this, \'show\', \'fav\')" onmouseover="return infraTooltipMostrar(\'Editar etiqueta\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-pencil-alt" style="font-size: 100%;"></i></a>'+
                                             '               <a class="newLink followLink followLinkTags followLinkTagsAdd" onclick="showFollowEtiqueta(this, \'show\', \'fav\')" onmouseover="return infraTooltipMostrar(\'Adicionar etiqueta\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-tags" style="font-size: 100%;"></i></a>'+
@@ -934,7 +1047,7 @@ function setPanelFavorites(mode) {
                                             '               <a class="newLink followLink followLinkMaps followLinkMapsAdd" onclick="openBoxSingleMap(this)" onmouseover="return infraTooltipMostrar(\'Adicionar mapa\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-map-marker-alt" style="font-size: 100%;"></i></a>'+
                                             '           </td>'+
                                             '           <td class="content_desc">'+
-                                            '               <span class="info_txt" style="display:none"><input onblur="saveFollowDesc(this, \'fav\')" onkeypress="keyFollowDesc(event, \'fav\')" value="'+value.descricao+'"></span>'+
+                                            '               <span class="info_txt" style="display:none"><input onblur="saveFollowDesc(this, \'fav\')" onkeypress="keyFollowDesc(event, \'fav\')" value="'+value.descricao+'" name="favoriteDescriptionPro"></span>'+
                                             '               <span class="info">'+value.descricao+'</span>'+
                                             '               <a class="newLink followLink followLinkDesc" onclick="editFollowDesc(this, \'fav\')" onmouseover="return infraTooltipMostrar(\'Editar especifica\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-pencil-alt" style="font-size: 100%;"></i></a>'+
                                             '           </td>'+
@@ -995,9 +1108,16 @@ function setPanelFavorites(mode) {
                                 '   </div>'+
                                 '</div>';
 
+        function positionFavoritesBeforeControl() {
+            if (typeof verifyConfigValue !== 'function' || !verifyConfigValue('favoritosacimacontrole')) return;
+            if (!$('#favoritesPro').length || !$('#processosSEIPro').length) return;
+            $('#favoritesPro').insertBefore('#processosSEIPro');
+        }
+
         if ( mode == 'insert' ) {
             if ( $('#favoritesPro').length > 0 ) { $('#favoritesPro').remove(); }        
             orderDivPanel(htmlPanelFavorites, idOrder, 'favoritesPro');
+            positionFavoritesBeforeControl();
 
             if (typeof L === 'undefined') {
                 loadStylePro(URL_SPRO+"css/leaflet.css");
@@ -1015,6 +1135,7 @@ function setPanelFavorites(mode) {
             $('#favoritesPro').attr('id', 'favoritesPro_temp');
             $('#favoritesPro_temp').after(htmlPanelFavorites);
             $('#favoritesPro_temp').remove();
+            positionFavoritesBeforeControl();
         }
         initFunctionsPanelFav();
         checkFileSystemInit();
@@ -1415,14 +1536,14 @@ function favoritosLabelOptions(id_procedimento) {
                             '                   <label for="categoria_fav"><i class="iconPopup iconSwitch fas fa-layer-group cinzaColor"></i>Categoria:</label>'+
                             '               </td>'+
                             '               <td>'+
-                            '                   '+selectCategoryFavorite((value ? value.categoria : ''), 'parent.changeCategoryFavorite', true, id_procedimento)+
+                            '                   '+selectCategoryFavorite((value ? value.categoria : ''), 'parent.changeCategoryFavorite', true, id_procedimento).replace('<select ', '<select id="categoria_fav" ')+
                             '               </td>'+
                             '               <td style="vertical-align: bottom;" class="label">'+
                             '                   <label class="last" for="favoritePrazoSend"><i class="iconPopup iconSwitch fas fa-stopwatch cinzaColor" style="float: initial;"></i>Prazo:</label>'+
                             '               </td>'+
                             '               <td>'+
                             '                   <span class="info_dates_fav_txt">'+
-                            '                       <input id="favoritePrazoSend" value="'+(config && typeof config.date !== 'undefined' && config.date !== null ? config.date : '')+'" style="width: 120px; background-color: #f9fafa;" onblur="parent.showDatesFav(this, \'hide\')" onkeypress="parent.keyDatesFav(event)" type="date" class="favoriteDatesPro">'+
+                            '                       <input id="favoritePrazoSend" value="'+(config && typeof config.date !== 'undefined' && config.date !== null ? config.date : '')+'" style="width: 120px; background-color: #f9fafa;" onblur="parent.showDatesFav(this, \'hide\')" onkeypress="parent.keyDatesFav(event)" type="date" class="favoriteDatesPro" name="favoritePrazoSend">'+
                             '                       <a class="newLink favoriteConfigDates" onclick="parent.openBoxConfigDates(this)" style="padding: 5px 8px;margin: 8px 2px 0 10px;font-size: 10pt;" onmouseover="return infraTooltipMostrar(\'Op\u00E7\u00F5es\');" onmouseout="return infraTooltipOcultar();">'+
                             '                          <i class="fas fa-cog" style="font-size: 100%;"></i>'+
                             '                       </a>'+
@@ -1434,7 +1555,7 @@ function favoritosLabelOptions(id_procedimento) {
                             '                   <span class="info_tags_follow">'+tagsFavHtml+
                             '                   </span>'+
                             '                   <span class="info_tags_follow_txt" style="display:none;margin-top: -8px !important;">'+
-                            '                       <input value="'+tagsFav+'" class="favoriteTagsPro">'+
+                            '                       <input value="'+tagsFav+'" class="favoriteTagsPro" name="favoriteTagsPro">'+
                             '                   </span>'+
                             '                   <a class="newLink followLinkTagsAdd_send" style="font-size: 10pt;" onclick="parent.showFollowEtiqueta(this, \'show\', \'fav\')" onmouseout="return infraTooltipOcultar();"><i class="fas fa-tags" style="font-size: 100%;"></i> Adicionar etiqueta</a>'+
                             '               </td>'+

@@ -1,29 +1,37 @@
 {
   "manifest_version": 3,
-  "name": "SEI Pro Lab",
-  "short_name": "SEI Pro Lab",
-  "description": "Adiciona ao Sistema Eletrônico de Informações (SEI) funções avançadas",
-  "version": "1.6.1",
-  "author": "Pedro Henrique Soares",
+  "name": "SEI Pro PRF",
+  "short_name": "SEI Pro PRF",
+  "description": "Ferramentas avançadas para o SEI da PRF, com reporte de bugs restrito ao ambiente da PRF e recursos para processos, documentos e IA.",
+  "version": "1.7.5",
+  "author": "Polícia Rodoviária Federal",
   "homepage_url": "https://sei-pro.github.io/sei-pro",
   "icons": {
-    "16": "icons/lab/icon-16.png",
-    "32": "icons/lab/icon-32.png",
-    "48": "icons/lab/icon-48.png",
-    "128": "icons/lab/icon-128.png"
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "options_page": "html/options.html",
   "options_ui": {
     "page": "html/options.html",
     "open_in_tab": true
   },
+  "background": {
+    "service_worker": "js/background.js"
+  },
   "permissions": [
-    "storage"
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
   ],
   "content_scripts": [
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jquery-ui.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
@@ -76,7 +84,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
         "js/lib/pdfjs.js",
@@ -109,7 +117,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/init_pwd.js"
       ],
       "all_frames": true,
@@ -139,7 +147,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jquery-ui.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
@@ -199,7 +207,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
         "js/lib/pdfjs.js",
@@ -219,7 +227,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/init_arvore.js"
       ],
       "css": [
@@ -239,7 +247,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/init_visualizacao.js"
       ],
       "all_frames": true,
@@ -254,7 +262,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/init_visualizacao_html.js"
       ],
       "all_frames": true,
@@ -272,7 +280,7 @@
     },
     {
       "js": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
         "js/lib/pdfjs.js",
@@ -313,7 +321,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "js/lib/jquery-3.4.1.min.js",
+        "js/lib/jquery-3.7.1.min.js",
         "js/lib/jquery-ui.min.js",
         "js/lib/jmespath.min.js",
         "js/lib/purify.min.js",
@@ -352,6 +360,7 @@
         "js/lib/mammoth.browser.min.js",
         "js/lib/modalLink.js",
         "js/sei-functions-pro.js",
+        "js/sei-pro-config-local.js",
         "js/sei-pro-atividades.js",
         "js/sei-pro-projetos.js",
         "js/sei-pro-prescricoes.js",
@@ -441,6 +450,7 @@
         "icons/menu/botpro_icon.svg",
         "icons/menu/chatgpt.svg",
         "icons/menu/gemini.svg",
+        "icons/menu/ollama.svg",
         "icons/menu/doc_lote.svg",
         "icons/menu/compare_doc.svg",
         "icons/menu/acao_lote.svg",
@@ -490,7 +500,13 @@
         "icons/menu/import.png",
         "icons/menu/table.png",
         "icons/menu/legis.png",
-        "icons/menu/openai.png"
+        "icons/menu/openai.png",
+        "icons/icon-16.png",
+        "icons/icon-32.png",
+        "icons/icon-48.png",
+        "icons/icon-128.png",
+        "icons/icon-256.png",
+        "icons/prf/prf.png"
       ],
       "matches": [
         "*://*.br/*",

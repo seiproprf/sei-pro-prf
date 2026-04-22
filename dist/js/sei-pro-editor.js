@@ -1228,7 +1228,7 @@ function getDialogSigilo() {
                             ' <tbody>'+
                             '     <tr class="cke_dialog_ui_hbox">'+
                             '         <td class="cke_dialog_ui_hbox_first" role="presentation" style="width:50%; padding:0px">'+
-                            '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo1_label" for="cke_inputSigilo1_textInput">Aplicar tarja de sigilo <br> no documento</label>'+
+                            '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo1_label">Aplicar tarja de sigilo <br> no documento</label>'+
                             '         </td>'+
                             '         <td class="cke_dialog_ui_hbox_last" role="presentation" style="width:50%; padding:0px">'+
                             '             <a style="user-select: none;" onclick="actionsMarkSigilo(this, \'apply\')" title="Aplicar" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_cancel" role="button" aria-labelledby="buttonSigilo1_label" id="buttonSigilo1_uiElement">'+
@@ -1252,7 +1252,7 @@ function getDialogSigilo() {
                               ' <tbody>'+
                               '     <tr class="cke_dialog_ui_hbox">'+
                               '         <td class="cke_dialog_ui_hbox_first" role="presentation" style="width:50%; padding:0px">'+
-                              '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo_label" for="cke_inputSigilo_textInput">Remover todas as marcas <br>de sigilo no documento</label>'+
+                              '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo_label">Remover todas as marcas <br>de sigilo no documento</label>'+
                               '         </td>'+
                               '         <td class="cke_dialog_ui_hbox_last" role="presentation" style="width:50%; padding:0px">'+
                               '             <a style="user-select: none;" onclick="actionsMarkSigilo(this, \'remove\')" title="Remover" hidefocus="true" class="cke_dialog_ui_button cke_dialog_ui_button_cancel" role="button" aria-labelledby="buttonSigilo3_label" id="buttonSigilo3_uiElement">'+
@@ -1281,7 +1281,7 @@ function getDialogSigilo() {
                               ' <tbody>'+
                               '     <tr class="cke_dialog_ui_hbox">'+
                               '         <td class="cke_dialog_ui_hbox_first" role="presentation" style="width:100%; padding:0px">'+
-                              '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo_label" for="cke_inputSigilo_textInput">Acesse o guia r\u00E1pido sobre como <a target="_blank" href="https://sei-pro.github.io/sei-pro/pages/SIGILODOC.html" class="linkDialog">Adicionar marca de sigilo e tarjas pretas de confidencialidade <i class="fas fa-external-link-alt bLink" style="font-size: 90%; text-decoration: underline;"></i></a></label>'+
+                              '             <label class="cke_dialog_ui_labeled_label" id="cke_inputSigilo_label">Acesse o guia r\u00E1pido sobre como <a target="_blank" href="https://sei-pro.github.io/sei-pro/pages/SIGILODOC.html" class="linkDialog">Adicionar marca de sigilo e tarjas pretas de confidencialidade <i class="fas fa-external-link-alt bLink" style="font-size: 90%; text-decoration: underline;"></i></a></label>'+
                               '         </td>'+
                               '     </tr>'+
                               ' </tbody>'+
@@ -3548,7 +3548,7 @@ function getDialogQrCode() {
 						'			</td><td>'+
 						'				<label for="QrPro-fill">Cor de Preenchimento</label><input id="QrPro-fill" type="color" value="#333333">'+
 						'			</td><td>'+
-						'				<label for="background">Cor de Fundo</label><input id="QrPro-background" type="color" value="#ffffff">'+
+						'				<label for="QrPro-background">Cor de Fundo</label><input id="QrPro-background" type="color" value="#ffffff">'+
 						'				<span style="display: inline-flex;margin-left: 20px;"><input id="QrPro-background-transparent" type="checkbox" style="margin: 0 5px;"> Transparente</span>'+
 						'			</td></tr><tr><td>'+
 						'				<label for="QrPro-minversion">Vers\u00E3o: 7</label><input id="QrPro-minversion" type="range" value="6" min="1" max="10" step="1">'+
@@ -7727,6 +7727,11 @@ function initStyleReview() {
 
 function instanceDitadoPro(oEditor) {
     if (typeof oEditor.ckWebSpeech === 'undefined') {
+        if (typeof CKWebSpeech !== 'function') {
+            $('.getDitadoButton, .getCtrDitadoButton').closest('.cke_iconPro').addClass('cke_button_disabled');
+            return;
+        }
+
         oEditor.addCommand( 'webspeechDialog', new CKEDITOR.dialogCommand( 'webspeechDialog' ) );
 
         oEditor.addCommand('webspeechToogle', {

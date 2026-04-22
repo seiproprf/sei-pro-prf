@@ -3,9 +3,10 @@ var isNewSEI = $('#divInfraSidebarMenu ul#infraMenu').length ? true : false;
 var isSEI_5 = isNewSEI && sessionStorage.getItem('versaoSei') && compareVersionNumbers_initall(sessionStorage.getItem('versaoSei'),'5') >= 0 ? true : false;
 var frmEditor = isSEI_5 ? $('.infra-editor__editor-completo') : $('#frmEditor');
 
-if (!frmEditor.length 
-    // && (!isNewSEI || (isNewSEI && typeof loadFunctionsPro === 'undefined'))
-) $.getScript(getUrlExtension("js/sei-functions-pro.js"));
+var seiProFunctionsLoaded = $.Deferred().resolve();
+if (!frmEditor.length) {
+    seiProFunctionsLoaded = $.getScript(getUrlExtension("js/sei-functions-pro.js"));
+}
 
 function getUrlExtension(url) {
     if (typeof browser === "undefined") {
@@ -28,7 +29,7 @@ function loadFontIcons(elementTo, target = $('html')) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
-            datastyle: "seipro-fonticon",
+            "data-style": "seipro-fonticon",
             href: getUrlExtension("css/fontawesome.pro.min.css") 
         }).appendTo(target.find(elementTo));
         
@@ -76,7 +77,7 @@ function loadStylePro(url, elementTo) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
-            datastyle: "seipro-style",
+            "data-style": "seipro-style",
             href: url
         }).appendTo(elementTo);
     }
@@ -96,7 +97,7 @@ function getPathExtensionPro() {
         var manifest = getManifestExtension();
         var VERSION_SPRO = manifest.version;
         var NAMESPACE_SPRO = manifest.short_name;
-        var URLPAGES_SPRO = manifest.homepage_url;
+        var URLPAGES_SPRO = 'https://sei-pro.github.io/sei-pro';
         setSessionNameSpace({URL_SPRO: URL_SPRO, NAMESPACE_SPRO: NAMESPACE_SPRO, URLPAGES_SPRO: URLPAGES_SPRO, VERSION_SPRO: VERSION_SPRO, ICON_SPRO: manifest.icons});
     }
 }
@@ -142,7 +143,10 @@ function loadScriptProAll() {
         if (typeof $.tablesorter === 'undefined') $.getScript(getUrlExtension("js/lib/jquery.tablesorter.combined.min.js"));
         if (typeof $().chosen === 'undefined') $.getScript(getUrlExtension("js/lib/chosen.jquery.min.js"));
         if (typeof Favico === 'undefined') $.getScript(getUrlExtension("js/lib/favico-0.3.10.min.js"));
-        if (typeof loadSEIProAll === 'undefined') $.getScript(getUrlExtension("js/sei-pro-all.js"));
+        seiProFunctionsLoaded.done(function() {
+            if (typeof initGlobalSignatureBlockIndicatorPro === 'function') initGlobalSignatureBlockIndicatorPro();
+            if (typeof loadSEIProAll === 'undefined') $.getScript(getUrlExtension("js/sei-pro-all.js"));
+        });
     }
 }
 if (getManifestExtension().short_name == 'SPro') {

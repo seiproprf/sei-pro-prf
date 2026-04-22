@@ -3,16 +3,18 @@ var isNewSEI = $('#divInfraSidebarMenu ul#infraMenu').length ? true : false;
 var isSEI_5 = isNewSEI && sessionStorage.getItem('versaoSei') && compareVersionNumbers_init(sessionStorage.getItem('versaoSei'),'5') >= 0 ? true : false;
 var frmEditor = isSEI_5 ? $('.infra-editor__editor-completo') : $('#frmEditor');
 var frmEditor5Exists = $('html script[charset="utf-8"]').last().html().includes('INFRA_EDITOR_CONFIG');
+window.__SEI_PRO_CONFIG_READY__ = false;
 
-$.getScript(getUrlExtension("js/lib/jquery-3.4.1.min.js"));
 $.getScript(getUrlExtension("js/lib/jmespath.min.js"));
 $.getScript(getUrlExtension("js/lib/purify.min.js"));
-$.getScript(getUrlExtension("js/lib/moment.min.js"));
-$.getScript(getUrlExtension("js/lib/moment-duration-format.min.js"));
+$.getScript(getUrlExtension("js/lib/moment.min.js")).done(function() {
+    $.getScript(getUrlExtension("js/lib/moment-duration-format.min.js"));
+});
 $.getScript(getUrlExtension("js/lib/crypto-js.min.js"));
 $.getScript(getUrlExtension("js/lib/diff2html.min.js"));
 $.getScript(getUrlExtension("js/sei-pro-docs-lote.js"));
-if (typeof loadFunctionsPro === 'undefined' || window.name != '') $.getScript(getUrlExtension("js/sei-functions-pro.js"));
+var seiProFunctionsLoaded_init = $.Deferred().resolve();
+if (typeof checkHostLimit === 'undefined' || typeof loadFunctionsPro === 'undefined') seiProFunctionsLoaded_init = $.getScript(getUrlExtension("js/sei-functions-pro.js"));
 
 function divIconsLoginPro() {
     var html_initLogin = '<div class="infraAcaoBarraSistema sheetsLoginPro" style="display: inline-block;">'
@@ -47,6 +49,31 @@ function getManifestExtension() {
         return browser.runtime.getManifest();
     }
 }
+function loadLocalConfigScriptPro() {
+    if (typeof window.SEI_PRO_APPS_SCRIPT_URL !== 'undefined' && window.SEI_PRO_APPS_SCRIPT_URL) {
+        return $.Deferred().resolve().promise();
+    }
+
+    var configUrl = getUrlExtension("js/sei-pro-config-local.js");
+    return fetch(configUrl)
+        .then(function(response) {
+            if (!response.ok) throw new Error('Falha ao carregar configuração local');
+            return response.text();
+        })
+        .then(function(scriptText) {
+            if (!scriptText || scriptText.trim() === '') return;
+
+            var match = scriptText.match(/SEI_PRO_APPS_SCRIPT_URL\s*=\s*['"]([^'"]+)['"]/);
+            if (!match || !match[1]) {
+                throw new Error('URL do Apps Script não encontrada no arquivo local');
+            }
+
+            window.SEI_PRO_APPS_SCRIPT_URL = match[1];
+        })
+        .catch(function(error) {
+            console.warn('Não foi possível carregar sei-pro-config-local.js:', error && error.message ? error.message : error);
+        });
+}
 function loadConfigPro() {
     if (typeof browser === "undefined") {
         chrome.storage.sync.get({
@@ -55,6 +82,8 @@ function loadConfigPro() {
             if (typeof items !== 'undefined') {
                 localStorage.setItem('configBasePro', items.dataValues);
                 loadDataBaseProStorage(items);
+                window.__SEI_PRO_CONFIG_READY__ = true;
+                window.dispatchEvent(new CustomEvent('sei-pro-config-ready'));
             }
         });
     } else {
@@ -64,8 +93,37 @@ function loadConfigPro() {
             if (typeof items !== 'undefined') {
                 localStorage.setItem('configBasePro', items.dataValues);
                 loadDataBaseProStorage(items);
+                window.__SEI_PRO_CONFIG_READY__ = true;
+                window.dispatchEvent(new CustomEvent('sei-pro-config-ready'));
             }
         });
+    }
+}
+function showAutoReportNoticePro() {
+    function onGet(items) {
+        if (!items || !items.InstallOrUpdate) return;
+        if (typeof alertaBoxPro !== 'function') return;
+        if (!isSEIProPRFHost()) return;
+
+        var text = 'Aviso sobre relatórios automáticos:<br><br>'
+            + 'Erros de console não tratados podem ser enviados automaticamente para suporte após a instalação inicial e após atualizações.<br><br>'
+            + 'Esse envio contém a URL da página, a mensagem do erro e os logs técnicos relacionados ao problema.<br><br>'
+            + 'A extensão não faz coleta intencional de dados pessoais para esse relatório automático, mas os logs podem refletir o contexto técnico da página no momento do erro.<br><br>'
+            + 'O botão manual de bug continua disponível para quando você quiser descrever um problema ou sugestão.';
+
+        alertaBoxPro('Aviso', 'exclamation-triangle', text, false, 'Estou ciente e aceito o envio anônimo dos erros', true);
+
+        if (typeof browser === "undefined") {
+            chrome.storage.local.set({ InstallOrUpdate: false });
+        } else {
+            browser.storage.local.set({ InstallOrUpdate: false });
+        }
+    }
+
+    if (typeof browser === "undefined") {
+        chrome.storage.local.get({ InstallOrUpdate: false }, onGet);
+    } else {
+        browser.storage.local.get({ InstallOrUpdate: false }, onGet);
     }
 }
 function loadScriptDataBasePro(dataValues) { 
@@ -219,7 +277,7 @@ function loadFontIcons(elementTo, target = $('html')) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
-            datastyle: "seipro-fonticon",
+            "data-style": "seipro-fonticon",
             href: getUrlExtension("css/fontawesome.pro.min.css") 
         }).appendTo(target.find(elementTo));
         
@@ -267,6 +325,7 @@ function loadStylePro(url, elementTo) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
+            "data-style": "seipro-style",
             href: url
         }).appendTo(elementTo);
     }
@@ -296,7 +355,7 @@ function getPathExtensionPro() {
         var manifest = getManifestExtension();
         var VERSION_SPRO = manifest.version;
         var NAMESPACE_SPRO = manifest.short_name;
-        var URLPAGES_SPRO = manifest.homepage_url;
+        var URLPAGES_SPRO = 'https://sei-pro.github.io/sei-pro';
         setSessionNameSpace({URL_SPRO: URL_SPRO, NAMESPACE_SPRO: NAMESPACE_SPRO, URLPAGES_SPRO: URLPAGES_SPRO, VERSION_SPRO: VERSION_SPRO, ICON_SPRO: manifest.icons});
     }
 }
@@ -322,14 +381,17 @@ function loadScriptPro() {
         classBodyPro();
         loadFilesUI();
         loadFontIcons('head');
-        $.getScript(getUrlExtension("js/sei-pro.js"));
+        seiProFunctionsLoaded_init.done(function() { $.getScript(getUrlExtension("js/sei-pro.js")); });
 
         $(document).ready(function () {
             loadConfigPro();
+            showAutoReportNoticePro();
             if (typeof moment !== 'undefined' && typeof moment().isoAddWeekdaysFromSet === 'undefined') $.getScript(getUrlExtension("js/lib/moment-weekday-calc.js"));
             // $.getScript(getUrlExtension("js/lib/moment-duration-format.min.js"));
             if (typeof loadFavoritosPro === 'undefined') $.getScript(getUrlExtension("js/sei-pro-favoritos.js"));
-            if (typeof loadAtividadesPro === 'undefined') $.getScript(getUrlExtension("js/sei-pro-atividades.js"));
+            loadLocalConfigScriptPro().finally(function() {
+                if (typeof loadAtividadesPro === 'undefined') $.getScript(getUrlExtension("js/sei-pro-atividades.js"));
+            });
             if (typeof loadProjetosPro === 'undefined') $.getScript(getUrlExtension("js/sei-pro-projetos.js"));
             if (typeof loadPrescricoesPro === 'undefined') $.getScript(getUrlExtension("js/sei-pro-prescricoes.js"));
             if (typeof Gantt === 'undefined') $.getScript(getUrlExtension("js/lib/frappe-gantt.js"));

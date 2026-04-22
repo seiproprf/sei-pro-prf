@@ -1096,6 +1096,54 @@ a.newLink.iconBoxSlim .newIconTitle,
 .seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] {
     margin: 15px 10px 0 0 !important;
 }
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px;
+    float: right;
+    margin: 3px 10px 0 0 !important;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i,
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > .onoffswitch {
+    float: none !important;
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i {
+    line-height: 1;
+    transition: color .15s ease, opacity .15s ease;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i:hover {
+    color: #c0c0c0 !important;
+    opacity: 1 !important;
+}
+.seiSlim .infraBarraSistemaPadraoD div[data-ref="infraAcaoBarraSistema"] > i.iconDebugScreen {
+    margin-left: 0 !important;
+}
+div[data-ref="infraAcaoBarraSistema"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px;
+}
+div[data-ref="infraAcaoBarraSistema"] > i,
+div[data-ref="infraAcaoBarraSistema"] > .onoffswitch {
+    float: none !important;
+    flex: 0 0 auto;
+    vertical-align: middle;
+}
+div[data-ref="infraAcaoBarraSistema"] > i {
+    line-height: 1;
+    transition: color .15s ease, opacity .15s ease;
+}
+div[data-ref="infraAcaoBarraSistema"] > i:hover {
+    color: #c0c0c0 !important;
+    opacity: 1 !important;
+}
+div[data-ref="infraAcaoBarraSistema"] > i.iconDebugScreen {
+    margin-left: 0 !important;
+}
 .seiSlim .infraBarraSistemaPadraoD #lnkInfraUnidade {
     font-size: 9pt !important;
     width: auto;

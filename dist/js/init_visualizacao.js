@@ -17,7 +17,7 @@ function loadFontIcons(elementTo, target = $('html')) {
         $("<link/>", {
             rel: "stylesheet",
             type: "text/css",
-            datastyle: "seipro-fonticon",
+            "data-style": "seipro-fonticon",
             href: getUrlExtension("css/fontawesome.pro.min.css") 
         }).appendTo(target.find(elementTo));
 
