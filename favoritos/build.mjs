@@ -39,6 +39,18 @@ await copyFile(resolve(AQUI, "estatico/favoritos.html"), join(DIST, "html", "fav
 const css = [await readFile(resolve(AQUI, "../sei-comum/src/ui/base.css"), "utf8"), await readFile(resolve(AQUI, "estatico/favoritos.css"), "utf8")].join("\n");
 await writeFile(join(DIST, "css", "favoritos.css"), `/* GERADO por favoritos/build.mjs. NAO EDITE ESTE ARQUIVO. */\n${css}`);
 
+// Regra do projeto: JS da extensao so com ASCII. O charset "ascii" do esbuild NAO escapa
+// caractere cru dentro de regex literal, e o grep BSD nao enxerga isso (memoria
+// feedback_sei_unicode_escape): a conferencia e feita aqui, byte a byte.
+for (const f of ["js/init_favoritos.js", "js/favoritos/app.js"]) {
+  const bytes = await readFile(join(DIST, f));
+  const i = bytes.findIndex((b) => b > 0x7f);
+  if (i >= 0) {
+    console.error(`ERRO: byte nao-ASCII em dist/${f} (posicao ${i}): ${bytes.subarray(Math.max(0, i - 40), i + 10).toString("utf8")}`);
+    process.exit(1);
+  }
+}
+
 const kb = async (f) => `${Math.round((await stat(join(DIST, f))).size / 1024)} KB`;
 console.log("\nFavoritos -- build");
 for (const f of ["js/init_favoritos.js", "js/favoritos/app.js", "css/favoritos.css"]) console.log(`  ${f.padEnd(26)} ${await kb(f)}`);

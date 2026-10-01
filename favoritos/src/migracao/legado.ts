@@ -38,7 +38,7 @@ const dataDe = (v: unknown): string | undefined => {
 function analisar(bruto: unknown): Obj | null {
   if (typeof bruto !== "string") return objeto(bruto);
   try {
-    return objeto(JSON.parse(bruto.replace(/^﻿/, "")));
+    return objeto(JSON.parse(bruto.replace(/^\uFEFF/, "")));
   } catch {
     return null;
   }

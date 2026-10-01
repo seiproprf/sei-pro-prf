@@ -12,7 +12,7 @@ export function gerarCsv(linhas: string[][]): string {
     const v = /^[=+\-@\t\r]/.test(bruto) ? `'${bruto}` : bruto;
     return /[;"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   };
-  return `﻿${linhas.map((l) => l.map(campo).join(";")).join("\r\n")}`;
+  return `\uFEFF${linhas.map((l) => l.map(campo).join(";")).join("\r\n")}`;
 }
 
 export interface ApoioCsv {

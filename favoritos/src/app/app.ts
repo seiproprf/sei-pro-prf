@@ -447,7 +447,7 @@ export class AppFavoritos {
     if (!texto) return;
     let bruto: unknown;
     try {
-      bruto = JSON.parse(texto.replace(/^﻿/, ""));
+      bruto = JSON.parse(texto.replace(/^\uFEFF/, ""));
     } catch {
       avisar("O arquivo escolhido não é um JSON válido.");
       return;
