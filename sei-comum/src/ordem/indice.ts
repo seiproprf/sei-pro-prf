@@ -14,6 +14,16 @@ export function indiceEntre(antes?: string | null, depois?: string | null): stri
   return generateKeyBetween(antes ?? null, depois ?? null);
 }
 
+/** Chave que o algoritmo aceita como vizinha (um arquivo editado à mão pode trazer qualquer texto). */
+export function indiceValido(chave: string): boolean {
+  try {
+    generateKeyBetween(chave, null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function indicesEntre(antes: string | null, depois: string | null, n: number): string[] {
   return generateNKeysBetween(antes, depois, n);
 }

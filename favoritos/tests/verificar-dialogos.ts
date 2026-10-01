@@ -192,4 +192,56 @@ export async function verificarDialogos(): Promise<void> {
     lidoSujo?.descartados,
   );
   checar("formato desconhecido", lerEnvelope({ formato: "outro" }) === null && lerEnvelope(null) === null);
+
+  secao("arquivo: dados editados a mao nao travam a lista nem o favoritar");
+  const torto = JSON.parse(JSON.stringify(env));
+  const fx = torto.escopos[0].favoritos[0];
+  fx.ordem = "b";
+  fx.sigiloso = true;
+  fx.especificacao = "nao deveria ficar";
+  torto.escopos[0].favoritos.push(
+    {
+      ...fx,
+      id: "p1",
+      ordem: "a0",
+      sigiloso: undefined,
+      prazo: { referencia: { de: "novoDocumento", desde: "2026-10-01" }, exibicao: "ate" },
+    },
+    {
+      ...fx,
+      id: "p2",
+      ordem: "a1",
+      sigiloso: undefined,
+      prazo: { referencia: { de: "data", data: "2026-10-01" }, vencimento: { em: "dias", n: 1e9, contagem: "uteis" }, exibicao: "ate" },
+    },
+  );
+  torto.escopos[0].etiquetas = [
+    { id: "e9", nome: "Ruim", cor: "red;background:url(https://exemplo.invalido/x)", atualizadoEm: 1, dispositivo: "X" },
+  ];
+  const lidoTorto = lerEnvelope(torto)!;
+  const favs = lidoTorto.envelope.escopos[0]!.favoritos;
+  const f0 = favs.find((f) => f.id === fx.id);
+  checar("ordem invalida vira uma chave valida", !!f0 && f0.ordem !== "b" && /^[a-zA-Z]/.test(f0.ordem), f0?.ordem);
+  checar("sigiloso perde a especificacao", f0?.especificacao === undefined);
+  checar("prazo de novo documento sem tipos e descartado", favs.find((f) => f.id === "p1")?.prazo === undefined);
+  checar("vencimento com n absurdo e descartado", favs.find((f) => f.id === "p2")?.prazo === undefined);
+  checar(
+    "cor de etiqueta que nao e cor vira cor da paleta",
+    /^#[0-9a-f]{3,8}$/i.test(lidoTorto.envelope.escopos[0]!.etiquetas[0]?.cor ?? ""),
+    lidoTorto.envelope.escopos[0]!.etiquetas[0]?.cor,
+  );
+  const areaTorta = areaMemoria();
+  await importarEnvelope(areaTorta, lidoTorto.envelope, carimbo, { host: CTX.host, login: "pedro.soares" });
+  const repoTorto = new RepositorioFavoritos(areaTorta, lidoTorto.envelope.escopos[0]!.escopo, carimbo);
+  checar(
+    "depois de importar, favoritar continua funcionando",
+    (await repoTorto.adicionar({ id: "novo", protocolo: "9/2026" })).id === "novo",
+  );
+  const areaLixo = areaMemoria();
+  const repoLixo = new RepositorioFavoritos(areaLixo, esc.unidade!, carimbo);
+  await repoLixo.favoritos.gravar("velho", { ...fx, id: "velho", ordem: "b" });
+  checar(
+    "chave de ordem invalida ja gravada nao trava o proximo favorito",
+    (await repoLixo.adicionar({ id: "outro", protocolo: "8/2026" })).id === "outro",
+  );
 }

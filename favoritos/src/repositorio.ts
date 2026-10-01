@@ -8,7 +8,7 @@
 import type { Area } from "@comum/armazenamento/area";
 import { Colecao } from "@comum/armazenamento/colecao";
 import { novoId } from "@comum/id";
-import { indiceEntre } from "@comum/ordem/indice";
+import { indiceEntre, indiceValido } from "@comum/ordem/indice";
 import { purgarLapides, type Versionada, vence } from "@comum/sincronia/entidade";
 import { normalizarTexto } from "@comum/texto";
 import { DIAS_LAPIDE, MAX_ETIQUETAS, MAX_NOTA } from "./modelo/constantes";
@@ -17,8 +17,9 @@ import { chaveEscopo } from "./modelo/escopo";
 import { editar, novoFavorito, remover, restaurar } from "./modelo/operacoes";
 import type { Carimbo, DadosProcesso, Escopo, Etiqueta, Favorito, MudancasFavorito, Pasta } from "./modelo/tipos";
 
+// Chave inválida (dado antigo ou editado à mão) não entra na conta: senão nenhum favorito novo grava.
 const maiorOrdem = (itens: Array<{ ordem: string }>): string | null =>
-  itens.reduce<string | null>((m, i) => (m === null || i.ordem > m ? i.ordem : m), null);
+  itens.reduce<string | null>((m, i) => (indiceValido(i.ordem) && (m === null || i.ordem > m) ? i.ordem : m), null);
 
 const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, "pt-BR");
 

@@ -7,6 +7,8 @@
  */
 
 import type { Area } from "@comum/armazenamento/area";
+import { indiceValido } from "@comum/ordem/indice";
+import { corPadrao } from "./modelo/cores";
 import type { Carimbo, Escopo, Etiqueta, Favorito, Pasta } from "./modelo/tipos";
 import { RepositorioFavoritos } from "./repositorio";
 
@@ -67,11 +69,13 @@ function prazoValido(v: unknown): boolean {
   if (!p || !r || !["ate", "desde", "desdeUteis"].includes(String(p.exibicao))) return false;
   const datas = r.de === "novoDocumento" ? [r.desde] : r.de === "data" || r.de === "documento" ? [r.data] : [];
   if (!datas.length || !datas.every((d) => ehTexto(d) && ISO.test(d))) return false;
+  if (r.de === "novoDocumento" && !(Array.isArray(r.tipos) && r.tipos.length && r.tipos.every(ehTexto))) return false;
   const venc = objeto(p.vencimento);
+  // |n| <= 3650: dez anos. Um n absurdo deixaria a soma de dias úteis rodando por bilhões de voltas.
   return (
     p.vencimento === undefined ||
     (venc?.em === "data" && ehTexto(venc.data) && ISO.test(venc.data)) ||
-    (venc?.em === "dias" && ehNumero(venc.n))
+    (venc?.em === "dias" && ehNumero(venc.n) && Math.abs(venc.n) <= 3650 && (venc.contagem === "corridos" || venc.contagem === "uteis"))
   );
 }
 
@@ -83,16 +87,26 @@ function favorito(v: unknown): Favorito | null {
   const f = { ...o, etiquetas: o.etiquetas.filter(ehTexto) } as Obj;
   if (f.prazo !== undefined && !prazoValido(f.prazo)) delete f.prazo;
   for (const k of ["titulo", "tipo", "especificacao", "pasta", "nota"]) if (f[k] !== undefined && !ehTexto(f[k])) delete f[k];
+  // Ordem que o algoritmo não aceita travaria o próximo favorito: vira uma chave válida.
+  if (!indiceValido(f.ordem as string)) f.ordem = "a0";
+  if (f.sigiloso !== true) delete f.sigiloso;
+  else delete f.especificacao;
   return f as unknown as Favorito;
 }
 
+// A cor entra em style="--cor:..." na lista: só cor hexadecimal, nada de CSS arbitrário.
+const COR = /^#[0-9a-f]{3,8}$/i;
 const pasta = (v: unknown): Pasta | null => {
   const o = objeto(v);
-  return o && versionada(o) && ehTexto(o.nome) && ehTexto(o.ordem) ? (o as unknown as Pasta) : null;
+  if (!o || !versionada(o) || !ehTexto(o.nome) || !ehTexto(o.ordem)) return null;
+  const p = { ...o, ordem: indiceValido(o.ordem) ? o.ordem : "a0" } as Obj;
+  if (p.cor !== undefined && !(ehTexto(p.cor) && COR.test(p.cor))) delete p.cor;
+  return p as unknown as Pasta;
 };
 const etiqueta = (v: unknown): Etiqueta | null => {
   const o = objeto(v);
-  return o && versionada(o) && ehTexto(o.nome) && ehTexto(o.cor) ? (o as unknown as Etiqueta) : null;
+  if (!o || !versionada(o) || !ehTexto(o.nome)) return null;
+  return { ...o, cor: ehTexto(o.cor) && COR.test(o.cor) ? o.cor : corPadrao(o.nome) } as unknown as Etiqueta;
 };
 const escopoValido = (v: unknown): v is Escopo => {
   const o = objeto(v);
