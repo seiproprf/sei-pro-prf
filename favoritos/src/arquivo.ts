@@ -94,6 +94,32 @@ function favorito(v: unknown): Favorito | null {
   if (!indiceValido(f.ordem as string)) f.ordem = "a0";
   if (f.sigiloso !== true) delete f.sigiloso;
   else delete f.especificacao;
+  // Campos da F4: quebrados (arquivo editado à mão, formato futuro) saem; o favorito fica.
+  const lem = objeto(f.lembrete);
+  if (f.lembrete !== undefined) {
+    if (lem && ehTexto(lem.em) && ISO.test(lem.em)) f.lembrete = ehTexto(lem.texto) ? { em: lem.em, texto: lem.texto } : { em: lem.em };
+    else delete f.lembrete;
+  }
+  if (f.documentos !== undefined) {
+    const docs = Array.isArray(f.documentos)
+      ? f.documentos
+          .map(objeto)
+          .filter((d): d is Obj => !!d && ehTexto(d.id) && ehTexto(d.numero) && ehTexto(d.titulo))
+          .map((d) => ({
+            id: d.id,
+            numero: d.numero,
+            titulo: d.titulo,
+            criadoEm: ehNumero(d.criadoEm) ? d.criadoEm : 0,
+            ...(ehTexto(d.nota) ? { nota: d.nota } : {}),
+          }))
+      : [];
+    if (docs.length) f.documentos = docs;
+    else delete f.documentos;
+  }
+  if (f.visto !== undefined && !(objeto(f.visto) && ehNumero(objeto(f.visto)!.quando))) delete f.visto;
+  const loc = objeto(f.local);
+  if (f.local !== undefined && !(loc && ehNumero(loc.lat) && ehNumero(loc.lng) && Math.abs(loc.lat) <= 90 && Math.abs(loc.lng) <= 180))
+    delete f.local;
   if (f.sigiloAConfirmar !== true) delete f.sigiloAConfirmar;
   if (f.resumido !== true) delete f.resumido;
   return f as unknown as Favorito;

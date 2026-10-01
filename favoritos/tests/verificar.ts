@@ -29,6 +29,7 @@ import { verificarRepositorio } from "./verificar-repositorio";
 import { verificarShell } from "./verificar-shell";
 import { verificarSigilo } from "./verificar-sigilo";
 import { verificarSincroniaTexto } from "./verificar-sincronia";
+import { verificarValidacaoCampos } from "./verificar-validacao";
 
 verificarModelo();
 verificarPrazo();
@@ -63,5 +64,6 @@ await verificarPesquisa();
 await verificarCaptura();
 await verificarFiltroCaixa();
 await verificarSigilo();
+verificarValidacaoCampos();
 await verificarAtualizar();
 resumo();
