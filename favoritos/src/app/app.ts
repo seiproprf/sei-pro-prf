@@ -12,6 +12,8 @@ import { exportarTudo, importarEnvelope, lerEnvelope } from "../arquivo";
 import { converterLegado } from "../migracao/legado";
 import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../modelo/constantes";
 import { escoposDoContexto } from "../modelo/escopo";
+import { lembreteVencido, textoLembrete } from "../modelo/lembrete";
+import { compararInstantaneos, type Mudanca, resumoNovidade } from "../modelo/novidades";
 import { filtrar, ordenar } from "../modelo/operacoes";
 import { calcularPrazo } from "../modelo/prazo";
 import {
@@ -21,6 +23,7 @@ import {
   type Etiqueta,
   type Favorito,
   type Filtro,
+  type Instantaneo,
   type Pasta,
   PREFERENCIAS_PADRAO,
   type Preferencias,
@@ -41,6 +44,7 @@ import { montarEditor } from "./componentes/editor";
 import { renderFiltros, renderLote } from "./componentes/filtros";
 import { montarGerenciar } from "./componentes/gerenciar";
 import type { AcoesItem } from "./componentes/item";
+import { montarLembrete } from "./componentes/lembrete";
 import { renderLista, vizinhosAoMover } from "./componentes/lista";
 import { montarLixeira } from "./componentes/lixeira";
 import { montarMigracao } from "./componentes/migracao";
@@ -76,12 +80,15 @@ export interface DepsApp {
   copias?: ArmazemCopias;
   /** Arquivo numa pasta da nuvem (File System Access); null onde não há como. */
   arquivo?: ControleArquivo | null;
+  /** Pendências (lembretes vencidos + novidades) a cada redesenho: o contador da aba do painel. */
+  aoContar?: (n: number) => void;
 }
 
 export class AppFavoritos {
   private lista: TipoLista;
   private visao: "lista" | "lixeira" = "lista";
   private todos: Favorito[] = [];
+  private atuais = new Map<string, Instantaneo>();
   private pastas: Pasta[] = [];
   private etiquetas: Etiqueta[] = [];
   private contagem = { unidade: 0, pessoal: 0 };
@@ -98,6 +105,7 @@ export class AppFavoritos {
     lote: HTMLElement;
     corpo: HTMLElement;
     status: HTMLElement;
+    atualizar: HTMLButtonElement;
   };
 
   constructor(
@@ -123,11 +131,17 @@ export class AppFavoritos {
       lote: h("div", { hidden: true }),
       corpo: h("div", { class: "fav-corpo" }),
       status: h("p", { class: "fav-status-sync", hidden: true }),
+      atualizar: h("button", {
+        type: "button",
+        class: "spro-botao fav-atualizar",
+        hidden: true,
+        onclick: () => void this.atualizarForaDaUnidade(),
+      }),
     };
     raiz.replaceChildren(
       this.el.faixas,
       h("header", { class: "fav-topo" }, this.el.abas, this.menu()),
-      h("div", { class: "fav-ferramentas" }, busca, this.el.filtros),
+      h("div", { class: "fav-ferramentas" }, busca, this.el.filtros, this.el.atualizar),
       this.el.lote,
       this.el.corpo,
       this.el.status,
@@ -164,6 +178,7 @@ export class AppFavoritos {
             this.agendarRecarga();
             this.d.arquivo?.agendar();
           }),
+          r.aoMudarAtuais(() => this.agendarRecarga()),
         );
     this.parar.push(
       this.d.sync.aoMudar((m) => {
@@ -212,9 +227,14 @@ export class AppFavoritos {
   async recarregar(): Promise<void> {
     // Uma leitura para a lista aberta e outra só para a contagem da outra aba.
     const outra = this.outra?.repo;
-    const [inst, daOutra] = await Promise.all([this.repo.instantaneo(), outra ? outra.ativos() : Promise.resolve([])]);
+    const [inst, daOutra, atuais] = await Promise.all([
+      this.repo.instantaneo(),
+      outra ? outra.ativos() : Promise.resolve([]),
+      this.repo.atuais(),
+    ]);
     const { todos, pastas, etiquetas } = inst;
     this.todos = todos;
+    this.atuais = atuais;
     this.pastas = pastas;
     this.etiquetas = etiquetas;
     const aqui = todos.filter((f) => f.removidoEm === undefined).length;
@@ -225,9 +245,27 @@ export class AppFavoritos {
 
   private readonly resumo = (f: Favorito): ResumoPrazo | undefined => (f.prazo ? calcularPrazo(f.prazo, this.d.hoje()) : undefined);
 
+  private readonly novidades = (f: Favorito): Mudanca[] => compararInstantaneos(f.visto, this.atuais.get(f.id));
+
   private visiveis(): Favorito[] {
-    const apoio = { etiquetas: new Map(this.etiquetas.map((e) => [e.id, e])), resumo: this.resumo };
-    return ordenar(filtrar(this.todos, this.filtro, apoio), this.prefs.ordem, this.resumo);
+    const apoio = {
+      etiquetas: new Map(this.etiquetas.map((e) => [e.id, e])),
+      resumo: this.resumo,
+      novidades: this.novidades,
+      hoje: this.d.hoje(),
+    };
+    return ordenar(filtrar(this.todos, this.filtro, apoio), this.prefs.ordem, this.resumo, this.novidades);
+  }
+
+  /** Favoritos desta lista que pedem atenção: lembrete vencido ou novidade. */
+  private pendencias(): number {
+    const hoje = this.d.hoje();
+    return this.todos.filter((f) => f.removidoEm === undefined && (lembreteVencido(f, hoje) || this.novidades(f).length > 0)).length;
+  }
+
+  /** Não estão na caixa (pelo que se sabe) e não são sigilosos: o que o "Atualizar" leria. */
+  private foraDaUnidade(): number {
+    return this.todos.filter((f) => f.removidoEm === undefined && !f.sigiloso && this.atuais.get(f.id)?.abertoNaUnidade !== true).length;
   }
 
   private filtrar(f: Filtro): void {
@@ -278,32 +316,124 @@ export class AppFavoritos {
       );
       return;
     }
-    const itens = this.visiveis();
-    this.desenharLote(itens);
+    const todosVisiveis = this.visiveis();
+    this.desenharLote(todosVisiveis);
+    this.desenharAtualizar();
+    this.d.aoContar?.(this.pendencias());
+    const hoje = this.d.hoje();
+    // "Para hoje" no topo (lembretes vencidos), salvo quando o próprio filtro já é esse.
+    const paraHoje = this.filtro.lembrete ? [] : todosVisiveis.filter((f) => lembreteVencido(f, hoje));
+    const itens = paraHoje.length ? todosVisiveis.filter((f) => !paraHoje.includes(f)) : todosVisiveis;
     const pastas = new Map(this.pastas.map((p) => [p.id, p]));
     const etiquetas = new Map(this.etiquetas.map((e) => [e.id, e]));
     const manual = this.prefs.ordem === "manual" && !this.prefs.agruparPorPasta;
     const temAlgum = this.todos.some((f) => f.removidoEm === undefined);
+    const apoio = (arrastavel: boolean) => (f: Favorito) => ({
+      pastas,
+      etiquetas,
+      resumo: this.resumo(f),
+      selecionado: this.selecao.has(f.id),
+      arrastavel,
+      outraLista: this.outra?.rotulo ?? null,
+      novidade: resumoNovidade(this.novidades(f)),
+      lembrete: f.lembrete ? textoLembrete(f.lembrete, hoje) : undefined,
+    });
+    const acoes = this.acoesItem(itens.map((f) => f.id));
     this.el.corpo.replaceChildren(
-      renderLista({
-        itens,
-        agrupar: this.prefs.agruparPorPasta,
-        pastas: this.pastas,
-        apoio: (f) => ({
-          pastas,
-          etiquetas,
-          resumo: this.resumo(f),
-          selecionado: this.selecao.has(f.id),
-          arrastavel: manual,
-          outraLista: this.outra?.rotulo ?? null,
-        }),
-        acoes: this.acoesItem(itens.map((f) => f.id)),
-        reordenar: manual ? (id, antes, depois) => void this.repo.mover(id, antes, depois) : undefined,
-        vazio: temAlgum
-          ? "Nenhum favorito com esses filtros."
-          : "Nenhum favorito nesta lista ainda. Clique na estrela ao lado de um processo, no Controle de Processos ou na árvore, para guardá-lo aqui.",
-      }),
+      ...(paraHoje.length
+        ? [
+            h(
+              "section",
+              { class: "fav-hoje" },
+              h("h3", {}, `Para hoje (${paraHoje.length})`),
+              renderLista({ itens: paraHoje, agrupar: false, pastas: this.pastas, apoio: apoio(false), acoes, vazio: "" }),
+            ),
+          ]
+        : []),
+      itens.length || !paraHoje.length
+        ? renderLista({
+            itens,
+            agrupar: this.prefs.agruparPorPasta,
+            pastas: this.pastas,
+            apoio: apoio(manual),
+            acoes,
+            reordenar: manual ? (id, antes, depois) => void this.repo.mover(id, antes, depois) : undefined,
+            vazio: temAlgum
+              ? "Nenhum favorito com esses filtros."
+              : "Nenhum favorito nesta lista ainda. Clique na estrela ao lado de um processo, no Controle de Processos ou na árvore, para guardá-lo aqui.",
+          })
+        : h("span"),
     );
+  }
+
+  private desenharAtualizar(): void {
+    const n = this.visao === "lista" ? this.foraDaUnidade() : 0;
+    this.el.atualizar.hidden = n === 0;
+    this.el.atualizar.replaceChildren(icone("atualizar", 14), `Atualizar fora da unidade (${n})`);
+  }
+
+  /** "Atualizar fora da unidade": na 1ª vez, explica o cuidado antes de rodar. */
+  private async atualizarForaDaUnidade(): Promise<void> {
+    const chave = "favoritos/atualizarExplicado";
+    const explicado = !!(await this.d.area.obter(chave))[chave];
+    const rodar = () =>
+      void this.d.rpc
+        .chamar<{ lidos: number; erros: number; chegaram: number }>("atualizarForaDaUnidade", undefined, 60 * 60_000)
+        .then((r) => {
+          if (!r || typeof r !== "object") return;
+          avisar(
+            `${r.lidos} ${r.lidos === 1 ? "processo atualizado" : "processos atualizados"}.${r.erros ? ` ${r.erros} com erro.` : ""}${r.chegaram ? ` ${r.chegaram} chegaram à sua unidade durante a leitura (o SEI registrou o recebimento).` : ""}`,
+          );
+        })
+        .catch((e: Error) => avisar(e.message));
+    if (explicado) {
+      rodar();
+      return;
+    }
+    let modal: { fechar(): void } | null = null;
+    const conteudo = h(
+      "div",
+      { class: "fav-form" },
+      h(
+        "p",
+        {},
+        "O SEI Pro vai abrir, um de cada vez, os favoritos que estão fora da sua unidade para ver o que mudou (documentos e último andamento). Antes, ele lê a sua caixa inteira e deixa de fora tudo o que está nela: abrir um processo aberto na unidade faria o SEI registrar o recebimento ou marcá-lo como visualizado.",
+      ),
+      h("p", { class: "fav-dica" }, "Processos sigilosos ficam de fora. Você pode cancelar a qualquer momento."),
+      h(
+        "div",
+        { class: "spro-dialogo-rodape" },
+        h("button", { type: "button", class: "spro-botao", onclick: () => modal?.fechar() }, "Cancelar"),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "spro-botao primario",
+            onclick: () => {
+              modal?.fechar();
+              void this.d.area.gravar({ [chave]: Date.now() });
+              rodar();
+            },
+          },
+          "Atualizar",
+        ),
+      ),
+    );
+    modal = this.d.abrirModal({ titulo: "Atualizar fora da unidade", conteudo });
+  }
+
+  private abrirLembrete(f: Favorito): void {
+    let modal: { fechar(): void } | null = null;
+    const repo = this.repo;
+    const conteudo = montarLembrete({
+      lembrete: f.lembrete,
+      hoje: this.d.hoje(),
+      salvar: async (l) => {
+        await repo.editar(f.id, { lembrete: l });
+      },
+      fechar: () => modal?.fechar(),
+    });
+    modal = this.d.abrirModal({ titulo: `Lembrete — ${f.protocolo}`, conteudo });
   }
 
   private desenharAbas(): void {
@@ -361,6 +491,11 @@ export class AppFavoritos {
           this.selecao.clear();
           this.redesenhar();
         },
+        marcarVistos: () => {
+          void this.repo
+            .marcarVisto(this.selecionados().map((f) => f.id))
+            .then((n) => avisar(`${n} ${n === 1 ? "marcado" : "marcados"} como visto.`));
+        },
         outraLista: outra ? { rotulo: outra.rotulo, mover: () => void this.moverParaOutra(this.selecionados().map((f) => f.id)) } : null,
       }),
     );
@@ -381,6 +516,8 @@ export class AppFavoritos {
         this.desenharLote(this.visiveis());
       },
       remover: (f) => void this.remover([f.id]),
+      marcarVisto: (f) => void this.repo.marcarVisto([f.id]),
+      lembrete: (f) => this.abrirLembrete(f),
       moverLista: (f) => void this.moverParaOutra([f.id]),
       mapa: this.d.carregarMapa ? (f) => void this.abrirMapa(f) : undefined,
       moverOrdem: (f, direcao) => {

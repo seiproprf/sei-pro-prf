@@ -5,8 +5,9 @@ import { adiarLembrete, lembreteVencido, textoLembrete } from "../src/modelo/lem
 import { compararInstantaneos, resumoNovidade } from "../src/modelo/novidades";
 import { filtrar, ordenar } from "../src/modelo/operacoes";
 import type { Favorito, Instantaneo } from "../src/modelo/tipos";
+import { contarPendencias, pintarContador } from "../src/pagina/botao";
 import { RepositorioFavoritos } from "../src/repositorio";
-import { checar, secao } from "./util";
+import { checar, instalarDom, secao } from "./util";
 import { CTX } from "./verificar-modelo";
 
 const I = (x: Partial<Instantaneo>): Instantaneo => ({ quando: 1, fonte: "caixa", ...x });
@@ -115,4 +116,25 @@ export async function verificarNovidades(): Promise<void> {
     "o atual nao vai para o envelope (arquivo/Texto Padrao)",
     !JSON.stringify(env).includes("777") && env.escopos[0]!.favoritos.length === 1,
   );
+}
+
+export async function verificarContador(): Promise<void> {
+  secao("contador de pendencias (botao da barra)");
+  const area = areaMemoria();
+  let t = 1;
+  const esc = escoposDoContexto(CTX);
+  const u = new RepositorioFavoritos(area, esc.unidade!, () => ({ agora: ++t, dispositivo: "A" }));
+  const p = new RepositorioFavoritos(area, esc.pessoal, () => ({ agora: ++t, dispositivo: "A" }));
+  await u.adicionar({ id: "1", protocolo: "a" });
+  await u.adicionar({ id: "2", protocolo: "b" });
+  await p.adicionar({ id: "3", protocolo: "c" });
+  await u.editar("1", { lembrete: { em: "2026-09-30" } });
+  await p.editar("3", { visto: I({ qtdDocumentos: 1 }) });
+  await p.gravarAtual("3", I({ qtdDocumentos: 2 }));
+  checar("lembrete vencido + novidade, nas duas listas", (await contarPendencias([u, p], "2026-10-01")) === 2);
+  const b = instalarDom('<html><body><a class="spro-fav-botao"><img></a></body></html>').querySelector(".spro-fav-botao") as HTMLElement;
+  pintarContador(b, 2);
+  checar("selo no botao com o numero", b.querySelector(".spro-fav-contador")?.textContent === "2" && /2 favoritos/.test(b.title));
+  pintarContador(b, 0);
+  checar("zerado: sem selo", !b.querySelector(".spro-fav-contador"));
 }

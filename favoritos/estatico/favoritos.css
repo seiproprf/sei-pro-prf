@@ -99,3 +99,9 @@ html, body { margin: 0; padding: 0; background: var(--spro-fundo); color: var(--
 .fav-sync-secao:last-child { border-bottom: 0; }
 .fav-copias { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 220px; overflow: auto; }
 .fav-copias li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fav-novidade { font-size: 11px; padding: 0 7px; border-radius: 999px; background: var(--spro-destaque); color: #fff; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.fav-lembrete { all: unset; cursor: pointer; display: inline-flex; gap: 3px; align-items: center; font-size: 12px; padding: 0 6px; border-radius: 999px; background: var(--spro-fundo-2); color: var(--spro-aviso); }
+.fav-lembrete:focus-visible { outline: 2px solid var(--spro-destaque); }
+.fav-hoje { border: 1px solid var(--spro-aviso); border-radius: var(--spro-raio); padding: 4px 6px; }
+.fav-hoje h3 { margin: 2px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--spro-aviso); }
+.fav-atualizar { display: inline-flex; gap: 4px; align-items: center; }

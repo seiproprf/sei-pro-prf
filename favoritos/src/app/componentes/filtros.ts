@@ -49,6 +49,16 @@ export function renderFiltros(
       (v) => a.filtrar({ ...e.filtro, prazo: (v || undefined) as Filtro["prazo"] }),
     ),
     seletor(
+      "Situação",
+      e.filtro.novidade ? "novidade" : e.filtro.lembrete ? "lembrete" : "",
+      [
+        ["", "Qualquer situação"],
+        ["novidade", "Com novidade"],
+        ["lembrete", "Lembrete para hoje"],
+      ],
+      (v) => a.filtrar({ ...e.filtro, novidade: v === "novidade" || undefined, lembrete: v === "lembrete" || undefined }),
+    ),
+    seletor(
       "Ordem",
       e.ordem,
       [
@@ -56,6 +66,7 @@ export function renderFiltros(
         ["prazo", "Por prazo"],
         ["protocolo", "Por número"],
         ["inclusao", "Mais recentes"],
+        ["novidade", "Novidades primeiro"],
       ],
       (v) => a.ordenar(v as ModoOrdem),
     ),
@@ -76,6 +87,7 @@ export interface AcoesLote {
   csv(): void;
   remover(): void;
   limpar(): void;
+  marcarVistos(): void;
   outraLista: { rotulo: string; mover(): void } | null;
 }
 
@@ -106,6 +118,7 @@ export function renderLote(qtd: number, pastas: Pasta[], etiquetas: Etiqueta[], 
     a.outraLista
       ? h("button", { type: "button", class: "spro-botao", onclick: () => a.outraLista?.mover() }, `Mover para ${a.outraLista.rotulo}`)
       : null,
+    botaoIcone("check", "Marcar como vistos", () => a.marcarVistos()),
     botaoIcone("copiar", "Copiar números", () => a.copiar()),
     botaoIcone("baixar", "Baixar CSV", () => a.csv()),
     botaoIcone("lixeira", "Remover selecionados", () => a.remover(), "perigo"),

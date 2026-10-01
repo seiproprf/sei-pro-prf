@@ -20,6 +20,7 @@ import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import { temPainelLateral } from "../modelo/exibicao";
 import type { Carimbo, ContextoAba } from "../modelo/tipos";
 import { RepositorioFavoritos } from "../repositorio";
+import { CHAVE_CONTADOR } from "../shell/painel";
 import { ControleArquivo, type HandleArquivo, handlesNoIndexedDB, temSeletorDeArquivo } from "../sincronia/arquivoSync";
 import { copiasNoIndexedDB } from "../sincronia/copias";
 import { observarAltura } from "./altura";
@@ -123,7 +124,7 @@ async function iniciarLateral(): Promise<void> {
         const ctx = await a.rpc.chamar<ContextoAba>("contexto");
         // A aba pode ter mudado enquanto o contexto chegava: a próxima volta da fila corrige.
         if (chaveDoContexto(ctx) !== chave) return;
-        const app = criarApp(b, ctx, rpc, {});
+        const app = criarApp(b, ctx, rpc, { aoContar: (n) => void b.area.gravar({ [CHAVE_CONTADOR]: n }).catch(() => undefined) });
         montado = { chave, app };
         appAtual = app;
         await app.iniciar();
@@ -139,6 +140,7 @@ async function iniciarLateral(): Promise<void> {
 }
 
 interface Ganchos {
+  aoContar?: (n: number) => void;
   aoAbrirModal?: () => void;
   aoFecharModal?: () => void;
   aoRedesenhar?: () => void;
@@ -237,6 +239,7 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
     escolherArquivo,
     hoje: () => hojeISO(),
     aoRedesenhar: g.aoRedesenhar,
+    aoContar: g.aoContar,
     lateralDisponivel: temPainelLateral(chrome.runtime.getManifest()),
     carregarMapa: () => carregarLeaflet(document, (c) => `../${c}`),
     copias: copiasNoIndexedDB(),

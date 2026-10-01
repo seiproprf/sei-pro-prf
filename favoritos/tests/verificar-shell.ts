@@ -30,6 +30,17 @@ export async function verificarShell(): Promise<void> {
   checar("pedido novo do background com o painel aberto troca a aba", shell.atual() === "favoritos");
   checar("aba marcada", botao(raiz, "Favoritos")!.getAttribute("aria-selected") === "true");
 
+  secao("painel lateral: contador na aba Favoritos");
+  const doc3 = instalarDom('<html><body><div id="painel"></div></body></html>');
+  const local = areaMemoria({ "favoritos/contadorPainel": 3 });
+  const raiz3 = doc3.getElementById("painel")!;
+  await montarShell(raiz3, { sessao: areaMemoria(), temAgente: true, url, local });
+  await tique();
+  checar("mostra as pendencias na aba", botao(raiz3, "Favoritos (3)") !== undefined, raiz3.querySelector('[role="tab"]')?.textContent);
+  await local.gravar({ "favoritos/contadorPainel": 0 });
+  await tique();
+  checar("zerou: sem numero", botao(raiz3, "Favoritos") !== undefined);
+
   secao("painel lateral: pacote sem o agente");
   const doc2 = instalarDom('<html><body><div id="painel"></div></body></html>');
   const raiz2 = doc2.getElementById("painel")!;

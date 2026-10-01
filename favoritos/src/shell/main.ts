@@ -11,6 +11,7 @@ void montarShell(document.getElementById("painel")!, {
   // Sem `storage.session` (navegador antigo), a aba pedida só vale pelo endereço.
   sessao: areaChrome(chrome.storage.session ?? chrome.storage.local, chrome.storage.session ? "session" : "local"),
   temAgente,
+  local: areaChrome(chrome.storage.local, "local"),
   url: (c) => chrome.runtime.getURL(c),
   abaDoEndereco: doEndereco === "agente" || doEndereco === "favoritos" ? (doEndereco as AbaPainel) : null,
 });

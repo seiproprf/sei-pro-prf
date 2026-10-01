@@ -10,7 +10,11 @@
  * (Firefox, pacotes sem background), o painel abre numa janela comum.
  */
 
+import type { DataISO } from "@comum/datas/dias";
 import { h, icone } from "@comum/ui/dom";
+import { lembreteVencido } from "../modelo/lembrete";
+import { compararInstantaneos } from "../modelo/novidades";
+import type { RepositorioFavoritos } from "../repositorio";
 
 export interface AcoesBotao {
   abrirLateral(): void;
@@ -62,4 +66,21 @@ export function instalarBotaoArvore(doc: Document, o: { url: (c: string) => stri
 
 export function pedirPainelLateral(enviar: (m: unknown) => Promise<unknown>, abrirJanela: (url: string) => void, url: string): void {
   void enviar({ tipo: "abrirPainel", aba: "favoritos" }).catch(() => abrirJanela(url));
+}
+
+/** Favoritos que pedem atenção (lembrete vencido ou novidade), somando as listas. */
+export async function contarPendencias(repos: RepositorioFavoritos[], hoje: DataISO): Promise<number> {
+  let n = 0;
+  for (const r of repos) {
+    const [ativos, atuais] = await Promise.all([r.ativos(), r.atuais()]);
+    n += ativos.filter((f) => lembreteVencido(f, hoje) || compararInstantaneos(f.visto, atuais.get(f.id)).length > 0).length;
+  }
+  return n;
+}
+
+export function pintarContador(botao: HTMLElement, n: number): void {
+  botao.querySelector(".spro-fav-contador")?.remove();
+  botao.title = n ? `Favoritos: ${n} ${n === 1 ? "favorito pede" : "favoritos pedem"} atenção (lembrete ou novidade)` : "Favoritos";
+  if (!n) return;
+  botao.append(h("span", { class: "spro-fav-contador", "aria-hidden": "true" }, String(n)));
 }

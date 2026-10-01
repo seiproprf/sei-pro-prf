@@ -143,6 +143,7 @@ export function verificarLista(): void {
     csv: () => lote.push("csv"),
     remover: () => lote.push("remover"),
     limpar: () => lote.push("limpar"),
+    marcarVistos: () => lote.push("vistos"),
     outraLista: { rotulo: "Pessoal", mover: () => lote.push("lista") },
   });
   checar("contagem", barra.textContent?.includes("2 selecionados") === true);

@@ -24,7 +24,11 @@ export interface DepsShell {
   url(caminho: string): string;
   /** Aba pedida pelo endereço (`#aba=agente`), quando o painel abre numa janela comum (Firefox). */
   abaDoEndereco?: AbaPainel | null;
+  /** chrome.storage.local: o app grava as pendências (lembretes + novidades) em `favoritos/contadorPainel`. */
+  local?: Area;
 }
+
+export const CHAVE_CONTADOR = "favoritos/contadorPainel";
 
 interface DefAba {
   id: AbaPainel;
@@ -83,6 +87,18 @@ export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mo
     raiz.replaceChildren(corpo);
   }
 
+  const fav = botoes.get("favoritos");
+  if (fav && d.local) {
+    const pintar = (v: unknown) => {
+      const n = typeof v === "number" && v > 0 ? v : 0;
+      fav.textContent = n ? `Favoritos (${n})` : "Favoritos";
+      fav.title = n ? `${n} ${n === 1 ? "favorito pede" : "favoritos pedem"} atenção (lembrete ou novidade)` : "";
+    };
+    pintar((await d.local.obter(CHAVE_CONTADOR).catch(() => ({}) as Record<string, unknown>))[CHAVE_CONTADOR]);
+    d.local.aoMudar((m) => {
+      if (CHAVE_CONTADOR in m) pintar(m[CHAVE_CONTADOR]?.novo);
+    });
+  }
   const gravada = (await d.sessao.obter(CHAVE_ABA).catch(() => ({}) as Record<string, unknown>))[CHAVE_ABA];
   mostrar(valida(d.abaDoEndereco) ?? valida(gravada) ?? "favoritos");
   d.sessao.aoMudar((m) => {

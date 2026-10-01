@@ -5,7 +5,7 @@ import { escoposDoContexto } from "../src/modelo/escopo";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { copiasEmMemoria } from "../src/sincronia/copias";
-import { botao, checar, disparar, instalarDom, secao, tique } from "./util";
+import { botao, checar, disparar, escolher, instalarDom, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 function montar(extra: Partial<DepsApp> = {}, inicial: Record<string, unknown> = {}) {
@@ -326,4 +326,79 @@ export async function verificarApp(): Promise<void> {
   botao(dlgCp.conteudo, "Restaurar")!.click();
   await tique(60);
   checar("restaurar devolve o favorito removido", await ap.repos.unidade.contem("31"));
+
+  secao("app: o que mudou");
+  const nv = montar();
+  await nv.repos.unidade.adicionar({ id: "41", protocolo: "50300.000041/2026-41" });
+  await nv.repos.unidade.adicionar({ id: "42", protocolo: "50300.000042/2026-42" });
+  await nv.repos.unidade.editar("41", { visto: { quando: 1, fonte: "caixa", qtdDocumentos: 3, abertoNaUnidade: true } });
+  await nv.repos.unidade.gravarAtual("41", { quando: 2, fonte: "caixa", qtdDocumentos: 5, abertoNaUnidade: false });
+  await nv.app.iniciar();
+  const selo = () => nv.raiz.querySelector('li[data-id="41"] .fav-novidade')?.textContent ?? "";
+  checar("selo com o resumo da mudanca", selo() === "2 documentos novos · saiu da sua unidade", selo());
+  checar("item sem mudanca, sem selo", !nv.raiz.querySelector('li[data-id="42"] .fav-novidade'));
+  escolher(nv.raiz.querySelector('select[aria-label="Situação"]') as HTMLSelectElement, "novidade");
+  await tique(20);
+  checar("filtro 'com novidade'", nv.raiz.querySelectorAll("li.fav-item").length === 1);
+  escolher(nv.raiz.querySelector('select[aria-label="Situação"]') as HTMLSelectElement, "");
+  await tique(20);
+  botao(nv.raiz.querySelector('li[data-id="41"]')!, "Marcar como visto")!.click();
+  await tique(80);
+  checar("marcar como visto tira o selo", selo() === "", selo());
+  await nv.repos.unidade.gravarAtual("41", { quando: 3, fonte: "caixa", qtdDocumentos: 6, abertoNaUnidade: false });
+  await tique(80);
+  checar("leitura nova (outro contexto) aparece sozinha", selo() === "1 documento novo", selo());
+
+  secao("app: lembretes e 'Para hoje'");
+  const lb = montar();
+  await lb.repos.unidade.adicionar({ id: "51", protocolo: "50300.000051/2026-51" });
+  await lb.repos.unidade.adicionar({ id: "52", protocolo: "50300.000052/2026-52" });
+  await lb.repos.unidade.editar("52", { lembrete: { em: "2026-09-29", texto: "cobrar a SFC" } });
+  await lb.app.iniciar();
+  const hoje = lb.raiz.querySelector(".fav-hoje");
+  checar(
+    "'Para hoje' no topo com o lembrete vencido",
+    !!hoje && !!hoje.querySelector('li[data-id="52"]') && /cobrar a SFC/.test(hoje.textContent ?? ""),
+  );
+  checar("e o item nao repete na lista", lb.raiz.querySelectorAll('li[data-id="52"]').length === 1);
+  botao(lb.raiz.querySelector('li[data-id="51"]')!, "Lembrete…")!.click();
+  await tique(20);
+  const dlgL = lb.modais.at(-1)!;
+  checar("dialogo de lembrete", dlgL.titulo === "Lembrete — 50300.000051/2026-51");
+  botao(dlgL.conteudo, "Amanhã")!.click();
+  await tique(40);
+  checar("'Amanha' grava o lembrete", (await lb.repos.unidade.obter("51"))?.lembrete?.em === "2026-10-02");
+  botao(lb.raiz.querySelector('li[data-id="52"]')!, "Lembrete…")!.click();
+  await tique(20);
+  botao(lb.modais.at(-1)!.conteudo, "Concluir")!.click();
+  await tique(60);
+  checar(
+    "concluir apaga o lembrete e tira de 'Para hoje'",
+    (await lb.repos.unidade.obter("52"))?.lembrete === undefined && !lb.raiz.querySelector(".fav-hoje"),
+  );
+
+  secao("app: atualizar fora da unidade");
+  const at = montar();
+  await at.repos.unidade.adicionar({ id: "61", protocolo: "50300.000061/2026-61" });
+  await at.repos.unidade.adicionar({ id: "62", protocolo: "50300.000062/2026-62" });
+  await at.repos.unidade.gravarAtual("62", { quando: 1, fonte: "caixa", abertoNaUnidade: true });
+  await at.app.iniciar();
+  const bAt = botao(at.raiz, "Atualizar fora da unidade (1)");
+  checar("botao conta os que nao estao na caixa", !!bAt);
+  bAt!.click();
+  await tique(20);
+  const dlgA = at.modais.at(-1)!;
+  checar(
+    "na primeira vez explica antes de rodar",
+    /recebimento/.test(dlgA.conteudo.textContent ?? "") && !at.chamadas.some(([op]) => op === "atualizarForaDaUnidade"),
+  );
+  botao(dlgA.conteudo, "Atualizar")!.click();
+  await tique(30);
+  checar(
+    "e roda na aba",
+    at.chamadas.some(([op]) => op === "atualizarForaDaUnidade"),
+  );
+  botao(at.raiz, "Atualizar fora da unidade (1)")!.click();
+  await tique(30);
+  checar("da segunda vez roda direto", at.chamadas.filter(([op]) => op === "atualizarForaDaUnidade").length === 2);
 }

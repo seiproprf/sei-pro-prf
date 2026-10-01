@@ -10,6 +10,10 @@ export interface ApoioItem {
   arrastavel: boolean;
   /** Rótulo da outra lista ("Pessoal" ou a sigla), ou null quando só existe uma. */
   outraLista: string | null;
+  /** Resumo do que mudou desde o último "visto" (vazio = nada). */
+  novidade?: string;
+  /** "hoje", "amanhã", "desde 28/09/2026"... */
+  lembrete?: string;
 }
 
 export interface AcoesItem {
@@ -21,6 +25,8 @@ export interface AcoesItem {
   moverOrdem(f: Favorito, direcao: -1 | 1): void;
   /** Ausente quando o mapa não está disponível (testes, pacote sem Leaflet). */
   mapa?(f: Favorito): void;
+  marcarVisto?(f: Favorito): void;
+  lembrete?(f: Favorito): void;
 }
 
 const itemMenu = (rotulo: string, fazer: () => void, classe?: string) =>
@@ -71,6 +77,9 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         f.protocolo,
       ),
       f.sigiloso ? h("span", { class: "fav-selo", title: "Processo sigiloso" }, "sigiloso") : null,
+      a.novidade
+        ? h("span", { class: "fav-novidade", title: `O que mudou desde a última vez que você viu: ${a.novidade}` }, a.novidade)
+        : null,
       h("button", { type: "button", class: "fav-titulo", title: "Editar favorito", onclick: () => acoes.editar(f) }, titulo),
     ),
     h(
@@ -82,6 +91,19 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         ? h("span", { class: `fav-prazo fav-prazo-${a.resumo.situacao}`, title: a.resumo.dica }, icone("relogio", 13), a.resumo.texto)
         : null,
       f.nota ? h("span", { class: "fav-nota", title: f.nota, "aria-label": `Nota: ${f.nota}` }, icone("nota", 14)) : null,
+      f.lembrete && a.lembrete
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "fav-lembrete",
+              title: `Lembrete ${a.lembrete}${f.lembrete.texto ? `: ${f.lembrete.texto}` : ""}`,
+              onclick: () => acoes.lembrete?.(f),
+            },
+            icone("sino", 13),
+            f.lembrete.texto ? `${a.lembrete} · ${f.lembrete.texto}` : a.lembrete,
+          )
+        : null,
       f.local && acoes.mapa
         ? h(
             "button",
@@ -104,6 +126,8 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         "div",
         { class: "fav-menu-lista", role: "menu" },
         itemMenu("Editar", () => acoes.editar(f)),
+        a.novidade && acoes.marcarVisto ? itemMenu("Marcar como visto", () => acoes.marcarVisto?.(f)) : null,
+        acoes.lembrete ? itemMenu("Lembrete…", () => acoes.lembrete?.(f)) : null,
         a.outraLista ? itemMenu(`Mover para ${a.outraLista}`, () => acoes.moverLista(f)) : null,
         itemMenu("Mover para cima", () => acoes.moverOrdem(f, -1)),
         itemMenu("Mover para baixo", () => acoes.moverOrdem(f, 1)),

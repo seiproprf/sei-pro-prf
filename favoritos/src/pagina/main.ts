@@ -28,7 +28,7 @@ import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { DESCRICAO_TEXTO, nomeDoTexto } from "../sincronia/textoPadrao";
 import { ControleAtualizar, chaveProgresso } from "./atualizar";
 import { abrirBalao } from "./balao";
-import { instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral } from "./botao";
+import { contarPendencias, instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral, pintarContador } from "./botao";
 import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
 import { instalarManterNoEnvio } from "./enviar";
 import { instalarEstrelaArvore } from "./estrelaArvore";
@@ -120,7 +120,14 @@ async function principal(): Promise<void> {
     instalarEstrelasCaixa(document, servico);
     // "O que mudou": os sinais que a caixa já mostra, sem requisição.
     if (repos.unidade) void capturarDaCaixa(document, repos.unidade).catch((e) => console.warn("[SEI Pro] favoritos: captura da caixa", e));
-    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle, atualizar);
+    if (noTopo) {
+      const botao = await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle, atualizar);
+      if (botao)
+        ligarContador(
+          botao,
+          [repos.unidade, repos.pessoal].filter((r): r is RepositorioFavoritos => !!r),
+        );
+    }
   } else if (tela === "arvore") {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
@@ -225,7 +232,7 @@ async function controlarPainelEmbutido(
   abrirLateral: () => void,
   sincronia: ControleSincronia | null,
   atualizar: ControleAtualizar | null,
-): Promise<void> {
+): Promise<HTMLElement | null> {
   let prefs = await lerPreferencias(sync);
   let montado: { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null = null;
   const aplicar = () => {
@@ -237,7 +244,7 @@ async function controlarPainelEmbutido(
     }
   };
   aplicar();
-  instalarBotaoCaixa(document, {
+  const botao = instalarBotaoCaixa(document, {
     url: (c) => chrome.runtime.getURL(c),
     destino: () => (ondeMostrar(prefs.exibir, lateral).lateral ? "lateral" : "abaixo"),
     abrirLateral,
@@ -254,6 +261,7 @@ async function controlarPainelEmbutido(
       aplicar();
     });
   });
+  return botao;
 }
 
 function montarEmbutido(
@@ -343,4 +351,24 @@ function controleAtualizar(ctx: ContextoAba, area: Area, repos: Repos): Controle
     },
     (p) => area.gravar({ [chaveProgresso(ctx.host, ctx.login)]: { ...p, quando: Date.now() } }),
   );
+}
+
+/** Selo no botão Favoritos: lembretes vencidos + novidades, refeito quando as listas mudam. */
+function ligarContador(botao: HTMLElement, repos: RepositorioFavoritos[]): void {
+  let agendado = false;
+  const pintar = () => {
+    if (agendado) return;
+    agendado = true;
+    setTimeout(() => {
+      agendado = false;
+      void contarPendencias(repos, hojeISO())
+        .then((n) => pintarContador(botao, n))
+        .catch(() => undefined);
+    }, 100);
+  };
+  for (const r of repos) {
+    r.aoMudar(pintar);
+    r.aoMudarAtuais(pintar);
+  }
+  pintar();
 }
