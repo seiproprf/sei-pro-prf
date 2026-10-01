@@ -53,8 +53,8 @@
   }
 }
 /* [hidden] perde para display de classe; o agente aprendeu isso do jeito difícil. */
-/* biome-ignore lint/complexity/noImportantStyles: [hidden] precisa vencer o display das classes */
 [hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: [hidden] precisa vencer o display das classes */
   display: none !important;
 }
 .spro-icone {
