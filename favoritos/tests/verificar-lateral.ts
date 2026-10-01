@@ -109,6 +109,8 @@ export async function verificarLateralApp(): Promise<void> {
   await b.rpcAba.chamar("ola", { visivel: false, foco: 10, chave: "h|ana|2" });
   checar("aba escondida: a de foco mais recente assume", ponte.atual()?.id === 5);
   checar("o rpc da aba atual alcanca a aba", (await ponte.atual()!.rpc.chamar<{ id: number }>("contexto")).id === 5);
+  checar("pedido da lista de uma unidade vai para a aba DESSA unidade, mesmo com outra na frente", ponte.daChave("h|ana|2")?.id === 6 && ponte.daChave("h|ana|1")?.id === 5);
+  checar("unidade sem aba aberta: nenhuma", ponte.daChave("h|ana|9") === null);
   a.rpcAba.fechar();
   await tique(5);
   checar("aba que caiu sai da lista", ponte.atual()?.id === 6);

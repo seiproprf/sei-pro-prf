@@ -92,6 +92,19 @@ export class PonteLateral {
     );
   }
 
+  /**
+   * A aba que atende a lista ABERTA no painel (mesmo SEI, usuário e unidade).
+   * A "da frente" pode ser de outro SEI: um pedido feito na lista da GPF não
+   * pode ir parar na aba de outra unidade só porque ela ganhou o foco.
+   */
+  daChave(chave: string): AbaLateral | null {
+    if (!chave) return null;
+    return escolherAba(
+      [...this.abas.values()].filter((a) => a.chave === chave),
+      this.d.janela,
+    );
+  }
+
   aoMudar(cb: () => void): () => void {
     this.ouvintes.add(cb);
     return () => this.ouvintes.delete(cb);

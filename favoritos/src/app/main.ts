@@ -91,16 +91,17 @@ async function iniciarLateral(): Promise<void> {
         if (porta.name === CANAL_LATERAL) cb(porta as unknown as PortaRpc, porta.sender ?? {});
       }),
   });
-  // O rpc do app fala sempre com a aba da frente: trocar de aba na mesma unidade não remonta nada.
+  let montado: { chave: string; app: AppFavoritos } | null = null;
+  // O rpc fala com uma aba DA UNIDADE da lista montada (a da frente, se for dela): trocar de aba
+  // na mesma unidade não remonta nada, e um pedido nunca vai para outro SEI ou outra unidade.
   const rpc: Pick<Rpc, "chamar"> = {
     chamar: <T>(op: string, args?: unknown, prazo?: number) => {
-      const a = ponte.atual();
+      const a = ponte.daChave(montado?.chave ?? "");
       return a
         ? a.rpc.chamar<T>(op, args, prazo)
-        : Promise.reject(new ErroRpc("SEM_ABA", "Nenhuma aba do SEI aberta nesta janela. Abra o SEI e tente de novo."));
+        : Promise.reject(new ErroRpc("SEM_ABA", "A aba do SEI desta lista não está mais aberta nesta janela. Abra o SEI na unidade e tente de novo."));
     },
   };
-  let montado: { chave: string; app: AppFavoritos } | null = null;
   let fila = Promise.resolve();
   const esperando = h(
     "div",
