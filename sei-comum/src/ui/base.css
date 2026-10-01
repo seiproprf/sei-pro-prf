@@ -1,0 +1,194 @@
+/*
+ * Base visual dos módulos novos do SEI Pro. Tokens no :root, com o modo escuro
+ * em duas formas: forçado por data-tema (o painel embutido segue a página do
+ * SEI, que só é escura se o usuário ligou o modo noturno do SEI Pro) ou pelo
+ * sistema, quando ninguém forçou nada. `:host` faz os mesmos tokens valerem
+ * dentro de Shadow DOM (o balão que o content script abre na página do SEI).
+ */
+:root,
+:host {
+  --spro-fundo: #ffffff;
+  --spro-fundo-2: #f4f6f8;
+  --spro-texto: #1f2328;
+  --spro-suave: #5c6670;
+  --spro-borda: #d5dbe1;
+  --spro-destaque: #155e9e;
+  --spro-destaque-texto: #ffffff;
+  --spro-perigo: #b42318;
+  --spro-aviso: #9a6700;
+  --spro-ok: #1a7f37;
+  --spro-estrela: #e0a100;
+  --spro-raio: 6px;
+  --spro-fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+:root[data-tema="escuro"],
+:host([data-tema="escuro"]) {
+  --spro-fundo: #1d2125;
+  --spro-fundo-2: #262b30;
+  --spro-texto: #e6e9ec;
+  --spro-suave: #a3adb7;
+  --spro-borda: #3a4148;
+  --spro-destaque: #6cb2f0;
+  --spro-destaque-texto: #0b1a27;
+  --spro-perigo: #ff8a80;
+  --spro-aviso: #f0c35c;
+  --spro-ok: #6fd28a;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema]),
+  :host(:not([data-tema])) {
+    --spro-fundo: #1d2125;
+    --spro-fundo-2: #262b30;
+    --spro-texto: #e6e9ec;
+    --spro-suave: #a3adb7;
+    --spro-borda: #3a4148;
+    --spro-destaque: #6cb2f0;
+    --spro-destaque-texto: #0b1a27;
+    --spro-perigo: #ff8a80;
+    --spro-aviso: #f0c35c;
+    --spro-ok: #6fd28a;
+    color-scheme: dark;
+  }
+}
+/* [hidden] perde para display de classe; o agente aprendeu isso do jeito difícil. */
+/* biome-ignore lint/complexity/noImportantStyles: [hidden] precisa vencer o display das classes */
+[hidden] {
+  display: none !important;
+}
+.spro-icone {
+  flex: none;
+  vertical-align: middle;
+}
+.spro-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--spro-texto);
+  background: var(--spro-fundo-2);
+  border: 1px solid var(--spro-borda);
+  border-radius: var(--spro-raio);
+  cursor: pointer;
+}
+.spro-botao:hover {
+  border-color: var(--spro-destaque);
+}
+.spro-botao.primario {
+  background: var(--spro-destaque);
+  color: var(--spro-destaque-texto);
+  border-color: var(--spro-destaque);
+}
+.spro-botao.perigo {
+  color: var(--spro-perigo);
+}
+.spro-botao-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  color: var(--spro-suave);
+  background: none;
+  border: 0;
+  border-radius: var(--spro-raio);
+  cursor: pointer;
+}
+.spro-botao-icone:hover {
+  color: var(--spro-texto);
+  background: var(--spro-fundo-2);
+}
+.spro-campo {
+  font: inherit;
+  font-size: 13px;
+  color: var(--spro-texto);
+  background: var(--spro-fundo);
+  padding: 4px 8px;
+  border: 1px solid var(--spro-borda);
+  border-radius: var(--spro-raio);
+  min-width: 0;
+}
+.spro-campo:focus,
+.spro-botao:focus-visible,
+.spro-botao-icone:focus-visible {
+  outline: 2px solid var(--spro-destaque);
+  outline-offset: 1px;
+}
+.spro-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: var(--cor, var(--spro-fundo-2));
+  color: #1f2328;
+  border: 1px solid rgb(0 0 0 / 8%);
+  cursor: pointer;
+}
+.spro-chip[aria-pressed="false"] {
+  background: transparent;
+  color: var(--spro-suave);
+  border-style: dashed;
+}
+dialog.spro-dialogo {
+  color: var(--spro-texto);
+  background: var(--spro-fundo);
+  border: 1px solid var(--spro-borda);
+  border-radius: 10px;
+  padding: 0;
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  font-family: var(--spro-fonte);
+}
+dialog.spro-dialogo::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+dialog.spro-dialogo > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--spro-borda);
+}
+dialog.spro-dialogo > header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.spro-dialogo-corpo {
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+}
+.spro-dialogo-rodape {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--spro-borda);
+}
+.spro-aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  color: var(--spro-fundo);
+  background: var(--spro-texto);
+  border-radius: var(--spro-raio);
+  font-size: 13px;
+}
+.spro-aviso button {
+  color: inherit;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
