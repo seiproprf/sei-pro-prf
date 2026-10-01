@@ -11,3 +11,7 @@ export const MAX_NOTA = 2000;
 export const SEM_PASTA = "__sem__";
 export const chaveMigracao = (host: string, login: string): string => `favoritos/migracao/${host}|${login}`;
 export const chaveUltimaUnidade = (host: string, login: string): string => `favoritos/ultimaUnidade/${host}|${login}`;
+/** Porta das abas do SEI com o app no painel lateral (diferente da do app embutido, que é da própria aba). */
+export const CANAL_LATERAL = "seipro-favoritos-lateral";
+/** Em `chrome.storage.local`: o app lateral anuncia que abriu (`Abertura` da sei-comum). */
+export const CHAVE_LATERAL = "favoritos/lateralAberto";
