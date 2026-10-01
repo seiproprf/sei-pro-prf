@@ -1,4 +1,5 @@
 import { resumo } from "./util";
+import { verificarAbertura } from "./verificar-abertura";
 import { verificarArmazenamento } from "./verificar-armazenamento";
 import { verificarDatas } from "./verificar-datas";
 import { verificarEntidade } from "./verificar-entidade";
@@ -14,4 +15,5 @@ verificarEntidade();
 await verificarOpcoes();
 await verificarRpc();
 verificarId();
+verificarAbertura();
 resumo();
