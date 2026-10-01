@@ -3,7 +3,7 @@
   "name": "SEI Pro Lab",
   "short_name": "SEI Pro Lab",
   "description": "Adiciona ao Sistema Eletrônico de Informações (SEI) funções avançadas",
-  "version": "2.2.5",
+  "version": "2.3",
   "author": "Pedro Henrique Soares",
   "homepage_url": "https://seipro.app",
   "icons": {
@@ -19,7 +19,8 @@
   },
   "permissions": [
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "alarms"
   ],
   "background": {
     "service_worker": "background.js"
@@ -600,5 +601,8 @@
     "https://*/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
+  ],
+  "optional_permissions": [
+    "notifications"
   ]
 }

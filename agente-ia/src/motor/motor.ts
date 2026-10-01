@@ -16,6 +16,7 @@
  */
 
 import type { Pseudonimos } from "@nucleo/privacidade/anonimizar";
+import { nonceDaConversa } from "../seguranca/envelope";
 import { validar } from "./esquema";
 import type { ContextoTool, DefTool, EstadoConversa, RegistroTools } from "./tools";
 import type {
@@ -38,7 +39,7 @@ export interface OpcoesMotor {
   /** Operação na aba do SEI (a ponte). */
   sei: (op: string, args: Record<string, unknown>, sinal: AbortSignal) => Promise<unknown>;
   /** Monta o prompt de sistema (recebe o resumo da tela atual). */
-  sistema: (tela: TelaAtual | null) => string;
+  sistema: (tela: TelaAtual | null, nonce: string) => string;
   /**
    * Regras da unidade, avaliadas antes de escrever (ver painel/regras.ts).
    * Bloqueio nem chega ao cartão de aprovação: o que a unidade proíbe não se
@@ -81,11 +82,22 @@ export class ErroMotor extends Error {}
 
 export class Motor {
   private historico: Mensagem[] = [];
+  /**
+   * Envelope desta conversa: todo conteúdo de documento entregue ao modelo vai
+   * delimitado por ele (ver `seguranca/envelope.ts`). Sorteado aqui porque é
+   * por conversa, e porque documento algum pode conhecê-lo de antemão.
+   */
+  private readonly nonce = nonceDaConversa();
   private controlador: AbortController | null = null;
   private usoTotal: Uso = { entrada: 0, saida: 0, custo: 0 };
   readonly estado: EstadoConversa = { consentimentoRestrito: null, anexos: [] };
 
   constructor(private readonly o: OpcoesMotor) {}
+
+  /** O delimitador desta conversa, para quem monta conteúdo fora do motor. */
+  get envelope(): string {
+    return this.nonce;
+  }
 
   get ocupado(): boolean {
     return this.controlador !== null;
@@ -139,7 +151,7 @@ export class Motor {
       const limite = this.o.limitePassos ?? 40;
       for (let passo = 0; passo < limite; passo += 1) {
         const resposta = await this.o.provedor.conversar(
-          { mensagens: [{ role: "system", content: this.o.sistema(tela) }, ...this.compactado()], tools: this.o.tools.paraProvedor() },
+          { mensagens: [{ role: "system", content: this.o.sistema(tela, this.nonce) }, ...this.compactado()], tools: this.o.tools.paraProvedor() },
           sinal,
           (d) => this.o.ui.texto(d),
         );
@@ -191,6 +203,10 @@ export class Motor {
         if (this.estado.consentimentoRestrito === null) this.estado.consentimentoRestrito = await this.o.ui.consentir("restrito", detalhe);
         return this.estado.consentimentoRestrito;
       },
+      consentirConector: (detalhe) => this.o.ui.consentir("conector", detalhe),
+      nonce: this.nonce,
+      registrarAchados: (documento, achados) => this.o.ui.integridade?.(documento, achados),
+      anonimizar: (texto) => this.o.privacidade.anonimizar(texto),
       pessoasVistas: (nomes) => this.o.privacidade.registrarPessoas(nomes),
       ui: this.o.ui,
       ...(this.o.delegar ? { delegar: this.o.delegar } : {}),
@@ -202,6 +218,7 @@ export class Motor {
   private async executarChamadas(chamadas: ChamadaTool[], sinal: AbortSignal): Promise<Map<string, string>> {
     const saida = new Map<string, string>();
     const leituras: Array<{ c: ChamadaTool; t: DefTool; args: Record<string, unknown> }> = [];
+    const externas: Array<{ c: ChamadaTool; t: DefTool; args: Record<string, unknown> }> = [];
     const escritas: Array<{ c: ChamadaTool; passos: PassoPlano[]; objetivo?: string }> = [];
 
     for (const c of chamadas) {
@@ -229,6 +246,8 @@ export class Motor {
         else escritas.push({ c, passos: r.passos, objetivo: String(args.objetivo ?? "") });
       } else if (t.efeito === "leitura" || t.efeito === "interna") {
         leituras.push({ c, t, args });
+      } else if (t.efeito === "externo") {
+        externas.push({ c, t, args });
       } else {
         escritas.push({ c, passos: [{ tool: t.nome, rotulo: t.rotulo(args), efeito: t.efeito, args, previa: [], dependente: false }] });
       }
@@ -248,6 +267,20 @@ export class Motor {
         }
       }),
     );
+
+    // Externas em sequência: cada uma pode pedir autorização ao usuário, e
+    // duas perguntas ao mesmo tempo no painel não têm como ser respondidas.
+    for (const { c, t, args } of externas) {
+      this.o.ui.toolIniciada(c.id, t.nome, t.rotulo(args));
+      try {
+        const r = await t.executar(args, this.contexto(sinal));
+        saida.set(c.id, this.paraModelo(r));
+        this.o.ui.toolTerminada(c.id, true, "");
+      } catch (e) {
+        saida.set(c.id, this.paraModelo(erroParaModelo(e)));
+        this.o.ui.toolTerminada(c.id, false, erroParaModelo(e).erro);
+      }
+    }
 
     if (escritas.length) {
       const resultados = await this.executarPlano(escritas.flatMap((e) => e.passos), escritas.map((e) => e.objetivo).filter(Boolean).join("; "), sinal);
@@ -269,7 +302,9 @@ export class Motor {
     lista.forEach((p, i) => {
       const t = this.o.tools.obter(p.tool);
       if (!t) return erros.push(`passo ${i + 1}: ferramenta "${p.tool}" n\u00E3o existe`);
-      if (t.efeito === "leitura" || t.efeito === "interna") return erros.push(`passo ${i + 1}: "${p.tool}" n\u00E3o \u00E9 escrita; chame-a diretamente`);
+      if (t.efeito === "leitura" || t.efeito === "interna" || t.efeito === "externo") {
+        return erros.push(`passo ${i + 1}: "${p.tool}" n\u00E3o escreve no SEI; chame-a diretamente`);
+      }
       const dependente = JSON.stringify(p.args ?? {}).includes("$");
       const { valor, erros: e } = dependente ? { valor: p.args, erros: [] } : validar(t.parametros, p.args ?? {});
       if (e.length) return erros.push(...e.map((x) => `passo ${i + 1}: ${x}`));
