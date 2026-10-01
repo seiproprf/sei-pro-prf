@@ -347,6 +347,39 @@
         "*://sistemas.unir.br/sip/*"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "js": [
+        "js/init_favoritos.js"
+      ],
+      "matches": [
+        "*://*.br/sei/*",
+        "*://*.br/sip/*",
+        "*://*.br/*/sei/*",
+        "*://*.br/*/sip/*",
+        "*://*.br/*controlador*.php?acao=*",
+        "*://*.org/sei/*",
+        "*://*.org/sip/*",
+        "*://*.org/*controlador*.php?acao=*",
+        "*://sip-sei.ans.gov.br/*"
+      ],
+      "exclude_matches": [
+        "*://sei.antaq1.gov.br/*",
+        "*://*.br/*login.php*",
+        "*://*.br/sip/*controlador.php*",
+        "*://*.br/sei/*controlador_externo.php*",
+        "*://*.br/*/sip/*controlador.php*",
+        "*://*.br/*/sei/*controlador_externo.php*",
+        "*://*.org/*login.php*",
+        "*://*.org/sip/*controlador.php*",
+        "*://*.org/sei/*controlador_externo.php*",
+        "*://sip-sei.ans.gov.br/login.php*",
+        "*://sip-sei.ans.gov.br/controlador.php*",
+        "*://sip-sei.ans.gov.br/controlador_externo.php*",
+        "*://sistemas.unir.br/sip/*"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
     }
   ],
   "action": {
@@ -499,6 +532,9 @@
         "css/images/marker-shadow.png",
         "html/options.html",
         "html/fluxos.html",
+        "html/favoritos.html",
+        "js/favoritos/app.js",
+        "css/favoritos.css",
         "js/estudio/estudio.js",
         "icons/menu/fluxos.svg",
         "vendor/ferramentas-pdf/tesseract/worker.min.js",

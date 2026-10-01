@@ -979,7 +979,7 @@ function getProcessosPaginacao(this_, index, tipo) {
                 var ItensHash_ = $('#hdn'+tipo+'ItensHash');
                     //ItensHash_.val(ItensHash);
                 getProcessosPaginacao(this_, index+1, tipo);
-                if (checkConfigValue('gerenciarfavoritos')) appendStarOnProcess();
+                if (checkConfigValue('gerenciarfavoritos') && typeof appendStarOnProcess === 'function') appendStarOnProcess();
                 initControlePrazo(true);
                 initViewEspecifacaoProcesso();
                 addAcompanhamentoEspIcon();
