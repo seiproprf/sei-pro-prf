@@ -49,4 +49,42 @@ dentro do app (diálogos, arrastar, área de transferência, download). Marque c
 
 ## P1 — Texto Padrão
 
-Ver a seção abaixo, preenchida na Tarefa 20.
+**SEI SP de Treinamento, SEI 4.1.5 (CKEditor 4), unidade TESTE, 01/10/2026.** A gravação foi
+autorizada pelo autor. O texto de prova `[_SEIPRO_PROVA_1]` foi criado e **excluído na mesma
+execução** (ids 2724 e 2725, duas rodadas).
+
+Ferramentas: o núcleo em IIFE (`node sei-nucleo/build.mjs --saida`) injetado na aba,
+`Formulario.abrir/definir/enviar` com `modos: { txaConteudo: "html" }` e prova de sucesso pela volta
+à lista.
+
+**Telas e campos** (fixtures em `sei-nucleo/tests/fixtures/sei41/texto_padrao_{listar,cadastrar,alterar,consultar}.html`,
+com hashes zerados e nomes de terceiros trocados por neutros):
+- Formulário `#frmTextoPadraoInternoCadastro`, o mesmo nas três telas (o `action` muda).
+- Campos: `txtNome` (maxlength **50**), `txtDescricao` (maxlength **300**), `txaConteudo` (textarea do CK4) e `hdnIdTextoPadraoInterno`.
+- Botões: `sbmCadastrarTextoPadraoInterno` no cadastro e `sbmAlterarTextoPadraoInterno` na alteração. A consulta só tem "Fechar".
+- Novo: a URL de cadastro vem no `onclick` de `#btnNovo` (`location.href='…'`).
+- Exclusão: a função `acaoExcluir(id, desc)` da página põe o id em `hdnInfraItemId` e envia `#frmTextoPadraoInternoLista`. O `action` é a URL assinada de `texto_padrao_interno_excluir`, que está no próprio script.
+- A lista da unidade tinha 10 textos, **sem paginação**. A paginação continua sendo um caso a tratar na F3, para unidades com muitos textos.
+
+**Tamanho.** O conteúdo foi base64url em blocos `<p>` de 2.000 caracteres, precedidos de um `<p>` legível:
+
+| Conteúdo | Gravou | Leitura idêntica | Tempo (gravar + ler) |
+|---|---|---|---|
+| 10 KB | sim | sim | 1,9 s |
+| 60 KB | sim | sim | 2,1 s |
+| 120 KB | sim | sim | 2,2 s |
+| 250 KB | sim | sim | 2,8 s |
+| 1 MB | sim | sim | 6,1 s |
+
+**Filtro de XSS e codificação no 4.1.5:**
+- JSON cru com `<b>` e `&` passou e voltou igual.
+- JSON com aspas passou.
+- Acentos, travessão e aspas curvas voltaram intactos (`paraLatin1Seguro` em modo html).
+
+**O que muda na F3:**
+- O teto de 100 KB do spec **não** vem de limite do banco: o 4.1.5 aceitou 1 MB. Ele continua valendo
+  pelo outro motivo do spec, o CK5 baixar o conteúdo de todos os textos da unidade.
+- Base64url continua sendo a escolha, por robustez diante do editor (o CK5 ainda não foi medido) e do filtro de XSS das outras versões.
+- O ciclo criar → localizar pelo nome → alterar → consultar → excluir funciona com o `Formulario` do núcleo, sem código novo de infraestrutura.
+
+**SEI MJ de homologação 5.0.4:** ver abaixo.
