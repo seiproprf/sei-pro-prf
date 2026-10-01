@@ -54,10 +54,11 @@ export async function verificarControleSync(): Promise<void> {
   await c.iniciar("caixa");
   checar("sem consentimento, nao sincroniza", remoto.lidas === 0);
   // Outro SEI (outro host) liga a sincronia: esta unidade NÃO pode passar a sincronizar.
-  await definirTextoPadrao(sync, "outro.sei.gov.br", "999", "ligado");
+  await definirTextoPadrao(sync, "outro.sei.gov.br", "pedro.soares", "999", "ligado");
+  await definirTextoPadrao(sync, CTX.host, "outra.pessoa", CTX.unidade!.id, "ligado");
   await tique(30);
-  checar("ligar em outro SEI nao liga aqui (consentimento por unidade)", remoto.lidas === 0);
-  await definirTextoPadrao(sync, CTX.host, CTX.unidade!.id, "ligado");
+  checar("ligar em outro SEI, ou outro login no mesmo navegador, nao liga aqui (consentimento por login e unidade)", remoto.lidas === 0);
+  await definirTextoPadrao(sync, CTX.host, CTX.login, CTX.unidade!.id, "ligado");
   await tique(30);
   checar("ligou (de qualquer lugar): sincroniza na hora", remoto.lidas === 1 && remoto.html !== null);
   await repo.adicionar({ id: "1", protocolo: "50300.000001/2026-01" });
@@ -71,8 +72,8 @@ export async function verificarControleSync(): Promise<void> {
   checar(
     "apagar exclui o texto e desliga",
     remoto.excluido &&
-      estadoTextoPadrao(prefs, CTX.host, CTX.unidade!.id) === "desligado" &&
-      estadoTextoPadrao(prefs, "outro.sei.gov.br", "999") === "ligado" &&
+      estadoTextoPadrao(prefs, CTX.host, CTX.login, CTX.unidade!.id) === "desligado" &&
+      estadoTextoPadrao(prefs, "outro.sei.gov.br", "pedro.soares", "999") === "ligado" &&
       status?.estado === "nunca",
     {
       prefs,

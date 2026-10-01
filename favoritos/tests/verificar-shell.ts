@@ -41,6 +41,15 @@ export async function verificarShell(): Promise<void> {
   await tique();
   checar("zerou: sem numero", botao(raiz3, "Favoritos") !== undefined);
 
+  secao("painel lateral: pacote sem o favoritos novo (oficial ainda com o antigo)");
+  const doc4 = instalarDom('<html><body><div id="painel"></div></body></html>');
+  const raiz4 = doc4.getElementById("painel")!;
+  const s4 = await montarShell(raiz4, { sessao: areaMemoria({ painelAba: "favoritos" }), temAgente: true, temFavoritos: false, url });
+  checar(
+    "so o agente, sem a aba Favoritos que nunca conectaria",
+    s4.atual() === "agente" && raiz4.querySelectorAll("iframe").length === 1 && !raiz4.querySelector('[role="tablist"]'),
+  );
+
   secao("painel lateral: pacote sem o agente");
   const doc2 = instalarDom('<html><body><div id="painel"></div></body></html>');
   const raiz2 = doc2.getElementById("painel")!;

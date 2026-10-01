@@ -721,11 +721,11 @@ export class AppFavoritos {
 
   /** Consentimento do Texto Padrão desta unidade (ver preferencias.ts). */
   private estadoTP(): "nao-perguntado" | "ligado" | "desligado" {
-    return estadoTextoPadrao(this.prefs, this.d.ctx.host, this.d.ctx.unidade?.id ?? "");
+    return estadoTextoPadrao(this.prefs, this.d.ctx.host, this.login, this.d.ctx.unidade?.id ?? "");
   }
 
   private definirTP(v: "ligado" | "desligado"): Promise<unknown> {
-    return definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.ctx.unidade?.id ?? "", v);
+    return definirTextoPadrao(this.d.sync, this.d.ctx.host, this.login, this.d.ctx.unidade?.id ?? "", v);
   }
 
   private get escopoUnidade(): Escopo | null {

@@ -60,7 +60,7 @@ export async function buscarDocumentosAssinados(
     if (!a.buscar) {
       throw new ErroRpc(
         "PRECISA_BUSCAR",
-        "Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo. Se ele estiver aberto na sua unidade, o SEI vai registrá-lo como visualizado, como se você o abrisse.",
+        "Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo. Se ele estiver aberto na sua unidade, o SEI pode registrar o andamento “Processo recebido” em seu nome, ou marcá-lo como visualizado, como se você o abrisse.",
       );
     }
     origem = "busca";

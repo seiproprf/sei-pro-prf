@@ -158,7 +158,7 @@ export interface Preferencias {
   perguntarAoFavoritar: boolean;
   /** Obsoleto (era um só para todos os SEIs): valem as escolhas por unidade, abaixo. */
   textoPadrao: "nao-perguntado" | "ligado" | "desligado";
-  /** Consentimento do Texto Padrão POR UNIDADE (`host|idUnidade`): o texto é visível para aquela unidade. */
+  /** Consentimento do Texto Padrão por pessoa e unidade (`host|login|idUnidade`): o texto é visível para aquela unidade. */
   textoPadraoUnidades: Record<string, "ligado" | "desligado">;
   recolhido: boolean;
   agruparPorPasta: boolean;

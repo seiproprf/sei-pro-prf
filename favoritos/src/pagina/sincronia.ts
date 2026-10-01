@@ -57,7 +57,7 @@ export class ControleSincronia {
   constructor(private readonly d: DepsControle) {}
 
   private estado(p: Preferencias): "nao-perguntado" | "ligado" | "desligado" {
-    return estadoTextoPadrao(p, this.d.ctx.host, this.d.escopo.unidade?.id ?? "");
+    return estadoTextoPadrao(p, this.d.ctx.host, this.d.ctx.login, this.d.escopo.unidade?.id ?? "");
   }
 
   private criarMotor(): MotorSincronia {
@@ -125,7 +125,7 @@ export class ControleSincronia {
   /** "Apagar meus dados do SEI desta unidade": exclui o texto e desliga a sincronia. */
   async apagar(): Promise<boolean> {
     this.desligar();
-    await definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.escopo.unidade?.id ?? "", "desligado");
+    await definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.ctx.login, this.d.escopo.unidade?.id ?? "", "desligado");
     const excluiu = await this.d.armazem().excluir();
     await this.d.area.gravar({
       [chaveStatusTexto(this.d.escopo)]: { estado: "nunca", quando: Date.now(), pendente: false } satisfies StatusSync,

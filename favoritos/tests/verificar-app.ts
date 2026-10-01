@@ -262,8 +262,8 @@ export async function verificarApp(): Promise<void> {
   const prefSy = await lerPreferencias(sy.sync);
   checar(
     "ligar grava o consentimento DESTA unidade e tira o convite",
-    estadoTextoPadrao(prefSy, CTX.host, CTX.unidade!.id) === "ligado" &&
-      estadoTextoPadrao(prefSy, CTX.host, "outra") === "nao-perguntado" &&
+    estadoTextoPadrao(prefSy, CTX.host, CTX.login, CTX.unidade!.id) === "ligado" &&
+      estadoTextoPadrao(prefSy, CTX.host, CTX.login, "outra") === "nao-perguntado" &&
       !convite(),
     prefSy,
   );
@@ -301,7 +301,7 @@ export async function verificarApp(): Promise<void> {
   );
 
   // Na aba, o "apagar" desliga a unidade (pagina/sincronia.ts); aqui o rpc é falso, então desliga-se à mão.
-  await definirTextoPadrao(sy.sync, CTX.host, CTX.unidade!.id, "desligado");
+  await definirTextoPadrao(sy.sync, CTX.host, CTX.login, CTX.unidade!.id, "desligado");
   await tique(30);
   botao(sy.raiz, "Sincronização…")!.click();
   await tique(30);
@@ -318,7 +318,7 @@ export async function verificarApp(): Promise<void> {
   checar(
     "'Agora nao' desliga e some",
     !naoAgora.raiz.querySelector(".fav-convite-sync") &&
-      estadoTextoPadrao(await lerPreferencias(naoAgora.sync), CTX.host, CTX.unidade!.id) === "desligado",
+      estadoTextoPadrao(await lerPreferencias(naoAgora.sync), CTX.host, CTX.login, CTX.unidade!.id) === "desligado",
   );
 
   secao("app: copias diarias no dialogo de sincronizacao");

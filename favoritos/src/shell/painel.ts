@@ -21,6 +21,8 @@ export const CHAVE_ABA = "painelAba";
 export interface DepsShell {
   sessao: Area;
   temAgente: boolean;
+  /** O favoritos novo está no manifest (no pacote oficial ainda com o antigo, a aba nunca conectaria). Padrão: true. */
+  temFavoritos?: boolean;
   url(caminho: string): string;
   /** Aba pedida pelo endereço (`#aba=agente`), quando o painel abre numa janela comum (Firefox). */
   abaDoEndereco?: AbaPainel | null;
@@ -39,7 +41,9 @@ interface DefAba {
 
 export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mostrar(aba: AbaPainel): void; atual(): AbaPainel }> {
   const defs: DefAba[] = [
-    { id: "favoritos", rotulo: "Favoritos", caminho: "html/favoritos.html#modo=lateral", titulo: "Favoritos do SEI Pro" },
+    ...(d.temFavoritos !== false
+      ? [{ id: "favoritos", rotulo: "Favoritos", caminho: "html/favoritos.html#modo=lateral", titulo: "Favoritos do SEI Pro" } as const]
+      : []),
     ...(d.temAgente
       ? [{ id: "agente", rotulo: "Agente de IA", caminho: "html/agente.html", titulo: "Agente de IA do SEI Pro" } as const]
       : []),
@@ -47,7 +51,7 @@ export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mo
   const frames = new Map<AbaPainel, HTMLIFrameElement>();
   const botoes = new Map<AbaPainel, HTMLButtonElement>();
   const corpo = h("div", { class: "painel-corpo" });
-  let atual: AbaPainel = "favoritos";
+  let atual: AbaPainel = defs[0]?.id ?? "agente";
 
   const valida = (v: unknown): AbaPainel | null => (defs.some((x) => x.id === v) ? (v as AbaPainel) : null);
 
@@ -100,7 +104,7 @@ export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mo
     });
   }
   const gravada = (await d.sessao.obter(CHAVE_ABA).catch(() => ({}) as Record<string, unknown>))[CHAVE_ABA];
-  mostrar(valida(d.abaDoEndereco) ?? valida(gravada) ?? "favoritos");
+  mostrar(valida(d.abaDoEndereco) ?? valida(gravada) ?? defs[0]?.id ?? "agente");
   d.sessao.aoMudar((m) => {
     const nova = valida(m[CHAVE_ABA]?.novo);
     if (nova && nova !== atual) mostrar(nova);

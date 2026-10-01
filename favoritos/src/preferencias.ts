@@ -13,17 +13,28 @@ export async function gravarPreferencias(sync: Area, m: Partial<Preferencias>): 
   return nova;
 }
 
-/** O consentimento é de cada unidade: o texto fica visível para ELA, e ligar numa não liga nas outras. */
-export function estadoTextoPadrao(p: Preferencias, host: string, idUnidade: string): "nao-perguntado" | "ligado" | "desligado" {
-  return p.textoPadraoUnidades?.[`${host}|${idUnidade}`] ?? "nao-perguntado";
+/**
+ * O consentimento é de cada pessoa em cada unidade: o texto fica visível para ELA, ligar numa não liga
+ * nas outras, e outro usuário do SEI no mesmo perfil do navegador não herda o "ligado".
+ */
+const chaveTP = (host: string, login: string, idUnidade: string) => `${host}|${login.trim().toLowerCase()}|${idUnidade}`;
+
+export function estadoTextoPadrao(
+  p: Preferencias,
+  host: string,
+  login: string,
+  idUnidade: string,
+): "nao-perguntado" | "ligado" | "desligado" {
+  return p.textoPadraoUnidades?.[chaveTP(host, login, idUnidade)] ?? "nao-perguntado";
 }
 
 export async function definirTextoPadrao(
   sync: Area,
   host: string,
+  login: string,
   idUnidade: string,
   valor: "ligado" | "desligado",
 ): Promise<Preferencias> {
   const p = await lerPreferencias(sync);
-  return gravarPreferencias(sync, { textoPadraoUnidades: { ...(p.textoPadraoUnidades ?? {}), [`${host}|${idUnidade}`]: valor } });
+  return gravarPreferencias(sync, { textoPadraoUnidades: { ...(p.textoPadraoUnidades ?? {}), [chaveTP(host, login, idUnidade)]: valor } });
 }

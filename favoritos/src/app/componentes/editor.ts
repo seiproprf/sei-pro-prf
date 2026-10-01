@@ -205,7 +205,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
       // O aviso do efeito colateral é do app, e não da mensagem que veio da aba.
       const texto =
         codigo === "PRECISA_BUSCAR"
-          ? "Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo. Se ele estiver aberto na sua unidade, o SEI vai registrá-lo como visualizado, como se você o abrisse."
+          ? "Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo. Se ele estiver aberto na sua unidade, o SEI pode registrar o andamento “Processo recebido” em seu nome, ou marcá-lo como visualizado, como se você o abrisse."
           : e instanceof Error
             ? e.message
             : String(e);

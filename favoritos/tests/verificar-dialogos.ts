@@ -159,7 +159,7 @@ export async function verificarDialogos(): Promise<void> {
   await tique(10);
   checar(
     "sem a arvore aberta, explica o efeito e pede confirmacao",
-    /visualizado/.test(ed3.textContent ?? "") && !!botao(ed3, "Buscar no SEI"),
+    /visualizado/.test(ed3.textContent ?? "") && /Processo recebido/.test(ed3.textContent ?? "") && !!botao(ed3, "Buscar no SEI"),
   );
   botao(ed3, "Buscar no SEI")!.click();
   await tique(10);
