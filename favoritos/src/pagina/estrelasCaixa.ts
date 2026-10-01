@@ -8,13 +8,31 @@
 import { lerLinhaCaixa } from "@nucleo/dominio/caixa";
 import type { DadosProcesso } from "../modelo/tipos";
 import { instalarEstilo } from "./estilo";
+import { delegarEstrelas } from "./cliques";
 import { atualizarEstrela, criarEstrela } from "./estrela";
 import type { ServicoFavoritosPagina } from "./servico";
 
-const LINHAS = "#tblProcessosRecebidos tr[id^='P'], #tblProcessosGerados tr[id^='P'], #tblProcessosDetalhado tr[id^='P']";
+// Qualquer linha de processo da caixa, inclusive as que o legado clona para outras tabelas ao agrupar.
+const LINHAS = "tr[id^='P']";
+
+function dadosDaLinhaCaixa(tr: Element): DadosProcesso | null {
+  const linha = lerLinhaCaixa(tr, tr.closest("#tblProcessosGerados") ? "gerados" : "recebidos");
+  if (!linha?.idProcedimento) return null;
+  return {
+    id: linha.idProcedimento,
+    protocolo: linha.protocolo,
+    tipo: linha.tipo || undefined,
+    especificacao: linha.especificacao || undefined,
+    sigiloso: linha.sigiloso,
+  };
+}
 
 export function instalarEstrelasCaixa(doc: Document, servico: ServicoFavoritosPagina): { atualizar(): void; desligar(): void } {
   instalarEstilo(doc);
+  delegarEstrelas(doc, servico, (estrela) => {
+    const tr = estrela.closest(LINHAS);
+    return tr ? dadosDaLinhaCaixa(tr) : null;
+  });
   const atualizar = () => {
     for (const tr of doc.querySelectorAll(LINHAS)) {
       const existente = tr.querySelector<HTMLButtonElement>(".spro-fav-estrela");
@@ -22,17 +40,10 @@ export function instalarEstrelasCaixa(doc: Document, servico: ServicoFavoritosPa
         atualizarEstrela(existente, servico.ativo(tr.id.slice(1)));
         continue;
       }
-      const linha = lerLinhaCaixa(tr, tr.closest("#tblProcessosGerados") ? "gerados" : "recebidos");
+      const dados = dadosDaLinhaCaixa(tr);
       const td = tr.querySelectorAll("td")[1];
-      if (!linha || !td || !linha.idProcedimento) continue;
-      const dados: DadosProcesso = {
-        id: linha.idProcedimento,
-        protocolo: linha.protocolo,
-        tipo: linha.tipo || undefined,
-        especificacao: linha.especificacao || undefined,
-        sigiloso: linha.sigiloso,
-      };
-      td.prepend(criarEstrela(servico.ativo(dados.id), (b) => void servico.alternar(dados, b)));
+      if (!dados || !td) continue;
+      td.prepend(criarEstrela(servico.ativo(dados.id)));
     }
   };
   let pendente = false;

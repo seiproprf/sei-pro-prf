@@ -4,6 +4,7 @@ import { parametros } from "@nucleo/links/links";
 import { textoDe } from "@nucleo/sessao/dom";
 import type { DadosProcesso } from "../modelo/tipos";
 import { instalarEstilo } from "./estilo";
+import { delegarEstrelas } from "./cliques";
 import { atualizarEstrela, criarEstrela } from "./estrela";
 import type { ServicoFavoritosPagina } from "./servico";
 
@@ -20,6 +21,10 @@ export function dadosDaLinhaLista(tr: Element): DadosProcesso | null {
 
 export function instalarEstrelasListas(doc: Document, servico: ServicoFavoritosPagina): { atualizar(): void; desligar(): void } {
   instalarEstilo(doc);
+  delegarEstrelas(doc, servico, (estrela) => {
+    const tr = estrela.closest("tr");
+    return tr?.closest(TABELAS) ? dadosDaLinhaLista(tr) : null;
+  });
   const atualizar = () => {
     for (const tabela of doc.querySelectorAll(TABELAS)) {
       for (const tr of tabela.querySelectorAll("tr")) {
@@ -28,7 +33,7 @@ export function instalarEstrelasListas(doc: Document, servico: ServicoFavoritosP
         if (!dados || !td) continue;
         const existente = td.querySelector<HTMLButtonElement>(".spro-fav-estrela");
         if (existente) atualizarEstrela(existente, servico.ativo(dados.id));
-        else td.prepend(criarEstrela(servico.ativo(dados.id), (b) => void servico.alternar(dados, b)));
+        else td.prepend(criarEstrela(servico.ativo(dados.id)));
       }
     }
   };

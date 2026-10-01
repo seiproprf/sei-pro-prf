@@ -89,7 +89,30 @@ export async function verificarPagina(): Promise<void> {
   caixaUI.atualizar();
   caixaUI.atualizar();
   checar("linha que chega depois ganha UMA estrela", nova.querySelectorAll(".spro-fav-estrela").length === 1);
+  // O legado CLONA as linhas quando agrupa a caixa (getTableOnTag, appendGerados): o clone leva
+  // o botao, mas nao o ouvinte de addEventListener. A estrela clonada precisa funcionar.
+  const clonada = nova.cloneNode(true) as Element;
+  clonada.id = "P998";
+  clonada.querySelector("input[type=checkbox]")?.setAttribute("value", "998");
+  nova.replaceWith(clonada);
+  (clonada.querySelector(".spro-fav-estrela") as HTMLButtonElement).click();
+  await tique();
+  checar("estrela de linha clonada pelo legado continua funcionando", await repos.unidade.contem("998"));
   caixaUI.desligar();
+
+  secao("pagina: falha ao gravar nao passa em silencio");
+  const areaQuebrada = { ...areaMemoria(), gravar: async () => Promise.reject(new Error("cota excedida")) };
+  const repoQuebrado = new RepositorioFavoritos(areaQuebrada, esc.unidade!, carimbo);
+  const servicoQuebrado = new ServicoFavoritosPagina({ unidade: repoQuebrado, pessoal: new RepositorioFavoritos(areaQuebrada, esc.pessoal, carimbo) });
+  await servicoQuebrado.carregar();
+  const docErro = instalarDom(
+    '<html><body><form id="frmRelBlocoProtocoloLista"><table class="infraTable"><tr><td></td><td></td><td><a href="controlador.php?acao=procedimento_trabalhar&id_procedimento=55&infra_hash=0">55/2026</a></td></tr></table></form></body></html>',
+  );
+  instalarEstrelasListas(docErro, servicoQuebrado);
+  const estrelaErro = docErro.querySelector(".spro-fav-estrela") as HTMLButtonElement;
+  estrelaErro.click();
+  await tique(20);
+  checar("estrela avisa que nao gravou", estrelaErro.hasAttribute("data-erro") && (estrelaErro.getAttribute("title") ?? "").includes("Não foi possível"), estrelaErro.getAttribute("title"));
 
   secao("pagina: estrelas em blocos, acompanhamento e sobrestados");
   const docLista = instalarDom(

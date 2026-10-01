@@ -1,13 +1,12 @@
 import { h, icone } from "@comum/ui/dom";
 
-/** Botão de verdade (teclado, leitor de tela), no lugar do <i onclick> do legado. */
-export function criarEstrela(ativo: boolean, aoClicar: (b: HTMLButtonElement) => void): HTMLButtonElement {
+/**
+ * Botão de verdade (teclado, leitor de tela), no lugar do <i onclick> do legado.
+ * Sem ouvinte próprio: o clique é delegado ao documento (cliques.ts), para a
+ * estrela continuar funcionando quando o legado clona a linha.
+ */
+export function criarEstrela(ativo: boolean): HTMLButtonElement {
   const b = h("button", { type: "button", class: "spro-fav-estrela" });
-  b.addEventListener("click", (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    aoClicar(b);
-  });
   atualizarEstrela(b, ativo);
   return b;
 }

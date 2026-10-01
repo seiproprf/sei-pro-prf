@@ -9,6 +9,7 @@ import type { DadosProcesso } from "../modelo/tipos";
 import { paginaDe } from "./contexto";
 import { esperar } from "./esperar";
 import { instalarEstilo } from "./estilo";
+import { delegarEstrelas } from "./cliques";
 import { atualizarEstrela, criarEstrela } from "./estrela";
 import type { ServicoFavoritosPagina } from "./servico";
 
@@ -29,7 +30,8 @@ export async function instalarEstrelaArvore(doc: Document, servico: ServicoFavor
   const no = await esperar(() => doc.querySelector(NO_DO_PROCESSO), 10_000);
   if (!no || no.parentElement?.querySelector(".spro-fav-estrela")) return false;
   instalarEstilo(doc);
-  const estrela = criarEstrela(servico.ativo(dados.id), (b) => void servico.alternar(dados, b));
+  delegarEstrelas(doc, servico, (b) => (b.closest("#topmenu") ? dados : null));
+  const estrela = criarEstrela(servico.ativo(dados.id));
   no.after(estrela);
   servico.aoMudar(() => atualizarEstrela(estrela, servico.ativo(dados.id)));
   return true;
