@@ -16,5 +16,8 @@
     "linkedom": "^0.18.13",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "fractional-indexing": "^3.4.0"
   }
 }
