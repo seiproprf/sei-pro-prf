@@ -98,7 +98,10 @@ const mesmoEscopo = (a: Escopo, b: Escopo) =>
   a.lista === b.lista &&
   (a.unidade?.id ?? "") === (b.unidade?.id ?? "");
 
-export async function lerConteudoDoTexto(html: string, escopo: Escopo): Promise<{ envelope: Envelope } | { invalido: string }> {
+export async function lerConteudoDoTexto(
+  html: string,
+  escopo: Escopo,
+): Promise<{ envelope: Envelope } | { invalido: string } | { maisNovo: true }> {
   const b64 = deParagrafos(html);
   if (!b64) return { invalido: "o texto não tem os dados do SEI Pro (foi editado ou está vazio)" };
   let bruto: unknown;
@@ -107,6 +110,9 @@ export async function lerConteudoDoTexto(html: string, escopo: Escopo): Promise<
   } catch {
     return { invalido: "os dados do texto estão corrompidos" };
   }
+  // Gravado por uma versão mais nova do SEI Pro: não é "inválido", e esta versão não pode regravar por cima.
+  const b = bruto as { formato?: unknown; versao?: unknown } | null;
+  if (b?.formato === "seipro-favoritos" && typeof b.versao === "number" && b.versao > 1) return { maisNovo: true };
   const lido = lerEnvelope(bruto);
   if (!lido) return { invalido: "o texto não está no formato dos favoritos" };
   const e = lido.envelope.escopos;

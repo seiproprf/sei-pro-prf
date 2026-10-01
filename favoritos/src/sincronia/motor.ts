@@ -121,6 +121,15 @@ export class MotorSincronia {
       let idsRemotos = new Set<string>();
       if (remoto !== null) {
         const r = await lerConteudoDoTexto(remoto, this.d.escopo);
+        if ("maisNovo" in r) {
+          return this.gravarStatus({
+            estado: "erro",
+            quando: agora,
+            ultimoPuxar: agora,
+            mensagem:
+              "Os favoritos no SEI foram gravados por uma versão mais nova do SEI Pro. Atualize a extensão neste computador; o texto não foi alterado.",
+          });
+        }
         if ("envelope" in r) {
           await this.d.repo.importar(r.envelope.escopos[0]!);
           assinaturaRemota = assinaturaEnvelope(r.envelope);

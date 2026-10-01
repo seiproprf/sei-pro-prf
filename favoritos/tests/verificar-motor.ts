@@ -1,4 +1,5 @@
 import { areaMemoria } from "@comum/armazenamento/area";
+import { codificar, paraParagrafos } from "@comum/sincronia/codec";
 import { escoposDoContexto } from "../src/modelo/escopo";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { MotorSincronia, type StatusSync } from "../src/sincronia/motor";
@@ -128,4 +129,15 @@ export async function verificarMotor(): Promise<void> {
   );
   await tique(60);
   checar("duas mudancas seguidas: um envio so", m8.destino.lidas === 1 && m8.destino.gravadas === 1, m8.destino);
+
+  secao("motor: texto gravado por versao mais nova do SEI Pro");
+  const futuro = paraParagrafos("Dados internos do SEI Pro", await codificar({ formato: "seipro-favoritos", versao: 2, escopos: [] }));
+  const m9 = montar({ remoto: futuro });
+  await m9.repo.adicionar({ id: "1", protocolo: "50300.000001/2026-01" });
+  const s9 = await m9.motor.sincronizar();
+  checar(
+    "nao regrava por cima e pede para atualizar a extensao",
+    m9.destino.gravadas === 0 && s9.estado === "erro" && /mais nova/i.test(s9.mensagem ?? ""),
+    s9,
+  );
 }

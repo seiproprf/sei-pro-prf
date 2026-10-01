@@ -252,21 +252,22 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
           dono: { host: ctx.host, login: ctx.login.toLowerCase() },
           handles: handlesNoIndexedDB(),
           carimbo: b.carimbo,
-          escolher: (modo) => escolherArquivoSync(modo),
+          // Um arquivo por SEI e usuário: dois SEIs no mesmo arquivo funcionam, mas cada um fica mais simples sozinho.
+          escolher: (modo) => escolherArquivoSync(modo, `favoritos-seipro-${ctx.login.toLowerCase()}-${ctx.host}.json`),
         })
       : null,
   });
 }
 
 /** Seletor de arquivo do navegador (File System Access). Cancelar devolve null. */
-async function escolherArquivoSync(modo: "novo" | "existente"): Promise<HandleArquivo | null> {
+async function escolherArquivoSync(modo: "novo" | "existente", nomeSugerido = "favoritos-seipro.json"): Promise<HandleArquivo | null> {
   const tipos = [{ description: "Favoritos do SEI Pro", accept: { "application/json": [".json"] } }];
   const w = window as unknown as {
     showSaveFilePicker(o: unknown): Promise<HandleArquivo>;
     showOpenFilePicker(o: unknown): Promise<HandleArquivo[]>;
   };
   try {
-    if (modo === "novo") return await w.showSaveFilePicker({ suggestedName: "favoritos-seipro.json", types: tipos });
+    if (modo === "novo") return await w.showSaveFilePicker({ suggestedName: nomeSugerido, types: tipos });
     return (await w.showOpenFilePicker({ types: tipos, multiple: false }))[0] ?? null;
   } catch (e) {
     if ((e as { name?: string }).name === "AbortError") return null;

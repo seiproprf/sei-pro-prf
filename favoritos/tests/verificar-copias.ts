@@ -113,4 +113,57 @@ export async function verificarControleArquivo(): Promise<void> {
   checar("mudanca local vai para o arquivo depois do intervalo", conteudo.includes("50300.000002/2026-02"));
   await c.esquecer();
   checar("parar de usar o arquivo", !(await c.configurado()) && (await c.status()) === null);
+
+  secao("arquivo: compartilhado entre dois SEIs nao apaga as listas do outro");
+  const outroDono = {
+    formato: "seipro-favoritos",
+    versao: 1,
+    gravadoEm: 1,
+    dispositivo: "Z",
+    revisao: 0,
+    escopos: [
+      {
+        escopo: { host: "sei.outro.gov.br", login: "maria", lista: "pessoal" },
+        favoritos: [{ id: "77", protocolo: "OUTRO-77", etiquetas: [], ordem: "a0", criadoEm: 1, atualizadoEm: 1, dispositivo: "Z" }],
+        pastas: [],
+        etiquetas: [],
+      },
+    ],
+  };
+  let conteudo2 = JSON.stringify(outroDono);
+  const areaD = areaMemoria();
+  const repoD = new RepositorioFavoritos(areaD, escoposDoContexto(CTX).unidade!, () => ({ agora: ++t, dispositivo: "D" }));
+  await repoD.registrar();
+  await repoD.adicionar({ id: "5", protocolo: "MEU-5" });
+  const sD = new SincroniaArquivo({
+    area: areaD,
+    dono,
+    arquivo: { ler: async () => conteudo2, gravar: async (x: string) => void (conteudo2 = x) },
+    carimbo: () => ({ agora: ++t, dispositivo: "D" }),
+  });
+  const rD = await sD.sincronizar();
+  checar(
+    "mantem a lista do outro SEI e grava a minha",
+    conteudo2.includes("OUTRO-77") && conteudo2.includes("MEU-5"),
+    conteudo2.slice(0, 200),
+  );
+  checar("e avisa que o arquivo tem listas de outro usuario ou SEI", /outro/i.test(rD.mensagem ?? ""), rD);
+
+  secao("versao mais nova do SEI Pro: nao regrava por cima");
+  let conteudo3 = JSON.stringify({ formato: "seipro-favoritos", versao: 2, escopos: [] });
+  let gravou = false;
+  const sN = new SincroniaArquivo({
+    area: areaD,
+    dono,
+    arquivo: {
+      ler: async () => conteudo3,
+      gravar: async (x: string) => {
+        gravou = true;
+        conteudo3 = x;
+      },
+    },
+    carimbo: () => ({ agora: ++t, dispositivo: "D" }),
+  });
+  const rN = await sN.sincronizar();
+  checar("arquivo de versao mais nova nao e sobrescrito", !gravou && rN.estado === "erro" && /mais nova/i.test(rN.mensagem ?? ""), rN);
 }

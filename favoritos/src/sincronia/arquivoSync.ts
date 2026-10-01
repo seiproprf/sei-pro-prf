@@ -39,27 +39,49 @@ export class SincroniaArquivo {
       const texto = await this.d.arquivo.ler();
       let remota = "";
       let invalido = false;
+      let outros: Envelope["escopos"] = [];
       if (texto.trim()) {
-        let env: Envelope | null = null;
+        let bruto: unknown = null;
         try {
-          env = lerEnvelope(JSON.parse(texto.replace(/^\uFEFF/, "")))?.envelope ?? null;
+          bruto = JSON.parse(texto.replace(/^\uFEFF/, ""));
         } catch {
-          env = null;
+          bruto = null;
         }
+        // Gravado por uma versão mais nova do SEI Pro: esta não entende o formato e não pode regravar por cima.
+        const b = bruto as { formato?: unknown; versao?: unknown } | null;
+        if (b?.formato === "seipro-favoritos" && typeof b.versao === "number" && b.versao > 1) {
+          return this.status({
+            estado: "erro",
+            quando: agora,
+            nome: this.d.nome,
+            mensagem:
+              "O arquivo foi gravado por uma versão mais nova do SEI Pro. Atualize a extensão neste computador; o arquivo não foi alterado.",
+          });
+        }
+        const env = bruto === null ? null : (lerEnvelope(bruto)?.envelope ?? null);
         if (env) {
           await importarEnvelope(this.d.area, env, this.d.carimbo, this.d.dono);
           remota = assinaturaEnvelope(env);
+          // Listas de outro SEI ou usuário (o mesmo arquivo escolhido em dois lugares): ficam como estão.
+          outros = env.escopos.filter(
+            (e) => e.escopo.host !== this.d.dono.host || e.escopo.login.toLowerCase() !== this.d.dono.login.toLowerCase(),
+          );
         } else {
           invalido = true;
         }
       }
-      const local = await exportarTudo(this.d.area, this.d.dono.host, this.d.dono.login, this.d.carimbo());
+      const meu = await exportarTudo(this.d.area, this.d.dono.host, this.d.dono.login, this.d.carimbo());
+      const local: Envelope = { ...meu, escopos: [...meu.escopos, ...outros] };
       if (!texto.trim() || invalido || assinaturaEnvelope(local) !== remota) await this.d.arquivo.gravar(JSON.stringify(local, null, 2));
       return this.status({
         estado: "ok",
         quando: agora,
         nome: this.d.nome,
-        mensagem: invalido ? "O arquivo estava ilegível e foi regravado a partir deste computador." : undefined,
+        mensagem: invalido
+          ? "O arquivo estava ilegível e foi regravado a partir deste computador."
+          : outros.length
+            ? `O arquivo também tem ${outros.length === 1 ? "uma lista" : `${outros.length} listas`} de outro usuário ou outro SEI, que foram mantidas.`
+            : undefined,
       });
     } catch (e) {
       const nome = (e as { name?: string } | null)?.name;
