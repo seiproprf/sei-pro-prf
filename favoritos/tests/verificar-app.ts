@@ -2,6 +2,7 @@ import { areaMemoria } from "@comum/armazenamento/area";
 import { type AbrirModal, AppFavoritos, type DepsApp } from "../src/app/app";
 import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
+import { chaveProgresso } from "../src/pagina/atualizar";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { copiasEmMemoria } from "../src/sincronia/copias";
@@ -401,4 +402,23 @@ export async function verificarApp(): Promise<void> {
   botao(at.raiz, "Atualizar fora da unidade (1)")!.click();
   await tique(30);
   checar("da segunda vez roda direto", at.chamadas.filter(([op]) => op === "atualizarForaDaUnidade").length === 2);
+
+  secao("app: progresso do Atualizar");
+  const pg = montar();
+  await pg.app.iniciar();
+  await pg.area.gravar({
+    [chaveProgresso(CTX.host, CTX.login)]: { feitos: 2, total: 5, atual: "50300.000003/2026-03", quando: Date.now() },
+  });
+  await tique(40);
+  const faixaP = () => pg.raiz.querySelector(".fav-progresso");
+  checar("mostra o andamento da atualizacao", /2 de 5/.test(faixaP()?.textContent ?? ""), faixaP()?.textContent);
+  botao(faixaP()!, "Cancelar")!.click();
+  await tique(20);
+  checar(
+    "cancelar pede a aba",
+    pg.chamadas.some(([op]) => op === "cancelarAtualizacao"),
+  );
+  await pg.area.gravar({ [chaveProgresso(CTX.host, CTX.login)]: { feitos: 5, total: 5, fim: true, quando: Date.now() } });
+  await tique(40);
+  checar("no fim a faixa some", !faixaP());
 }

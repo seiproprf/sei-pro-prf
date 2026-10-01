@@ -31,6 +31,7 @@ import {
   type TipoLista,
 } from "../modelo/tipos";
 import { montarOpcoesExibicao } from "../opcoes/exibicao";
+import { chaveProgresso, type ProgressoAtualizacao } from "../pagina/atualizar";
 import type { DocumentoAssinado } from "../pagina/documentos";
 import { chaveStatusTexto } from "../pagina/sincronia";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
@@ -193,6 +194,7 @@ export class AppFavoritos {
     await this.verificarFaixaUnidade();
     this.convidarSincronia();
     this.ligarStatusSync();
+    this.ligarProgressoAtualizar();
     void this.copiaDoDia();
     void this.d.arquivo?.sincronizar().catch(() => undefined);
     await this.oferecerMigracao(false);
@@ -420,6 +422,38 @@ export class AppFavoritos {
       ),
     );
     modal = this.d.abrirModal({ titulo: "Atualizar fora da unidade", conteudo });
+  }
+
+  /** Faixa "Atualizando 3 de 12…" enquanto a aba lê os favoritos fora da unidade. */
+  private ligarProgressoAtualizar(): void {
+    const chave = chaveProgresso(this.d.ctx.host, this.login);
+    let faixa: HTMLElement | null = null;
+    const pintar = (p: ProgressoAtualizacao | undefined) => {
+      const ativo = p && !p.fim && Date.now() - ((p as { quando?: number }).quando ?? 0) < 10 * 60_000;
+      if (!ativo) {
+        faixa?.remove();
+        faixa = null;
+        this.d.aoRedesenhar?.();
+        return;
+      }
+      faixa ??= h("div", { class: "fav-faixa fav-progresso", role: "status" });
+      faixa.replaceChildren(
+        h("span", {}, `Atualizando ${p.feitos} de ${p.total}${p.atual ? ` (${p.atual})` : ""}…`),
+        h(
+          "button",
+          { type: "button", class: "spro-botao", onclick: () => void this.d.rpc.chamar("cancelarAtualizacao").catch(() => undefined) },
+          "Cancelar",
+        ),
+      );
+      if (!faixa.isConnected) this.el.faixas.append(faixa);
+      this.d.aoRedesenhar?.();
+    };
+    void this.d.area.obter(chave).then((v) => pintar(v[chave] as ProgressoAtualizacao | undefined));
+    this.parar.push(
+      this.d.area.aoMudar((m) => {
+        if (chave in m) pintar(m[chave]?.novo as ProgressoAtualizacao | undefined);
+      }),
+    );
   }
 
   private abrirLembrete(f: Favorito): void {
