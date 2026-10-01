@@ -1,0 +1,13 @@
+html, body { height: 100%; margin: 0; background: var(--spro-fundo); color: var(--spro-texto); font: 13px/1.4 var(--spro-fonte); }
+#painel { height: 100%; display: flex; flex-direction: column; }
+.painel-abas { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--spro-borda); flex: none; }
+.painel-abas button {
+  all: unset; cursor: pointer; padding: 6px 12px; border-radius: var(--spro-raio) var(--spro-raio) 0 0;
+  color: var(--spro-suave); border: 1px solid transparent; border-bottom: 0; margin-bottom: -1px;
+}
+.painel-abas button:hover { color: var(--spro-texto); }
+.painel-abas button:focus-visible { outline: 2px solid var(--spro-destaque); }
+.painel-abas button[aria-selected="true"] { color: var(--spro-destaque); font-weight: 600; background: var(--spro-fundo); border-color: var(--spro-borda); }
+.painel-corpo { flex: 1; min-height: 0; position: relative; }
+.painel-corpo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.painel-corpo iframe[hidden] { display: none; }

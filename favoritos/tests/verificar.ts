@@ -12,6 +12,7 @@ import { verificarPagina } from "./verificar-pagina";
 import { verificarPainel } from "./verificar-painel";
 import { verificarPrazo } from "./verificar-prazo";
 import { verificarRepositorio } from "./verificar-repositorio";
+import { verificarShell } from "./verificar-shell";
 
 verificarModelo();
 verificarPrazo();
@@ -27,4 +28,5 @@ verificarLegado();
 verificarExibicao();
 await verificarLateralAba();
 await verificarLateralApp();
+await verificarShell();
 resumo();
