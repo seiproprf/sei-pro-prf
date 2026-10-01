@@ -42,3 +42,4 @@ export { listarOpcoes, type ListaOpcoes, type OpcaoSei } from "./dominio/opcoes"
 export { enviarProcesso, assinarDocumento, type Envio, type Assinatura } from "./dominio/tramitacao";
 export { excluirDocumento, cancelarDocumento, cancelarAssinatura, darCiencia } from "./dominio/acoesDocumento";
 export { pesquisar, type CriteriosPesquisa, type ResultadoPesquisa } from "./dominio/pesquisa";
+export { criarArmazemTextoPadrao, type ArmazemTextoPadrao, type TextoLocalizado } from "./dominio/textoPadrao";
