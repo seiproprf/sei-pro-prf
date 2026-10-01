@@ -8,9 +8,9 @@ import { CTX } from "./verificar-modelo";
 export async function verificarSincroniaTexto(): Promise<void> {
   secao("sincronia: nome do texto");
   checar("login curto", nomeDoTexto("Pedro.Soares") === "[_SEIPRO_FAV_pedro.soares]");
-  const longo = nomeDoTexto("a".repeat(30) + "@orgao.gov.br");
+  const longo = nomeDoTexto(`${"a".repeat(30)}@orgao.gov.br`);
   checar("login longo cabe em 50 com hash", longo.length === 50 && /^\[_SEIPRO_FAV_a{27}~[0-9a-f]{8}\]$/.test(longo), longo);
-  checar("logins longos diferentes nao colidem", nomeDoTexto("a".repeat(30) + "@x.gov.br") !== nomeDoTexto("a".repeat(30) + "@y.gov.br"));
+  checar("logins longos diferentes nao colidem", nomeDoTexto(`${"a".repeat(30)}@x.gov.br`) !== nomeDoTexto(`${"a".repeat(30)}@y.gov.br`));
 
   secao("sincronia: envelope da unidade");
   const area = areaMemoria();
