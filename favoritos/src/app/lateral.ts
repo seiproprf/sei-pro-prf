@@ -11,7 +11,9 @@ import type { Area } from "@comum/armazenamento/area";
 import { type AbaCandidata, abridorDe, escolherAba } from "@comum/ponte/abertura";
 import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { CHAVE_LATERAL } from "../modelo/constantes";
-import type { ContextoAba } from "../modelo/tipos";
+
+export { chaveDoContexto } from "../modelo/escopo";
+
 import type { EstadoAba } from "../pagina/lateral";
 
 export interface AbaLateral extends AbaCandidata {
@@ -31,10 +33,6 @@ export interface DepsLadoApp {
   /** Janela deste painel; -1 quando o navegador não informa (aceita todas). */
   janela: number;
   novoId(): string;
-}
-
-export function chaveDoContexto(ctx: Pick<ContextoAba, "host" | "login" | "unidade">): string {
-  return [ctx.host, ctx.login.toLowerCase(), ctx.unidade?.id ?? ""].join("|");
 }
 
 export class PonteLateral {

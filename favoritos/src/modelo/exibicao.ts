@@ -6,8 +6,9 @@
 
 import type { Preferencias } from "./tipos";
 
-export function temPainelLateral(manifesto: { side_panel?: unknown; sidebar_action?: unknown }): boolean {
-  return Boolean(manifesto.side_panel || manifesto.sidebar_action);
+export function temPainelLateral(manifesto: object): boolean {
+  const m = manifesto as { side_panel?: unknown; sidebar_action?: unknown };
+  return Boolean(m.side_panel || m.sidebar_action);
 }
 
 export function ondeMostrar(exibir: Preferencias["exibir"], lateral: boolean): { abaixo: boolean; lateral: boolean } {

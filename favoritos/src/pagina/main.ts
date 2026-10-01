@@ -9,20 +9,23 @@
 import { type Area, areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
-import { criarRpc, type Rpc } from "@comum/ponte/rpc";
+import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
 import { lerArquivoAntigo } from "../migracao/fontes";
-import { CANAL_FAVORITOS } from "../modelo/constantes";
-import { escoposDoContexto } from "../modelo/escopo";
+import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_PREFERENCIAS } from "../modelo/constantes";
+import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
+import { ondeMostrar, temPainelLateral } from "../modelo/exibicao";
 import type { ContextoAba, Favorito, TipoLista } from "../modelo/tipos";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { abrirBalao } from "./balao";
+import { instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral } from "./botao";
 import { contextoDe, documentoTopo, temaEscuroLegado } from "./contexto";
 import { instalarEstrelaArvore } from "./estrelaArvore";
 import { instalarEstrelasCaixa } from "./estrelasCaixa";
 import { instalarEstrelasListas } from "./estrelasListas";
 import { tratadoresDaAba } from "./executor";
+import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
 import { montarPainel, ordemLegada } from "./painel";
 import { ServicoFavoritosPagina } from "./servico";
@@ -47,14 +50,25 @@ function qualTela(doc: Document): "caixa" | "arvore" | "listas" | null {
 }
 
 async function principal(): Promise<void> {
+  const noTopo = window === window.top;
   const tela = qualTela(document);
-  if (!tela) return;
+  // A janela de topo de qualquer tela com sessão atende o painel lateral; os frames, só as telas conhecidas.
+  if (!tela && !noTopo) return;
   if (!(await lerOpcaoLegada("gerenciarfavoritos"))) return;
   const topo = documentoTopo();
   const ctx = contextoDe(topo, temaEscuroLegado(localStorage), topo.location?.href);
   if (!ctx) return;
   const area = areaChrome(chrome.storage.local, "local");
   const sync = areaChrome(chrome.storage.sync, "sync");
+  const lateral = temPainelLateral(chrome.runtime.getManifest());
+  const abrirLateral = () =>
+    pedirPainelLateral(
+      (m) => chrome.runtime.sendMessage(m),
+      (u) => void window.open(u, "seiProPainel", "popup,width=420,height=760"),
+      chrome.runtime.getURL("html/painel.html#aba=favoritos"),
+    );
+  if (noTopo) ligarPainelLateral(ctx, area);
+  if (!tela) return;
   const dispositivo = await idDispositivo(area);
   const carimbo = () => ({ agora: Date.now(), dispositivo });
   const esc = escoposDoContexto(ctx);
@@ -69,12 +83,39 @@ async function principal(): Promise<void> {
   await servico.carregar();
   if (tela === "caixa") {
     instalarEstrelasCaixa(document, servico);
-    if (window === window.top) await instalarPainel(ctx, sync);
+    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral);
   } else if (tela === "arvore") {
-    await instalarEstrelaArvore(document, servico, location.href);
+    if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
+      instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
+    }
   } else {
     instalarEstrelasListas(document, servico);
   }
+}
+
+/** A aba do SEI atende o app do painel lateral quando ele anuncia que abriu. */
+function ligarPainelLateral(ctx: ContextoAba, area: Area): void {
+  let foco = document.hasFocus() ? Date.now() : 0;
+  const lado = ligarLadoAba({
+    area,
+    conectar: () => chrome.runtime.connect({ name: CANAL_LATERAL }) as unknown as PortaRpc,
+    tratadores: tratadoresDaAba({
+      doc: document,
+      ctx,
+      iframe: null,
+      armazenamento: localStorage,
+      lerArquivo: () => lerArquivoAntigo(),
+    }),
+    estado: () => ({ visivel: document.visibilityState === "visible", foco, chave: chaveDoContexto(ctx) }),
+  });
+  const marcar = () => {
+    foco = Date.now();
+    lado.apresentar();
+  };
+  window.addEventListener("focus", marcar);
+  document.addEventListener("visibilitychange", () => (document.visibilityState === "visible" ? marcar() : lado.apresentar()));
+  // Rede de segurança para abas abertas antes do painel e portas que caíram sem aviso.
+  setInterval(() => lado.verificar(), 5000);
 }
 
 async function perguntar(
@@ -112,16 +153,53 @@ async function perguntar(
   );
 }
 
-async function instalarPainel(ctx: ContextoAba, sync: Area): Promise<void> {
-  const prefs = await lerPreferencias(sync);
-  if (prefs.exibir === "lateral") return;
+/**
+ * O painel abaixo da lista segue a preferência "onde mostrar", inclusive
+ * quando ela muda com a página aberta (pelas opções ou pelo próprio app).
+ */
+async function controlarPainelEmbutido(ctx: ContextoAba, sync: Area, lateral: boolean, abrirLateral: () => void): Promise<void> {
+  let prefs = await lerPreferencias(sync);
+  let montado: { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null = null;
+  const aplicar = () => {
+    const onde = ondeMostrar(prefs.exibir, lateral);
+    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido);
+    else if (!onde.abaixo && montado) {
+      montado.fechar();
+      montado = null;
+    }
+  };
+  aplicar();
+  instalarBotaoCaixa(document, {
+    url: (c) => chrome.runtime.getURL(c),
+    destino: () => (ondeMostrar(prefs.exibir, lateral).lateral ? "lateral" : "abaixo"),
+    abrirLateral,
+    rolarAtePainel: () => {
+      if (!montado) return abrirLateral();
+      if (montado.corpo.hidden) montado.painel.querySelector<HTMLButtonElement>(".spro-fav-recolher")?.click();
+      montado.painel.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+  });
+  sync.aoMudar((m) => {
+    if (!(CHAVE_PREFERENCIAS in m)) return;
+    void lerPreferencias(sync).then((p) => {
+      prefs = p;
+      aplicar();
+    });
+  });
+}
+
+function montarEmbutido(
+  ctx: ContextoAba,
+  sync: Area,
+  recolhido: boolean,
+): { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null {
   const montado = montarPainel(document, {
     urlApp: chrome.runtime.getURL("html/favoritos.html"),
-    recolhido: prefs.recolhido,
+    recolhido,
     ordem: ordemLegada(localStorage),
     aoRecolher: (r) => void gravarPreferencias(sync, { recolhido: r }),
   });
-  if (!montado) return;
+  if (!montado) return null;
   const tratadores = tratadoresDaAba({
     doc: document,
     ctx,
@@ -135,4 +213,12 @@ async function instalarPainel(ctx: ContextoAba, sync: Area): Promise<void> {
     rpc?.fechar();
     rpc = criarRpc(chrome.runtime.connect({ name: CANAL_FAVORITOS }), tratadores);
   });
+  return {
+    painel: montado.painel,
+    corpo: montado.corpo,
+    fechar: () => {
+      rpc?.fechar();
+      montado.painel.remove();
+    },
+  };
 }

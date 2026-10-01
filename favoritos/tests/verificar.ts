@@ -1,6 +1,7 @@
 import { resumo } from "./util";
 import { verificarApp } from "./verificar-app";
 import { verificarBalao } from "./verificar-balao";
+import { verificarBotao } from "./verificar-botao";
 import { verificarDialogos } from "./verificar-dialogos";
 import { verificarExibicao } from "./verificar-exibicao";
 import { verificarLateralAba, verificarLateralApp } from "./verificar-lateral";
@@ -29,4 +30,5 @@ verificarExibicao();
 await verificarLateralAba();
 await verificarLateralApp();
 await verificarShell();
+await verificarBotao();
 resumo();

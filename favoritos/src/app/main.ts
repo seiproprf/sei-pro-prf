@@ -16,12 +16,12 @@ import { novoId } from "@comum/id";
 import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { h, icone } from "@comum/ui/dom";
 import { CANAL_LATERAL } from "../modelo/constantes";
-import { escoposDoContexto } from "../modelo/escopo";
+import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import type { Carimbo, ContextoAba } from "../modelo/tipos";
 import { RepositorioFavoritos } from "../repositorio";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
-import { chaveDoContexto, PonteLateral } from "./lateral";
+import { PonteLateral } from "./lateral";
 import { esperarConexaoDaAba } from "./ponte";
 
 const lateral = new URLSearchParams(location.hash.slice(1)).get("modo") === "lateral";

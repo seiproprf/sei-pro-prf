@@ -23,3 +23,8 @@ export function escoposDoContexto(ctx: ContextoAba): { unidade: Escopo | null; p
 export function rotuloDaLista(e: Escopo): string {
   return e.lista === "pessoal" ? "Pessoal" : e.unidade?.sigla || "Unidade";
 }
+
+/** Identidade do contexto (SEI, usuário, unidade): o painel lateral remonta a lista quando ela muda. */
+export function chaveDoContexto(ctx: Pick<ContextoAba, "host" | "login" | "unidade">): string {
+  return [ctx.host, ctx.login.trim().toLowerCase(), ctx.unidade?.id ?? ""].join("|");
+}
