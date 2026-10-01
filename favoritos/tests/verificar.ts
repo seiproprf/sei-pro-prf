@@ -18,6 +18,7 @@ import { verificarPainel } from "./verificar-painel";
 import { verificarPrazo } from "./verificar-prazo";
 import { verificarRepositorio } from "./verificar-repositorio";
 import { verificarShell } from "./verificar-shell";
+import { verificarSincroniaTexto } from "./verificar-sincronia";
 
 verificarModelo();
 verificarPrazo();
@@ -39,4 +40,5 @@ await verificarOpcoes();
 await verificarEnviar();
 await verificarMapa();
 await verificarDocumentos();
+await verificarSincroniaTexto();
 resumo();

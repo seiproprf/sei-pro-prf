@@ -63,6 +63,13 @@ export class RepositorioFavoritos {
     };
   }
 
+  /** Tudo desta lista, com as lápides de favoritos, pastas e etiquetas (para sincronizar). */
+  async instantaneoCompleto(): Promise<{ todos: Favorito[]; pastas: Pasta[]; etiquetas: Etiqueta[] }> {
+    const tudo = Object.entries(await obterPorPrefixo(this.area, this.base));
+    const de = <T>(sub: string) => tudo.filter(([k]) => k.startsWith(this.base + sub)).map(([, v]) => v as T);
+    return { todos: de<Favorito>("f/"), pastas: de<Pasta>("p/"), etiquetas: de<Etiqueta>("e/") };
+  }
+
   todos(): Promise<Favorito[]> {
     return this.favoritos.listar();
   }
