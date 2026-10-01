@@ -15,6 +15,8 @@ export interface ValoresPrazo {
   n: number;
   contagem: "corridos" | "uteis";
   sentido: "depois" | "antes";
+  /** Conta a partir da assinatura deste documento (a data dele fica em `referencia`). */
+  documento?: { id: string; rotulo?: string };
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,6 +25,7 @@ export function valoresDoPrazo(p: Prazo | undefined, hoje: DataISO): ValoresPraz
   const base: ValoresPrazo = { modo: "nenhum", referencia: hoje, vencimento: hoje, n: 5, contagem: "corridos", sentido: "depois" };
   if (!p) return base;
   const ref = p.referencia.de === "novoDocumento" ? p.referencia.desde : p.referencia.data;
+  if (p.referencia.de === "documento") base.documento = { id: p.referencia.idDocumento };
   if (p.vencimento?.em === "data") return { ...base, modo: "data", referencia: ref, vencimento: p.vencimento.data };
   if (p.vencimento?.em === "dias") {
     return {
@@ -40,7 +43,11 @@ export function valoresDoPrazo(p: Prazo | undefined, hoje: DataISO): ValoresPraz
 
 export function prazoDosValores(v: ValoresPrazo): Prazo | undefined {
   if (v.modo === "nenhum" || !ISO.test(v.referencia)) return undefined;
-  const referencia = { de: "data" as const, data: v.referencia };
+  // "Até uma data" não conta a partir de nada: o documento só vale para os modos que contam dias.
+  const referencia: Prazo["referencia"] =
+    v.documento && v.modo !== "data"
+      ? { de: "documento", idDocumento: v.documento.id, data: v.referencia }
+      : { de: "data", data: v.referencia };
   if (v.modo === "data")
     return ISO.test(v.vencimento) ? { referencia, vencimento: { em: "data", data: v.vencimento }, exibicao: "ate" } : undefined;
   if (v.modo === "dias") {

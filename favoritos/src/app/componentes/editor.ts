@@ -1,8 +1,9 @@
-import type { DataISO } from "@comum/datas/dias";
+import { type DataISO, formatarData } from "@comum/datas/dias";
 import { h } from "@comum/ui/dom";
 import { MAX_NOTA } from "../../modelo/constantes";
 import { calcularPrazo } from "../../modelo/prazo";
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta } from "../../modelo/tipos";
+import type { DocumentoAssinado } from "../../pagina/documentos";
 import { type ModoPrazo, prazoDosValores, type ValoresPrazo, valoresDoPrazo } from "../prazoForm";
 
 export interface DepsEditor {
@@ -14,6 +15,12 @@ export interface DepsEditor {
   criarPasta(nome: string): Promise<Pasta>;
   criarEtiqueta(nome: string): Promise<Etiqueta>;
   fechar(): void;
+  /**
+   * Documentos assinados do processo, para contar o prazo a partir de um deles.
+   * `buscar` = o usuário aceitou abrir a árvore (ver pagina/documentos.ts).
+   * Ausente quando não há aba do SEI para perguntar.
+   */
+  listarDocumentos?: (buscar: boolean) => Promise<DocumentoAssinado[]>;
 }
 
 const campo = (rotulo: string, ...filhos: Array<Node | null>) => h("label", {}, rotulo, ...filhos);
@@ -140,7 +147,79 @@ export function montarEditor(d: DepsEditor): HTMLElement {
       ["antes", "antes"],
     ]),
   );
-  const grupoRef = campo("A partir de", referencia);
+  // Prazo a partir da assinatura de um documento do processo (paridade com o legado).
+  let documento = v.documento;
+  const docInfo = h("p", { class: "fav-dica" });
+  const areaDocs = h("div", { class: "fav-docs" });
+  const pintarDoc = () => {
+    docInfo.hidden = !documento;
+    docInfo.replaceChildren(
+      ...(documento
+        ? [
+            `Conta a partir da assinatura de ${documento.rotulo ?? "um documento do processo"}, em ${formatarData(referencia.value as DataISO)}. `,
+            h(
+              "button",
+              {
+                type: "button",
+                class: "spro-botao",
+                onclick: () => {
+                  documento = undefined;
+                  prazoAlterado = true;
+                  pintarDoc();
+                  atualizar();
+                },
+              },
+              "Usar uma data",
+            ),
+          ]
+        : []),
+    );
+  };
+  const escolherDocumento = async (buscar: boolean) => {
+    if (!d.listarDocumentos) return;
+    areaDocs.replaceChildren(h("p", { class: "fav-dica" }, "Lendo os documentos do processo…"));
+    try {
+      const docs = await d.listarDocumentos(buscar);
+      if (!docs.length) {
+        areaDocs.replaceChildren(h("p", { class: "fav-dica" }, "Nenhum documento assinado neste processo."));
+        return;
+      }
+      const sel: HTMLSelectElement = h(
+        "select",
+        { class: "spro-campo", "aria-label": "Documento" },
+        h("option", { value: "" }, "Escolha o documento"),
+        ...docs.map((x) => h("option", { value: x.id }, `${x.nome} (SEI nº ${x.numero}) — assinado em ${formatarData(x.data)}`)),
+      );
+      sel.addEventListener("change", () => {
+        const x = docs.find((y) => y.id === sel.value);
+        if (!x) return;
+        documento = { id: x.id, rotulo: `${x.nome} (SEI nº ${x.numero})` };
+        referencia.value = x.data;
+        prazoAlterado = true;
+        areaDocs.replaceChildren();
+        pintarDoc();
+        atualizar();
+      });
+      areaDocs.replaceChildren(sel);
+    } catch (e) {
+      const codigo = (e as { codigo?: string }).codigo;
+      // O aviso do efeito colateral é do app, e não da mensagem que veio da aba.
+      const texto =
+        codigo === "PRECISA_BUSCAR"
+          ? "Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo. Se ele estiver aberto na sua unidade, o SEI vai registrá-lo como visualizado, como se você o abrisse."
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      areaDocs.replaceChildren(h("p", { class: "fav-dica" }, texto));
+      if (codigo === "PRECISA_BUSCAR") {
+        areaDocs.append(h("button", { type: "button", class: "spro-botao", onclick: () => void escolherDocumento(true) }, "Buscar no SEI"));
+      }
+    }
+  };
+  const botaoDoc = d.listarDocumentos
+    ? h("button", { type: "button", class: "spro-botao", onclick: () => void escolherDocumento(false) }, "Usar a data de um documento…")
+    : null;
+  const grupoRef = h("div", {}, h("div", { class: "linha" }, campo("A partir de", referencia), botaoDoc), docInfo, areaDocs);
   const grupoVenc = campo("Vence em", vencimento);
   const grupoDias = h("div", { class: "linha" }, n, sentido);
   const grupoContagem = campo("Contar em", contagem);
@@ -152,6 +231,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
     n: Number(n.value),
     contagem: (contagem.value ?? "corridos") as ValoresPrazo["contagem"],
     sentido: (sentido.value ?? "depois") as ValoresPrazo["sentido"],
+    documento,
   });
   const atualizar = () => {
     const m = ler().modo;
@@ -169,16 +249,22 @@ export function montarEditor(d: DepsEditor): HTMLElement {
   for (const el of [modo, referencia, vencimento, n, contagem, sentido]) {
     el.addEventListener("change", () => {
       prazoAlterado = true;
+      // Data digitada à mão: deixa de ser a do documento.
+      if (el === referencia && documento) {
+        documento = undefined;
+        pintarDoc();
+      }
       atualizar();
     });
   }
   atualizar();
+  pintarDoc();
   const avisoLegado =
-    f.prazo && f.prazo.referencia.de !== "data"
+    f.prazo && f.prazo.referencia.de === "novoDocumento"
       ? h(
           "p",
           { class: "fav-previa" },
-          "Este prazo foi configurado na versão anterior a partir de um documento. Ele é mantido enquanto você não mexer no prazo.",
+          "Este prazo foi configurado na versão anterior para começar no próximo documento. Ele é mantido enquanto você não mexer no prazo.",
         )
       : null;
 

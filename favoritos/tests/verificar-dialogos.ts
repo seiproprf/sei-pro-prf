@@ -43,6 +43,22 @@ export async function verificarDialogos(): Promise<void> {
     valoresDoPrazo({ referencia: { de: "data", data: "2026-10-04" }, exibicao: "ate" }, HOJE).modo === "data",
   );
   checar("so contar desde", prazoDosValores({ ...vazio, modo: "contagem", contagem: "uteis" })?.exibicao === "desdeUteis");
+  const doDoc = {
+    referencia: { de: "documento" as const, idDocumento: "901", data: "2026-09-05" },
+    vencimento: { em: "dias" as const, n: 10, contagem: "uteis" as const },
+    exibicao: "ate" as const,
+  };
+  const vDoc = valoresDoPrazo(doDoc, HOJE);
+  checar(
+    "prazo a partir de documento abre com o documento e a data dele",
+    vDoc.modo === "dias" && vDoc.documento?.id === "901" && vDoc.referencia === "2026-09-05",
+    vDoc,
+  );
+  checar("e volta igual", JSON.stringify(prazoDosValores(vDoc)) === JSON.stringify(doDoc), prazoDosValores(vDoc));
+  checar(
+    "'ate uma data' ignora o documento",
+    prazoDosValores({ ...vDoc, modo: "data", vencimento: "2026-10-09" })?.referencia.de === "data",
+  );
   checar(
     "dados incompletos nao viram prazo",
     prazoDosValores({ ...vazio, modo: "dias", n: 0 }) === undefined &&
@@ -72,7 +88,11 @@ export async function verificarDialogos(): Promise<void> {
     prazo: { referencia: { de: "documento", idDocumento: "160223", data: "2026-09-01" }, exibicao: "ate" },
   });
   const ed = montarEditor({ ...deps, favorito: docLegado });
-  checar("prazo de documento do legado e explicado", ed.textContent?.includes("versão anterior") === true);
+  checar(
+    "prazo de documento mostra de onde conta",
+    /documento/.test(ed.textContent ?? "") && ed.textContent?.includes("01/09/2026") === true,
+    ed.textContent,
+  );
   (ed.querySelector('input[aria-label="Título"]') as HTMLInputElement).value = "Porto";
   escolher(ed.querySelector('select[aria-label="Pasta"]') as HTMLSelectElement, "p1");
   botao(ed, "Urgente")!.click();
@@ -101,6 +121,50 @@ export async function verificarDialogos(): Promise<void> {
     JSON.stringify(salvos[1]?.prazo?.vencimento) === JSON.stringify({ em: "data", data: "2026-10-05" }),
     salvos[1],
   );
+
+  secao("editor: prazo a partir de um documento do processo");
+  const pedidos: boolean[] = [];
+  const docsFalsos = [
+    { id: "901", numero: "0103947", nome: "Despacho 12", data: "2026-09-05" as const },
+    { id: "902", numero: "0103950", nome: "Nota Técnica 3", data: "2026-09-12" as const },
+  ];
+  const ed3 = montarEditor({
+    ...deps,
+    favorito: fav({ id: "3" }),
+    listarDocumentos: async (buscar: boolean) => {
+      pedidos.push(buscar);
+      if (!buscar)
+        throw Object.assign(new Error("Para listar os documentos, o SEI Pro precisa abrir a árvore deste processo."), {
+          codigo: "PRECISA_BUSCAR",
+        });
+      return docsFalsos;
+    },
+  });
+  escolher(ed3.querySelector('select[aria-label="Prazo"]') as HTMLSelectElement, "dias");
+  botao(ed3, "Usar a data de um documento…")!.click();
+  await tique(10);
+  checar(
+    "sem a arvore aberta, explica o efeito e pede confirmacao",
+    /visualizado/.test(ed3.textContent ?? "") && !!botao(ed3, "Buscar no SEI"),
+  );
+  botao(ed3, "Buscar no SEI")!.click();
+  await tique(10);
+  const selDoc = ed3.querySelector('select[aria-label="Documento"]') as HTMLSelectElement | null;
+  checar("lista os documentos assinados", pedidos.join() === "false,true" && selDoc?.options.length === 3, pedidos);
+  escolher(selDoc!, "902");
+  checar(
+    "a data de referencia vira a da assinatura",
+    (ed3.querySelector('input[aria-label="A partir de"]') as HTMLInputElement).value === "2026-09-12",
+  );
+  botao(ed3, "Salvar")!.click();
+  await tique();
+  checar(
+    "salva o prazo a partir do documento",
+    JSON.stringify(salvos.at(-1)?.prazo?.referencia) === JSON.stringify({ de: "documento", idDocumento: "902", data: "2026-09-12" }),
+    salvos.at(-1)?.prazo,
+  );
+  const ed4 = montarEditor({ ...deps, favorito: fav({ id: "4" }) });
+  checar("sem como listar documentos, sem o botao", !botao(ed4, "Usar a data de um documento…"));
 
   secao("gerenciar pastas e etiquetas");
   const feito: string[] = [];

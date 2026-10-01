@@ -26,6 +26,7 @@ import {
   type TipoLista,
 } from "../modelo/tipos";
 import { montarOpcoesExibicao } from "../opcoes/exibicao";
+import type { DocumentoAssinado } from "../pagina/documentos";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, type RepositorioFavoritos } from "../repositorio";
 import { avisar } from "./aviso";
@@ -393,6 +394,10 @@ export class AppFavoritos {
       criarPasta: (nome) => this.repo.criarPasta(nome),
       criarEtiqueta: (nome) => this.repo.criarEtiqueta(nome),
       fechar: () => modal?.fechar(),
+      listarDocumentos: (buscar) =>
+        this.d.rpc
+          .chamar<{ documentos: DocumentoAssinado[] }>("documentosAssinados", { id: f.id, protocolo: f.protocolo, buscar }, 90_000)
+          .then((r) => r.documentos),
     });
     modal = this.d.abrirModal({ titulo: `Favorito ${f.protocolo}`, conteudo });
   }
