@@ -52,6 +52,8 @@ export interface DepsMotor {
   agora?: () => number;
   teto?: number;
   atrasoEnvio?: number;
+  /** Ainda pode gravar? (O usuário pode ter desligado durante a rodada.) */
+  permitido?: () => Promise<boolean>;
 }
 
 const CINCO_MIN = 5 * 60_000;
@@ -160,6 +162,9 @@ export class MotorSincronia {
           tamanho: html.length,
           mensagem: `A lista ficou grande demais para o Texto Padrão (${Math.ceil(html.length / 1024)} KB de ${Math.round(teto / 1024)} KB). Use a sincronização por arquivo.`,
         });
+      }
+      if (this.d.permitido && !(await this.d.permitido())) {
+        return this.gravarStatus({ estado: "nunca", quando: agora, pendente: false, mensagem: undefined });
       }
       await this.d.destino.gravar(html);
       const aviso =

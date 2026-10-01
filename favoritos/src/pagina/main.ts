@@ -105,6 +105,7 @@ async function principal(): Promise<void> {
           escopo: esc.unidade,
           carimbo,
           travar: travarComLocks,
+          travarEsperando: travarEsperandoComLocks,
           armazem: () =>
             criarArmazemTextoPadrao(new Sei(location.href, () => paginaDe(document)), {
               nome: nomeDoTexto(ctx.login),
@@ -422,4 +423,11 @@ function instalarDocumentosFavoritos(repos: Repos): void {
     );
     for (const r of [repos.unidade, repos.pessoal]) r?.aoMudar(() => void ler().then(() => estrelas.repintar()));
   });
+}
+
+/** A mesma trava, esperando a vez (para o "apagar do SEI" nunca ser pulado). */
+function travarEsperandoComLocks<T>(nome: string, fn: () => Promise<T>): Promise<T> {
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  if (!locks) return fn();
+  return locks.request(nome, () => fn()) as Promise<T>;
 }

@@ -35,6 +35,8 @@ export interface ArmazemDestino {
   ler(): Promise<string | null>;
   gravar(html: string): Promise<void>;
   excluir(): Promise<boolean>;
+  /** Para conferir que o texto sumiu depois de excluir. */
+  localizar?(): Promise<unknown | null>;
 }
 
 export interface DepsControle {
@@ -46,6 +48,8 @@ export interface DepsControle {
   armazem: () => ArmazemDestino;
   carimbo: () => Carimbo;
   travar<T>(nome: string, fn: () => Promise<T>): Promise<T | null>;
+  /** A mesma trava, mas ESPERANDO a vez (o "apagar" não pode ser pulado). */
+  travarEsperando?<T>(nome: string, fn: () => Promise<T>): Promise<T>;
   atrasoEnvio?: number;
 }
 
@@ -72,6 +76,8 @@ export class ControleSincronia {
       nomeUsuario: this.d.ctx.nome || this.d.ctx.login,
       travar: this.d.travar,
       atrasoEnvio: this.d.atrasoEnvio,
+      // Conferido logo antes de gravar: quem desligou (ou mandou apagar) no meio de uma rodada não ganha o texto de volta.
+      permitido: async () => this.estado(await lerPreferencias(this.d.sync)) === "ligado",
     });
   }
 
@@ -126,7 +132,16 @@ export class ControleSincronia {
   async apagar(): Promise<boolean> {
     this.desligar();
     await definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.ctx.login, this.d.escopo.unidade?.id ?? "", "desligado");
-    const excluiu = await this.d.armazem().excluir();
+    const armazem = this.d.armazem();
+    const fazer = async () => {
+      let excluiu = await armazem.excluir();
+      // Confere: uma rodada que terminou nesse meio tempo (outra aba) pode ter gravado o texto de novo.
+      if (armazem.localizar && (await armazem.localizar())) excluiu = (await armazem.excluir()) || excluiu;
+      return excluiu;
+    };
+    // Na mesma trava da rodada: espera a que está em curso terminar, e só então exclui.
+    const nome = `seipro-favoritos-sync|${chaveStatusTexto(this.d.escopo)}`;
+    const excluiu = this.d.travarEsperando ? await this.d.travarEsperando(nome, fazer) : await fazer();
     await this.d.area.gravar({
       [chaveStatusTexto(this.d.escopo)]: { estado: "nunca", quando: Date.now(), pendente: false } satisfies StatusSync,
     });

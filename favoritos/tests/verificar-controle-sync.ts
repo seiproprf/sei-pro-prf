@@ -84,4 +84,61 @@ export async function verificarControleSync(): Promise<void> {
   await tique(80);
   checar("desligado: mudancas nao vao mais", remoto.html === null);
   c.parar();
+
+  secao("apagar com uma rodada em curso nao deixa texto no SEI");
+  const area2 = areaMemoria();
+  const sync2 = areaMemoria();
+  const repo2 = new RepositorioFavoritos(area2, esc, carimbo);
+  await repo2.adicionar({ id: "1", protocolo: "P1" });
+  const remoto2 = { html: null as string | null };
+  let soltarGravacao: () => void = () => undefined;
+  const armazem2 = {
+    ler: async () => remoto2.html,
+    // A gravacao demora (rede do orgao): o usuario pede "apagar" no meio dela.
+    gravar: (h: string) =>
+      new Promise<void>((ok) => {
+        soltarGravacao = () => {
+          remoto2.html = h;
+          ok();
+        };
+      }),
+    excluir: async () => {
+      const havia = remoto2.html !== null;
+      remoto2.html = null;
+      return havia;
+    },
+    localizar: async () => (remoto2.html ? { id: "1" } : null),
+  };
+  // Trava de verdade (fila): a rodada e o apagar usam a mesma.
+  let fila = Promise.resolve();
+  const travarEsperando = <T>(_n: string, fn: () => Promise<T>) => {
+    const r = fila.then(fn);
+    fila = r.then(
+      () => undefined,
+      () => undefined,
+    );
+    return r;
+  };
+  const c2 = new ControleSincronia({
+    ctx: CTX,
+    area: area2,
+    sync: sync2,
+    repo: repo2,
+    escopo: esc,
+    armazem: () => armazem2,
+    carimbo,
+    travar: (n, fn) => travarEsperando(n, fn),
+    travarEsperando,
+    atrasoEnvio: 10,
+  });
+  await c2.iniciar("caixa");
+  await definirTextoPadrao(sync2, CTX.host, CTX.login, CTX.unidade!.id, "ligado");
+  await tique(30);
+  const apagando = c2.apagar();
+  await tique(10);
+  soltarGravacao();
+  await apagando;
+  await tique(30);
+  checar("o texto que a rodada gravou depois do pedido tambem sai", remoto2.html === null, remoto2.html?.slice(0, 40));
+  c2.parar();
 }
