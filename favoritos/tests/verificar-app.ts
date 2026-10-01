@@ -161,10 +161,21 @@ export async function verificarApp(): Promise<void> {
     (await m.repos.unidade.contem("70")) &&
       !!(await m.area.obter(chaveMigracao(CTX.host, "pedro.soares")))[chaveMigracao(CTX.host, "pedro.soares")],
   );
-  const m2 = montar(
-    { rpc: { chamar: (async (op: string) => (op === "lerLegado" ? { local: legado, arquivo: null } : true)) as DepsApp["rpc"]["chamar"] } },
-    { [chaveMigracao(CTX.host, "pedro.soares")]: { adiadoEm: 1 } },
-  );
+  const legadoRpc = {
+    chamar: (async (op: string) => (op === "lerLegado" ? { local: legado, arquivo: null } : true)) as DepsApp["rpc"]["chamar"],
+  };
+  const dia = 86_400_000;
+  const m2 = montar({ rpc: legadoRpc }, { [chaveMigracao(CTX.host, "pedro.soares")]: { adiadoEm: Date.now() - dia } });
   await m2.app.iniciar();
-  checar("nao pergunta de novo depois de respondido", m2.modais.length === 0);
+  checar("'Agora nao' recente: nao pergunta de novo", m2.modais.length === 0);
+  const m3 = montar({ rpc: legadoRpc }, { [chaveMigracao(CTX.host, "pedro.soares")]: { adiadoEm: Date.now() - 31 * dia } });
+  await m3.app.iniciar();
+  checar("'Agora nao' ha mais de 30 dias: oferece de novo", m3.modais[0]?.titulo === "Favoritos da versão anterior");
+  checar(
+    "o dialogo diz onde achar a opcao depois",
+    (m3.modais[0]?.conteudo.textContent ?? "").includes("Trazer favoritos da versão anterior"),
+  );
+  const m4 = montar({ rpc: legadoRpc }, { [chaveMigracao(CTX.host, "pedro.soares")]: { em: 1, quantidade: 1, destino: "unidade" } });
+  await m4.app.iniciar();
+  checar("depois de trazidos, nunca mais pergunta", m4.modais.length === 0);
 }

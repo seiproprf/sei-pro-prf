@@ -473,7 +473,10 @@ export class AppFavoritos {
 
   private async oferecerMigracao(forcar: boolean): Promise<void> {
     const chave = chaveMigracao(this.d.ctx.host, this.login);
-    if (!forcar && (await this.d.area.obter(chave))[chave]) return;
+    const marca = (await this.d.area.obter(chave))[chave] as { adiadoEm?: number } | undefined;
+    // Trazidos: nunca mais pergunta. "Agora não": pergunta de novo depois de 30 dias.
+    const adiadoVencido = typeof marca?.adiadoEm === "number" && Date.now() - marca.adiadoEm > 30 * 86_400_000;
+    if (!forcar && marca && !adiadoVencido) return;
     let fontes: { local?: unknown; arquivo?: unknown };
     try {
       fontes = await this.d.rpc.chamar("lerLegado", undefined, 5000);

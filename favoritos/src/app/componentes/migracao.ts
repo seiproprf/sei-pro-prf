@@ -24,6 +24,11 @@ export function montarMigracao(d: DepsMigracao): HTMLElement {
       "Na versão nova, cada unidade tem a sua lista e há uma lista Pessoal, que aparece em todas. Os dados antigos continuam guardados: nada é apagado.",
     ),
     h(
+      "p",
+      { class: "fav-previa" },
+      "Se preferir deixar para depois, a opção fica no menu de opções dos favoritos, em \u201cTrazer favoritos da versão anterior\u201d, e perguntaremos de novo em 30 dias.",
+    ),
+    h(
       "div",
       { class: "spro-dialogo-rodape" },
       h("button", { type: "button", class: "spro-botao", onclick: () => void d.adiar() }, "Agora não"),
