@@ -24,8 +24,17 @@ interface Ouvintes {
   clique: Array<(id: string) => void>;
 }
 
+interface Opcoes {
+  /** Versão do manifest (a versão nova, numa atualização). */
+  versao?: string;
+  /** ID da extensão: diz de que loja ela veio. */
+  id?: string;
+  /** Chave antiga das opções; "hidemsgupdate" desliga a página de novidades. */
+  checkTypes?: string;
+}
+
 /** Monta o `chrome` falso e roda o background dentro dele. */
-function carregar(rotinas: unknown[]) {
+function carregar(rotinas: unknown[], opcoes: Opcoes = {}) {
   const ouvintes: Ouvintes = { instalado: [], mensagem: [], conexao: [], alarme: [], clique: [] };
   const notificadas: Array<{ id: string; titulo: string; corpo: string }> = [];
   const abas: string[] = [];
@@ -36,9 +45,20 @@ function carregar(rotinas: unknown[]) {
       onMessage: { addListener: (f: (m: unknown, s: unknown) => void) => ouvintes.mensagem.push(f) },
       onConnect: { addListener: (f: (p: unknown) => void) => ouvintes.conexao.push(f) },
       getURL: (p: string) => `chrome-extension://teste/${p}`,
-      getManifest: () => ({ version: "2.2.5" }),
+      getManifest: () => ({ version: opcoes.versao ?? "2.2.5" }),
+      id: opcoes.id ?? "idqualquerdeumaextensaodescompac",
     },
-    storage: { local: { get: async () => ({ agenteIA_rotinas: rotinas }), set: async () => undefined } },
+    storage: {
+      local: {
+        // O background usa as duas formas: callback (instalação) e promessa (rotinas).
+        get: (_chave: unknown, cb?: (v: unknown) => void) => {
+          const valores = { agenteIA_rotinas: rotinas, CheckTypes: opcoes.checkTypes };
+          if (typeof cb === "function") return void cb(valores);
+          return Promise.resolve(valores);
+        },
+        set: async () => undefined,
+      },
+    },
     alarms: { onAlarm: { addListener: (f: (a: { name: string }) => void) => ouvintes.alarme.push(f) } },
     notifications: {
       create: (id: string, o: { title: string; message: string }, cb?: () => void) => {
@@ -120,5 +140,43 @@ export async function verificarBackground(): Promise<void> {
     amb.ouvintes.clique[0]("promocao-qualquer");
     await new Promise((r) => setTimeout(r, 10));
     checar("notificacao de outra origem e ignorada", amb.paineisAbertos.length === 1 && amb.abas.length === 0);
+  }
+
+  secao("background: atualizacao abre o historico, com convite de avaliacao so em versao de novidades");
+  {
+    const CHROME = "pdbbapplhjopafpgidbgceccbbmehcjj";
+    const EDGE = "gkhfbbbminanojfklpfmloaglckmlfne";
+    const HISTORICO = "https://seipro.app/pages/HISTORICO.html";
+    const abas = async (detalhes: Record<string, string>, opcoes: Opcoes) => {
+      const amb = carregar([], opcoes);
+      amb.ouvintes.instalado[0](detalhes);
+      await new Promise((r) => setTimeout(r, 10));
+      return amb.abas;
+    };
+    const atualizar = (de: string, para: string, id: string, checkTypes?: string) =>
+      abas({ reason: "update", previousVersion: de }, { versao: para, id, checkTypes });
+
+    let a = await atualizar("2.2.5", "2.3", CHROME);
+    checar("2.2.5 -> 2.3 pela Chrome Web Store convida", a.join() === `${HISTORICO}#avaliar=chrome&versao=2.3`, a);
+    a = await atualizar("2.2.3", "2.3.1", CHROME);
+    checar("2.2.3 -> 2.3.1 (pulou a 2.3) tambem convida", a.join() === `${HISTORICO}#avaliar=chrome&versao=2.3.1`, a);
+    a = await atualizar("1.7.7", "2.0", CHROME);
+    checar("1.7.7 -> 2.0 (muda o primeiro numero) convida", a.join() === `${HISTORICO}#avaliar=chrome&versao=2.0`, a);
+    a = await atualizar("2.9.3", "2.10", CHROME);
+    checar("2.9.3 -> 2.10 compara numero, nao texto", a.join() === `${HISTORICO}#avaliar=chrome&versao=2.10`, a);
+    a = await atualizar("2.2.5", "2.3", EDGE);
+    checar("pela loja do Edge o convite aponta para o Edge", a.join() === `${HISTORICO}#avaliar=edge&versao=2.3`, a);
+    a = await atualizar("2.3", "2.3.1", CHROME);
+    checar("2.3 -> 2.3.1 abre o historico sem convite", a.join() === HISTORICO, a);
+    a = await atualizar("2.2.3", "2.2.4", CHROME);
+    checar("2.2.3 -> 2.2.4 abre o historico sem convite", a.join() === HISTORICO, a);
+    a = await atualizar("2.2.5", "2.3", "idqualquerdeumaextensaodescompac");
+    checar("extensao fora das lojas (Lab, descompactada) nao convida", a.join() === HISTORICO, a);
+    a = await atualizar("2.2.5", "2.3", CHROME, "hidemsgupdate");
+    checar("quem desligou a pagina de novidades nao ve nada", a.length === 0, a);
+    a = await atualizar("2.3", "2.3", CHROME);
+    checar("recarregar sem mudar a versao nao abre nada", a.length === 0, a);
+    a = await abas({ reason: "install" }, { versao: "2.3", id: CHROME });
+    checar("instalacao abre a pagina inicial, sem convite", a.join() === "https://seipro.app/", a);
   }
 }

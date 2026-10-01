@@ -38,6 +38,14 @@
     });
   }
 
+  /* Convite para avaliar na loja: a extensão abre o histórico com #avaliar=... depois de uma
+     atualização com novidades. O resto da lógica (e os textos) só é baixado nesse caso. */
+  if (/^#avaliar=/.test(location.hash)) {
+    var convite = document.createElement('script');
+    convite.src = base + '/assets/js/avaliacao.js';
+    document.head.appendChild(convite);
+  }
+
   /* Tecla "/" leva à busca */
   document.addEventListener('keydown', function (e) {
     if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;

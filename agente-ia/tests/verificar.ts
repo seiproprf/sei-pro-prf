@@ -6,6 +6,7 @@ import { verificarMcpPermissao, verificarMcpTools } from "./verificar-mcp-permis
 import { verificarMcpUi } from "./verificar-mcp-ui";
 import { verificarRotinasUi } from "./verificar-rotinas-ui";
 import { verificarBackground } from "./verificar-background";
+import { verificarConviteDeAvaliacao } from "./verificar-convite-avaliacao";
 import { verificarEspelho, verificarEspelhoNosModulos, verificarEspelhoRevisao, verificarEspelhoSync } from "./verificar-espelho";
 import { verificarOpcoesSync } from "./verificar-opcoes-sync";
 import { verificarCartaoDeErro, verificarDiagnostico as verificarDiagnosticoDoErro } from "./verificar-diagnostico";
@@ -46,6 +47,7 @@ verificarCusto();
 verificarRotinas();
 await verificarRotinasUi();
 await verificarBackground();
+verificarConviteDeAvaliacao();
 verificarEspelho();
 await verificarEspelhoSync();
 await verificarEspelhoNosModulos();

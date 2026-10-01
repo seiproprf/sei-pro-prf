@@ -24,7 +24,7 @@ function handleInstalled(details) {
     if (details.reason == "install") {
       browser.tabs.create({ url: "https://seipro.app/" });
     } else if (item.CheckTypes == undefined || item.CheckTypes.indexOf("hidemsgupdate") == -1) {
-      browser.tabs.create({ url: "https://seipro.app/pages/HISTORICO.html" });
+      browser.tabs.create({ url: "https://seipro.app/pages/HISTORICO.html" + conviteDeAvaliacao(details.previousVersion) });
     }
   }
 
@@ -34,6 +34,35 @@ function handleInstalled(details) {
     var gettingItem = browser.storage.local.get("CheckTypes");
     gettingItem.then(AbrirUrlSeiPro, onError);
   }
+}
+
+/******************************************************************************
+ * Convite para avaliar o SEI Pro na loja: o historico de versoes mostra um
+ * modal quando recebe #avaliar=<loja>&versao=<versao> (assets/js/avaliacao.js
+ * no site). Vai no fragmento, e nao na query, para nao chegar ao servidor.
+ *
+ * So convida quando a atualizacao traz novidades (muda o 1o ou o 2o numero:
+ * 2.2.5 -> 2.3 sim, 2.3 -> 2.3.1 nao) e quando a extensao veio de uma loja
+ * conhecida, pelo ID: o Lab, os whitelabels e a descompactada ficam de fora.
+ * Quantas vezes a mesma pessoa ve o convite, quem decide e o site.
+ ******************************************************************************/
+var LOJAS_DE_AVALIACAO = {
+  pdbbapplhjopafpgidbgceccbbmehcjj: "chrome",
+  gkhfbbbminanojfklpfmloaglckmlfne: "edge"
+};
+
+function atualizacaoComNovidades(anterior, atual) {
+  var a = String(anterior || "").split(".").map(function (n) { return parseInt(n, 10) || 0; });
+  var b = String(atual || "").split(".").map(function (n) { return parseInt(n, 10) || 0; });
+  if (b[0] != a[0]) return b[0] > a[0];
+  return (b[1] || 0) > (a[1] || 0);
+}
+
+function conviteDeAvaliacao(versaoAnterior) {
+  var loja = LOJAS_DE_AVALIACAO[browser.runtime.id];
+  var versao = browser.runtime.getManifest().version;
+  if (!loja || !atualizacaoComNovidades(versaoAnterior, versao)) return "";
+  return "#avaliar=" + loja + "&versao=" + versao;
 }
 
 /******************************************************************************
