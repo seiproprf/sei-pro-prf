@@ -104,9 +104,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
 
   const nota = h("textarea", { class: "spro-campo", rows: "4", maxlength: String(MAX_NOTA), "aria-label": "Nota", value: f.nota ?? "" });
 
-  // Prazo: só é regravado se o usuário mexer nele. Assim o prazo "a partir do
-  // documento X" ou "do próximo documento" que veio do legado não se perde ao
-  // editar só a nota.
+  // Prazo: só é regravado se o usuário mexer nele (editar só a nota não reescreve o prazo).
   const v = valoresDoPrazo(f.prazo, d.hoje);
   let prazoAlterado = false;
   const opcoes = (valor: string, lista: Array<[string, string]>) =>
@@ -119,6 +117,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
       ["data", "Até uma data"],
       ["dias", "N dias a partir de uma data"],
       ["contagem", "Só contar os dias desde uma data"],
+      ["proximo", "N dias a partir do próximo documento de um tipo"],
     ]),
   );
   const referencia = h("input", { type: "date", class: "spro-campo", "aria-label": "A partir de", value: v.referencia });
@@ -223,6 +222,22 @@ export function montarEditor(d: DepsEditor): HTMLElement {
   const grupoVenc = campo("Vence em", vencimento);
   const grupoDias = h("div", { class: "linha" }, n, sentido);
   const grupoContagem = campo("Contar em", contagem);
+  const tiposDoc = h("input", {
+    class: "spro-campo",
+    "aria-label": "Tipos de documento",
+    placeholder: "Ex.: Despacho, Nota Técnica",
+    value: v.tipos ?? "",
+  });
+  const grupoTipos = h(
+    "div",
+    {},
+    campo("Tipos de documento (separe por vírgula)", tiposDoc),
+    h(
+      "p",
+      { class: "fav-dica" },
+      "A contagem começa no primeiro documento de um desses tipos com data a partir da data acima. O SEI Pro confere quando você abre o processo.",
+    ),
+  );
   const previa = h("p", { class: "fav-previa", "aria-live": "polite" });
   const ler = (): ValoresPrazo => ({
     modo: (modo.value ?? "nenhum") as ModoPrazo,
@@ -232,13 +247,15 @@ export function montarEditor(d: DepsEditor): HTMLElement {
     contagem: (contagem.value ?? "corridos") as ValoresPrazo["contagem"],
     sentido: (sentido.value ?? "depois") as ValoresPrazo["sentido"],
     documento,
+    tipos: tiposDoc.value,
   });
   const atualizar = () => {
     const m = ler().modo;
     grupoRef.hidden = m === "nenhum";
     grupoVenc.hidden = m !== "data";
-    grupoDias.hidden = m !== "dias";
-    grupoContagem.hidden = m !== "dias" && m !== "contagem";
+    grupoDias.hidden = m !== "dias" && m !== "proximo";
+    grupoContagem.hidden = m !== "dias" && m !== "contagem" && m !== "proximo";
+    grupoTipos.hidden = m !== "proximo";
     const p = prazoDosValores(ler());
     previa.textContent = p
       ? `${calcularPrazo(p, d.hoje).texto}. ${calcularPrazo(p, d.hoje).dica}`
@@ -246,7 +263,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
         ? "Sem prazo."
         : "Preencha as datas.";
   };
-  for (const el of [modo, referencia, vencimento, n, contagem, sentido]) {
+  for (const el of [modo, referencia, vencimento, n, contagem, sentido, tiposDoc]) {
     el.addEventListener("change", () => {
       prazoAlterado = true;
       // Data digitada à mão: deixa de ser a do documento.
@@ -259,15 +276,6 @@ export function montarEditor(d: DepsEditor): HTMLElement {
   }
   atualizar();
   pintarDoc();
-  const avisoLegado =
-    f.prazo && f.prazo.referencia.de === "novoDocumento"
-      ? h(
-          "p",
-          { class: "fav-previa" },
-          "Este prazo foi configurado na versão anterior para começar no próximo documento. Ele é mantido enquanto você não mexer no prazo.",
-        )
-      : null;
-
   return h(
     "div",
     { class: "fav-form" },
@@ -279,11 +287,11 @@ export function montarEditor(d: DepsEditor): HTMLElement {
       "fieldset",
       { class: "fav-prazo-campos" },
       h("legend", {}, "Prazo"),
-      avisoLegado,
       modo,
       grupoRef,
       grupoVenc,
       grupoDias,
+      grupoTipos,
       grupoContagem,
       previa,
     ),

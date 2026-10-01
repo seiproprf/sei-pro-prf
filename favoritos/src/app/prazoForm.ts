@@ -6,7 +6,7 @@
 import type { DataISO } from "@comum/datas/dias";
 import type { Prazo } from "../modelo/tipos";
 
-export type ModoPrazo = "nenhum" | "data" | "dias" | "contagem";
+export type ModoPrazo = "nenhum" | "data" | "dias" | "contagem" | "proximo";
 
 export interface ValoresPrazo {
   modo: ModoPrazo;
@@ -17,6 +17,8 @@ export interface ValoresPrazo {
   sentido: "depois" | "antes";
   /** Conta a partir da assinatura deste documento (a data dele fica em `referencia`). */
   documento?: { id: string; rotulo?: string };
+  /** Modo "proximo": tipos de documento separados por vírgula. */
+  tipos?: string;
 }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,6 +27,17 @@ export function valoresDoPrazo(p: Prazo | undefined, hoje: DataISO): ValoresPraz
   const base: ValoresPrazo = { modo: "nenhum", referencia: hoje, vencimento: hoje, n: 5, contagem: "corridos", sentido: "depois" };
   if (!p) return base;
   const ref = p.referencia.de === "novoDocumento" ? p.referencia.desde : p.referencia.data;
+  if (p.referencia.de === "novoDocumento") {
+    const v = p.vencimento?.em === "dias" ? p.vencimento : undefined;
+    return {
+      ...base,
+      modo: "proximo",
+      referencia: ref,
+      tipos: p.referencia.tipos.join(", "),
+      n: v ? Math.abs(v.n) : base.n,
+      contagem: v?.contagem ?? base.contagem,
+    };
+  }
   if (p.referencia.de === "documento") base.documento = { id: p.referencia.idDocumento };
   if (p.vencimento?.em === "data") return { ...base, modo: "data", referencia: ref, vencimento: p.vencimento.data };
   if (p.vencimento?.em === "dias") {
@@ -43,6 +56,19 @@ export function valoresDoPrazo(p: Prazo | undefined, hoje: DataISO): ValoresPraz
 
 export function prazoDosValores(v: ValoresPrazo): Prazo | undefined {
   if (v.modo === "nenhum" || !ISO.test(v.referencia)) return undefined;
+  if (v.modo === "proximo") {
+    const tipos = (v.tipos ?? "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const n = Math.trunc(Math.abs(v.n));
+    if (!tipos.length || !Number.isFinite(n) || n === 0) return undefined;
+    return {
+      referencia: { de: "novoDocumento", tipos, desde: v.referencia },
+      vencimento: { em: "dias", n, contagem: v.contagem },
+      exibicao: "ate",
+    };
+  }
   // "Até uma data" não conta a partir de nada: o documento só vale para os modos que contam dias.
   const referencia: Prazo["referencia"] =
     v.documento && v.modo !== "data"

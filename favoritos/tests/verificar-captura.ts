@@ -1,6 +1,6 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { escoposDoContexto } from "../src/modelo/escopo";
-import { capturarDaArvore, capturarDaCaixa } from "../src/pagina/novidades";
+import { capturarDaArvore, capturarDaCaixa, resolverProximoDocumento } from "../src/pagina/novidades";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { checar, secao, telaSei } from "./util";
 import { CTX } from "./verificar-modelo";
@@ -59,4 +59,28 @@ export async function verificarCaptura(): Promise<void> {
   checar("abrir o processo marca como visto", (await repo.obter("148265"))?.visto?.qtdDocumentos === a2?.qtdDocumentos);
   const nada = await capturarDaArvore(arv, pagina.url, [pessoal], async () => historico.pagina);
   checar("processo que nao e favorito: nada lido", nada === 0);
+
+  secao("prazo do proximo documento: comeca a contar quando o documento aparece");
+  const docs = [
+    { id: "1", numero: "01", nome: "Ofício 3", data: "2026-09-20" as const },
+    { id: "2", numero: "02", nome: "Despacho 7", data: "2026-09-25" as const },
+    { id: "3", numero: "03", nome: "Despacho 9", data: "2026-10-01" as const },
+    { id: "4", numero: "04", nome: "Nota Tecnica 1", data: "2026-10-02" as const },
+  ];
+  const prazo = {
+    referencia: { de: "novoDocumento" as const, tipos: ["despacho", "Nota Técnica"], desde: "2026-09-28" as const },
+    vencimento: { em: "dias" as const, n: 5, contagem: "uteis" as const },
+    exibicao: "ate" as const,
+  };
+  const r = resolverProximoDocumento(prazo, docs);
+  checar(
+    "o primeiro documento de um dos tipos depois de 'desde' (sem acento e sem caixa)",
+    r?.referencia.de === "documento" && r.referencia.idDocumento === "3" && r.referencia.data === "2026-10-01",
+    r,
+  );
+  checar("mantem o vencimento", r?.vencimento?.em === "dias" && r.vencimento.n === 5);
+  checar(
+    "nenhum documento novo do tipo: continua aguardando",
+    resolverProximoDocumento({ ...prazo, referencia: { ...prazo.referencia, desde: "2026-10-05" } }, docs) === null,
+  );
 }

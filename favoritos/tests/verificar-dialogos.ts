@@ -59,6 +59,20 @@ export async function verificarDialogos(): Promise<void> {
     "'ate uma data' ignora o documento",
     prazoDosValores({ ...vDoc, modo: "data", vencimento: "2026-10-09" })?.referencia.de === "data",
   );
+  const prox = prazoDosValores({ ...vazio, modo: "proximo", tipos: "Despacho, Nota Técnica", n: 10, contagem: "uteis" });
+  checar(
+    "proximo documento do tipo (o antigo EM BREVE)",
+    JSON.stringify(prox) ===
+      JSON.stringify({
+        referencia: { de: "novoDocumento", tipos: ["Despacho", "Nota Técnica"], desde: HOJE },
+        vencimento: { em: "dias", n: 10, contagem: "uteis" },
+        exibicao: "ate",
+      }),
+    prox,
+  );
+  const vProx = valoresDoPrazo(prox, HOJE);
+  checar("e volta com os tipos", vProx.modo === "proximo" && vProx.tipos === "Despacho, Nota Técnica" && vProx.n === 10, vProx);
+  checar("sem tipo, nao vira prazo", prazoDosValores({ ...vazio, modo: "proximo", tipos: " , ", n: 5 }) === undefined);
   checar(
     "dados incompletos nao viram prazo",
     prazoDosValores({ ...vazio, modo: "dias", n: 0 }) === undefined &&

@@ -36,6 +36,7 @@ import { instalarEstilo } from "./estilo";
 import { instalarEstrelaArvore } from "./estrelaArvore";
 import { instalarEstrelasCaixa } from "./estrelasCaixa";
 import { instalarEstrelasListas } from "./estrelasListas";
+import { instalarEstrelasPesquisa } from "./estrelasPesquisa";
 import { tratadoresDaAba } from "./executor";
 import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
@@ -56,8 +57,9 @@ if (!global.__seiProFavoritos) {
 
 type Repos = { unidade: RepositorioFavoritos | null; pessoal: RepositorioFavoritos };
 
-function qualTela(doc: Document): "caixa" | "arvore" | "listas" | "enviar" | null {
+function qualTela(doc: Document): "caixa" | "arvore" | "listas" | "enviar" | "pesquisa" | null {
   if (doc.querySelector("#frmProcedimentoControlar")) return "caixa";
+  if (doc.querySelector("table.pesquisaResultado")) return "pesquisa";
   if (doc.querySelector('#frmAtividadeListar[action*="acao=procedimento_enviar"]')) return "enviar";
   if (doc.querySelector("#topmenu") && doc.querySelector("#divArvore")) return "arvore";
   if (doc.querySelector("#frmRelBlocoProtocoloLista, #frmAcompanhamentoLista, #frmProcedimentoSobrestar")) return "listas";
@@ -143,6 +145,8 @@ async function principal(): Promise<void> {
       [repos.unidade, repos.pessoal].filter((r): r is RepositorioFavoritos => !!r),
       (u) => http.obter(u),
     ).catch((e) => console.warn("[SEI Pro] favoritos: captura da árvore", e));
+  } else if (tela === "pesquisa") {
+    instalarEstrelasPesquisa(document, servico);
   } else if (tela === "enviar") {
     // No envio, a lista é a da unidade (ou a Pessoal, se o processo já estiver lá).
     const ondeEsta = async (id: string) =>

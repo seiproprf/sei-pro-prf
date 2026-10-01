@@ -14,14 +14,16 @@
  * "novidade" falsa.
  */
 
+import { normalizarTexto } from "@comum/texto";
 import { lerArvore } from "@nucleo/dominio/arvore";
 import { lerCaixaDaPagina } from "@nucleo/dominio/caixa";
 import { lerHistorico } from "@nucleo/dominio/historico";
 import { linkDaAcao } from "@nucleo/links/links";
 import type { Pagina } from "@nucleo/sessao/http";
-import type { Instantaneo } from "../modelo/tipos";
+import type { Instantaneo, Prazo } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
 import { paginaDe } from "./contexto";
+import { type DocumentoAssinado, lerDocumentosGerarPdf } from "./documentos";
 
 /** A caixa está inteira na tela? (O caption diz "N registros"; a página mostra as linhas.) */
 function caixaInteira(doc: Document): boolean {
@@ -123,6 +125,24 @@ export async function capturarDaArvore(
       /* sem histórico, fica só a contagem de documentos */
     }
   }
+  // Prazo esperando o próximo documento de um tipo: a tela "Gerar PDF" (sem efeito no SEI) diz se ele chegou.
+  const esperando = [];
+  for (const r of donos) {
+    const f = await r.obter(arv.idProcedimento);
+    if (f?.prazo?.referencia.de === "novoDocumento") esperando.push({ r, prazo: f.prazo });
+  }
+  const linkPdf = esperando.length ? linkDaAcao(arv.links, "procedimento_gerar_pdf") : null;
+  if (linkPdf) {
+    try {
+      const docs = lerDocumentosGerarPdf((await obter(linkPdf)).doc);
+      for (const { r, prazo } of esperando) {
+        const novo = resolverProximoDocumento(prazo, docs);
+        if (novo) await r.editar(arv.idProcedimento, { prazo: novo });
+      }
+    } catch {
+      /* fica aguardando até a próxima abertura */
+    }
+  }
   for (const r of donos) {
     const anterior = (await r.atuais()).get(arv.idProcedimento);
     const novo: Instantaneo = {
@@ -137,4 +157,21 @@ export async function capturarDaArvore(
     await r.marcarVisto([arv.idProcedimento]);
   }
   return donos.length;
+}
+
+/**
+ * Prazo "a partir do próximo documento do tipo T" (o antigo "EM BREVE"): o
+ * primeiro documento de um dos tipos, datado a partir de `desde`, vira a
+ * referência da contagem. Os nomes vêm da tela "Gerar PDF" (nome e data); a
+ * comparação ignora acentos e caixa. null = continua aguardando.
+ */
+export function resolverProximoDocumento(prazo: Prazo, docs: DocumentoAssinado[]): Prazo | null {
+  if (prazo.referencia.de !== "novoDocumento") return null;
+  const { tipos, desde } = prazo.referencia;
+  const alvos = tipos.map((t) => normalizarTexto(t)).filter(Boolean);
+  const achado = [...docs]
+    .filter((d) => d.data >= desde && alvos.some((t) => normalizarTexto(d.nome).startsWith(t)))
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0))[0];
+  if (!achado) return null;
+  return { ...prazo, referencia: { de: "documento", idDocumento: achado.id, data: achado.data } };
 }
