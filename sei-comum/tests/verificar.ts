@@ -1,6 +1,7 @@
 import { resumo } from "./util";
 import { verificarAbertura } from "./verificar-abertura";
 import { verificarArmazenamento } from "./verificar-armazenamento";
+import { verificarCodec } from "./verificar-codec";
 import { verificarDatas } from "./verificar-datas";
 import { verificarEntidade } from "./verificar-entidade";
 import { verificarId } from "./verificar-id";
@@ -16,4 +17,5 @@ await verificarOpcoes();
 await verificarRpc();
 verificarId();
 verificarAbertura();
+await verificarCodec();
 resumo();
