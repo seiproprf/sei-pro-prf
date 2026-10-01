@@ -79,6 +79,9 @@
 </nav>
 <article class="prosa" id="prosa">
 <h1 class="titulo-pagina"><svg class="ico ico-titulo" aria-hidden="true"><use href="#i-{{ ic }}"></use></svg>{{ titulo }}</h1>
+{%- if slug == "HISTORICO" %}
+{% include novidades-email.html origem="historico" %}
+{%- endif %}
 {{ corpo }}
 </article>
 <nav class="anterior-proxima" id="anterior-proxima" aria-label="Navegação entre funções"></nav>

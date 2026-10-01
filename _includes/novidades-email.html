@@ -1,0 +1,25 @@
+{%- comment -%}
+Cartão de inscrição nas novidades por e-mail. Serviço: https://novidades.seipro.app (repositório seipro-novidades).
+Parâmetro: origem = "site" (home) ou "historico". Sem JavaScript, o formulário funciona por POST normal.
+{%- endcomment -%}
+{%- assign origem_novidades = include.origem | default: "site" -%}
+{%- assign servico_novidades = site.novidades_url | default: "https://novidades.seipro.app" -%}
+{%- assign sitekey_novidades = site.novidades_turnstile_sitekey | default: "0x4AAAAAAE2_7dQH1Eq1n5yh" -%}
+<div class="caixa-escura novidades-email">
+<strong>Novidades por e-mail</strong>
+<p>Um aviso a cada versão, com dicas de uso das funções novas.</p>
+<form class="form-novidades" method="post" action="{{ servico_novidades }}/inscrever" data-novidades>
+<label class="sr" for="novidades-email-{{ origem_novidades }}">Seu e-mail</label>
+<div class="form-novidades-linha">
+<input id="novidades-email-{{ origem_novidades }}" type="email" name="email" required autocomplete="email" inputmode="email" maxlength="254" placeholder="nome@orgao.gov.br">
+<button class="btn btn-claro" type="submit">Inscrever-se</button>
+</div>
+<input type="hidden" name="origem" value="{{ origem_novidades }}">
+<div class="isca" aria-hidden="true"><input name="site" type="text" tabindex="-1" autocomplete="off"></div>
+<div class="cf-turnstile" data-sitekey="{{ sitekey_novidades }}" data-theme="dark" data-size="flexible" data-appearance="interaction-only" data-language="pt-BR"></div>
+<p class="form-novidades-msg" role="status" aria-live="polite"></p>
+<p class="form-novidades-nota">Você confirma pelo e-mail e sai quando quiser. <a href="{{ site.baseurl }}/PRIVACY_POLICY.html#novidades-por-e-mail">Privacidade</a></p>
+</form>
+</div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="{{ site.baseurl }}/assets/js/novidades.js" defer></script>
