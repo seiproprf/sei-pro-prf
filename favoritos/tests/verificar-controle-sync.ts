@@ -1,7 +1,7 @@
 import { areaMemoria } from "@comum/armazenamento/area";
-import { CHAVE_PREFERENCIAS } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
 import { ControleSincronia, chaveStatusTexto, ocultarTextosInternos } from "../src/pagina/sincronia";
+import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../src/preferencias";
 import { RepositorioFavoritos } from "../src/repositorio";
 import type { StatusSync } from "../src/sincronia/motor";
 import { checar, instalarDom, secao, tique } from "./util";
@@ -20,7 +20,7 @@ export async function verificarControleSync(): Promise<void> {
 
   secao("controle da sincronia na aba");
   const area = areaMemoria();
-  const sync = areaMemoria({ [CHAVE_PREFERENCIAS]: { textoPadrao: "nao-perguntado" } });
+  const sync = areaMemoria();
   let t = 1;
   const carimbo = () => ({ agora: ++t, dispositivo: "A" });
   const esc = escoposDoContexto(CTX).unidade!;
@@ -53,7 +53,11 @@ export async function verificarControleSync(): Promise<void> {
   });
   await c.iniciar("caixa");
   checar("sem consentimento, nao sincroniza", remoto.lidas === 0);
-  await sync.gravar({ [CHAVE_PREFERENCIAS]: { textoPadrao: "ligado" } });
+  // Outro SEI (outro host) liga a sincronia: esta unidade NÃO pode passar a sincronizar.
+  await definirTextoPadrao(sync, "outro.sei.gov.br", "999", "ligado");
+  await tique(30);
+  checar("ligar em outro SEI nao liga aqui (consentimento por unidade)", remoto.lidas === 0);
+  await definirTextoPadrao(sync, CTX.host, CTX.unidade!.id, "ligado");
   await tique(30);
   checar("ligou (de qualquer lugar): sincroniza na hora", remoto.lidas === 1 && remoto.html !== null);
   await repo.adicionar({ id: "1", protocolo: "50300.000001/2026-01" });
@@ -62,12 +66,19 @@ export async function verificarControleSync(): Promise<void> {
   const st = await c.agora();
   checar("sincronizar agora (pedido do app)", st.estado === "ok" && remoto.lidas === 3, st);
   await c.apagar();
-  const prefs = (await sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string };
+  const prefs = await lerPreferencias(sync);
   const status = (await area.obter(chaveStatusTexto(esc)))[chaveStatusTexto(esc)] as StatusSync | undefined;
-  checar("apagar exclui o texto e desliga", remoto.excluido && prefs.textoPadrao === "desligado" && status?.estado === "nunca", {
-    prefs,
-    status,
-  });
+  checar(
+    "apagar exclui o texto e desliga",
+    remoto.excluido &&
+      estadoTextoPadrao(prefs, CTX.host, CTX.unidade!.id) === "desligado" &&
+      estadoTextoPadrao(prefs, "outro.sei.gov.br", "999") === "ligado" &&
+      status?.estado === "nunca",
+    {
+      prefs,
+      status,
+    },
+  );
   await repo.adicionar({ id: "2", protocolo: "50300.000002/2026-02" });
   await tique(80);
   checar("desligado: mudancas nao vao mais", remoto.html === null);

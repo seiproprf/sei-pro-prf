@@ -34,7 +34,7 @@ import { montarOpcoesExibicao } from "../opcoes/exibicao";
 import { chaveProgresso, type ProgressoAtualizacao } from "../pagina/atualizar";
 import type { DocumentoAssinado } from "../pagina/documentos";
 import { chaveStatusTexto } from "../pagina/sincronia";
-import { gravarPreferencias, lerPreferencias } from "../preferencias";
+import { definirTextoPadrao, estadoTextoPadrao, gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, type RepositorioFavoritos } from "../repositorio";
 import type { ControleArquivo } from "../sincronia/arquivoSync";
 import { type ArmazemCopias, fazerCopiaDoDia, restaurarCopia } from "../sincronia/copias";
@@ -716,13 +716,22 @@ export class AppFavoritos {
     m.iniciar();
   }
 
+  /** Consentimento do Texto Padrão desta unidade (ver preferencias.ts). */
+  private estadoTP(): "nao-perguntado" | "ligado" | "desligado" {
+    return estadoTextoPadrao(this.prefs, this.d.ctx.host, this.d.ctx.unidade?.id ?? "");
+  }
+
+  private definirTP(v: "ligado" | "desligado"): Promise<unknown> {
+    return definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.ctx.unidade?.id ?? "", v);
+  }
+
   private get escopoUnidade(): Escopo | null {
     return escoposDoContexto(this.d.ctx).unidade;
   }
 
   /** Convite único (por navegador) para sincronizar a lista da unidade pelo Texto Padrão. */
   private convidarSincronia(): void {
-    if (!this.escopoUnidade || this.prefs.textoPadrao !== "nao-perguntado") return;
+    if (!this.escopoUnidade || this.estadoTP() !== "nao-perguntado") return;
     const faixa: HTMLElement = h(
       "div",
       { class: "fav-faixa fav-convite-sync", role: "note" },
@@ -744,7 +753,7 @@ export class AppFavoritos {
           onclick: () => {
             faixa.remove();
             this.d.aoRedesenhar?.();
-            void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+            void this.definirTP("desligado");
           },
         },
         "Agora não",
@@ -786,7 +795,7 @@ export class AppFavoritos {
               modal?.fechar();
               aoLigar?.();
               this.d.aoRedesenhar?.();
-              void gravarPreferencias(this.d.sync, { textoPadrao: "ligado" });
+              void this.definirTP("ligado");
             },
           },
           "Ligar",
@@ -802,7 +811,7 @@ export class AppFavoritos {
     const chave = chaveStatusTexto(esc);
     const pintar = async () => {
       const st = (await this.d.area.obter(chave))[chave] as StatusSync | undefined;
-      const texto = this.prefs.textoPadrao === "ligado" ? textoDoStatus(st, Date.now()) : "";
+      const texto = this.estadoTP() === "ligado" ? textoDoStatus(st, Date.now()) : "";
       this.el.status.hidden = !texto;
       this.el.status.replaceChildren(
         ...(texto
@@ -852,10 +861,10 @@ export class AppFavoritos {
         ? {
             sigla: this.sigla,
             nomeTexto: nomeDoTexto(this.d.ctx.login),
-            ligado: this.prefs.textoPadrao === "ligado",
+            ligado: this.estadoTP() === "ligado",
             situacao: async () => {
               const st = (await this.d.area.obter(chaveStatusTexto(esc)))[chaveStatusTexto(esc)] as StatusSync | undefined;
-              return this.prefs.textoPadrao === "ligado" ? textoDoStatus(st, Date.now()) : "Desligada: esta lista fica só neste navegador.";
+              return this.estadoTP() === "ligado" ? textoDoStatus(st, Date.now()) : "Desligada: esta lista fica só neste navegador.";
             },
             ligar: () => {
               modal?.fechar();
@@ -863,7 +872,7 @@ export class AppFavoritos {
             },
             agora: () => chamar("sincronizarAgora", "Sincronizado."),
             desligar: () => {
-              void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+              void this.definirTP("desligado");
               modal?.fechar();
               avisar("Sincronização desligada. O texto continua no SEI até você apagá-lo.");
             },

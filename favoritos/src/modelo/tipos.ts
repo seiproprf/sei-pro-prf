@@ -147,7 +147,10 @@ export interface Filtro {
 export interface Preferencias {
   exibir: "abaixo" | "lateral" | "ambos";
   perguntarAoFavoritar: boolean;
+  /** Obsoleto (era um só para todos os SEIs): valem as escolhas por unidade, abaixo. */
   textoPadrao: "nao-perguntado" | "ligado" | "desligado";
+  /** Consentimento do Texto Padrão POR UNIDADE (`host|idUnidade`): o texto é visível para aquela unidade. */
+  textoPadraoUnidades: Record<string, "ligado" | "desligado">;
   recolhido: boolean;
   agruparPorPasta: boolean;
   ordem: ModoOrdem;
@@ -158,6 +161,7 @@ export const PREFERENCIAS_PADRAO: Preferencias = {
   exibir: "abaixo",
   perguntarAoFavoritar: true,
   textoPadrao: "nao-perguntado",
+  textoPadraoUnidades: {},
   recolhido: false,
   agruparPorPasta: false,
   ordem: "manual",

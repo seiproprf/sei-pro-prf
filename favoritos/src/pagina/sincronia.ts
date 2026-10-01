@@ -1,7 +1,7 @@
 /**
  * Sincronia por Texto Padrão, do lado da aba do SEI (o content script tem a
- * sessão). Liga e desliga sozinha conforme a preferência `textoPadrao`, que o
- * usuário decide no app (consentimento) ou nas opções:
+ * sessão). Liga e desliga sozinha conforme o consentimento DESTA unidade
+ * (`estadoTextoPadrao`), que o usuário decide no app:
  * - ao carregar o Controle de Processos, puxa (no máximo a cada 5 min);
  * - qualquer mudança na lista da unidade, feita aqui, no app ou em outra aba,
  *   é enviada 15 s depois;
@@ -11,8 +11,8 @@
 import type { Area } from "@comum/armazenamento/area";
 import { CHAVE_PREFERENCIAS } from "../modelo/constantes";
 import { chaveEscopo } from "../modelo/escopo";
-import type { Carimbo, ContextoAba, Escopo } from "../modelo/tipos";
-import { gravarPreferencias, lerPreferencias } from "../preferencias";
+import type { Carimbo, ContextoAba, Escopo, Preferencias } from "../modelo/tipos";
+import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../preferencias";
 import type { RepositorioFavoritos } from "../repositorio";
 import { MotorSincronia, type StatusSync } from "../sincronia/motor";
 import { PREFIXO_TEXTO } from "../sincronia/textoPadrao";
@@ -56,6 +56,10 @@ export class ControleSincronia {
 
   constructor(private readonly d: DepsControle) {}
 
+  private estado(p: Preferencias): "nao-perguntado" | "ligado" | "desligado" {
+    return estadoTextoPadrao(p, this.d.ctx.host, this.d.escopo.unidade?.id ?? "");
+  }
+
   private criarMotor(): MotorSincronia {
     const armazem = this.d.armazem();
     return new MotorSincronia({
@@ -92,7 +96,7 @@ export class ControleSincronia {
   }
 
   async iniciar(tela: string | null): Promise<void> {
-    const ligado = (await lerPreferencias(this.d.sync)).textoPadrao === "ligado";
+    const ligado = this.estado(await lerPreferencias(this.d.sync)) === "ligado";
     if (ligado) {
       const pendente =
         (await this.motor?.status())?.pendente ??
@@ -102,10 +106,11 @@ export class ControleSincronia {
     this.pararPrefs = this.d.sync.aoMudar((m) => {
       if (!(CHAVE_PREFERENCIAS in m)) return;
       void lerPreferencias(this.d.sync).then((p) => {
-        if (p.textoPadrao === "ligado" && !this.pararMudancas) {
+        const e = this.estado(p);
+        if (e === "ligado" && !this.pararMudancas) {
           this.ligar(false);
           void this.rodar(true).catch(() => undefined);
-        } else if (p.textoPadrao !== "ligado") {
+        } else if (e !== "ligado") {
           this.desligar();
         }
       });
@@ -120,7 +125,7 @@ export class ControleSincronia {
   /** "Apagar meus dados do SEI desta unidade": exclui o texto e desliga a sincronia. */
   async apagar(): Promise<boolean> {
     this.desligar();
-    await gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+    await definirTextoPadrao(this.d.sync, this.d.ctx.host, this.d.escopo.unidade?.id ?? "", "desligado");
     const excluiu = await this.d.armazem().excluir();
     await this.d.area.gravar({
       [chaveStatusTexto(this.d.escopo)]: { estado: "nunca", quando: Date.now(), pendente: false } satisfies StatusSync,

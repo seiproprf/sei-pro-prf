@@ -99,7 +99,9 @@ async function iniciarLateral(): Promise<void> {
       const a = ponte.daChave(montado?.chave ?? "");
       return a
         ? a.rpc.chamar<T>(op, args, prazo)
-        : Promise.reject(new ErroRpc("SEM_ABA", "A aba do SEI desta lista não está mais aberta nesta janela. Abra o SEI na unidade e tente de novo."));
+        : Promise.reject(
+            new ErroRpc("SEM_ABA", "A aba do SEI desta lista não está mais aberta nesta janela. Abra o SEI na unidade e tente de novo."),
+          );
     },
   };
   let fila = Promise.resolve();

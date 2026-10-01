@@ -74,6 +74,15 @@ export async function montarSincronizacao(d: DepsSincronizacao): Promise<HTMLEle
               "div",
               { class: "linha" },
               botao("Ligar…", () => tp.ligar(), "spro-botao primario"),
+              // Desligado não quer dizer apagado: um texto que ficou no SEI ainda pode ser excluído daqui.
+              botao(
+                "Apagar o texto do SEI",
+                async () => {
+                  if (await d.confirmar(`Apagar do SEI o texto “${tp.nomeTexto}”, se ele existir? Os favoritos continuam neste navegador.`))
+                    await tp.apagar();
+                },
+                "spro-botao perigo",
+              ),
             ),
       ),
     );

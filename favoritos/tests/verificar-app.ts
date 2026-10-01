@@ -1,9 +1,10 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { type AbrirModal, AppFavoritos, type DepsApp } from "../src/app/app";
-import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
+import { chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
 import { chaveProgresso } from "../src/pagina/atualizar";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
+import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../src/preferencias";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { copiasEmMemoria } from "../src/sincronia/copias";
 import { botao, checar, disparar, escolher, instalarDom, secao, tique } from "./util";
@@ -258,8 +259,14 @@ export async function verificarApp(): Promise<void> {
   );
   botao(dlgC!.conteudo, "Ligar")!.click();
   await tique(30);
-  const prefSy = (await sy.sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string };
-  checar("ligar grava o consentimento e tira o convite", prefSy.textoPadrao === "ligado" && !convite(), prefSy);
+  const prefSy = await lerPreferencias(sy.sync);
+  checar(
+    "ligar grava o consentimento DESTA unidade e tira o convite",
+    estadoTextoPadrao(prefSy, CTX.host, CTX.unidade!.id) === "ligado" &&
+      estadoTextoPadrao(prefSy, CTX.host, "outra") === "nao-perguntado" &&
+      !convite(),
+    prefSy,
+  );
   const esc = escoposDoContexto(CTX).unidade!;
   await sy.area.gravar({
     [chaveStatusTexto(esc)]: { estado: "ok", quando: Date.now() - 120_000, ultimoOk: Date.now() - 120_000, pendente: false },
@@ -293,6 +300,17 @@ export async function verificarApp(): Promise<void> {
     sy.chamadas.some(([op]) => op === "apagarDoSei"),
   );
 
+  // Na aba, o "apagar" desliga a unidade (pagina/sincronia.ts); aqui o rpc é falso, então desliga-se à mão.
+  await definirTextoPadrao(sy.sync, CTX.host, CTX.unidade!.id, "desligado");
+  await tique(30);
+  botao(sy.raiz, "Sincronização…")!.click();
+  await tique(30);
+  const dlgD = sy.modais.at(-1)!;
+  checar(
+    "desligado ainda oferece apagar um texto que ficou no SEI",
+    !!botao(dlgD.conteudo, "Apagar o texto do SEI") && !!botao(dlgD.conteudo, "Ligar…"),
+  );
+
   const naoAgora = montar();
   await naoAgora.app.iniciar();
   botao(naoAgora.raiz.querySelector(".fav-convite-sync")!, "Agora não")!.click();
@@ -300,7 +318,7 @@ export async function verificarApp(): Promise<void> {
   checar(
     "'Agora nao' desliga e some",
     !naoAgora.raiz.querySelector(".fav-convite-sync") &&
-      ((await naoAgora.sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string }).textoPadrao === "desligado",
+      estadoTextoPadrao(await lerPreferencias(naoAgora.sync), CTX.host, CTX.unidade!.id) === "desligado",
   );
 
   secao("app: copias diarias no dialogo de sincronizacao");
