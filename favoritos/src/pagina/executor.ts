@@ -4,7 +4,7 @@
  * localStorage antigo. As operações são poucas e não escrevem nada no SEI.
  */
 
-import type { Tratador } from "@comum/ponte/rpc";
+import { ErroRpc, type Tratador } from "@comum/ponte/rpc";
 import { acaoNaArvore, lerArvore } from "@nucleo/dominio/arvore";
 import { Sei } from "@nucleo/sei";
 import { lerLegadoLocal } from "../migracao/fontes";
@@ -19,6 +19,8 @@ export interface DepsExecutor {
   iframe: HTMLIFrameElement | null;
   armazenamento: Pick<Storage, "getItem">;
   lerArquivo?: () => Promise<unknown | null>;
+  /** Sincronia por Texto Padrão desta aba (só na janela de topo, com unidade). */
+  sincronia?: { agora(): Promise<unknown>; apagar(): Promise<boolean> } | null;
 }
 
 export function tratadoresDaAba(d: DepsExecutor): Record<string, Tratador> {
@@ -34,6 +36,14 @@ export function tratadoresDaAba(d: DepsExecutor): Record<string, Tratador> {
       return abrirProcesso(d.doc, String(a.id ?? ""), String(a.protocolo ?? ""), a.novaAba === true);
     },
     lerLegado: async () => ({ local: lerLegadoLocal(d.armazenamento), arquivo: d.lerArquivo ? await d.lerArquivo() : null }),
+    sincronizarAgora: () => {
+      if (!d.sincronia) throw new ErroRpc("SEM_SINCRONIA", "A sincronia pelo Texto Padrão só funciona numa tela do SEI com unidade.");
+      return d.sincronia.agora();
+    },
+    apagarDoSei: () => {
+      if (!d.sincronia) throw new ErroRpc("SEM_SINCRONIA", "A sincronia pelo Texto Padrão só funciona numa tela do SEI com unidade.");
+      return d.sincronia.apagar();
+    },
     documentosAssinados: (args) => {
       const a = (args ?? {}) as { id?: unknown; protocolo?: unknown; buscar?: unknown };
       return buscarDocumentosAssinados(

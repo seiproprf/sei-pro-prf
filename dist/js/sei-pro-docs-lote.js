@@ -908,6 +908,9 @@ function docLoteModalSelecaoDoc() {
                             })
                             .empty().append($('<option></option>').val('').text('\u00A0'));
                         txtPadrao_getList().then(listTxtPadrao => {
+                            // Textos "[_..." sao dados internos do SEI Pro (favoritos, distribuicao automatica):
+                            // nao sao modelo de documento e nao entram no seletor.
+                            listTxtPadrao = listTxtPadrao.filter(item => !/^\[_/.test(String(item.name || '').trim()));
                             listTxtPadraoDoc = listTxtPadrao;
                             htmlPro($('#textoPadraoSelect'), listTxtPadrao.map(item => `<option value="${item.id}">${item.name}</option>`).join(''), 'append');
                             $('#textoPadraoSelect').trigger('chosen:updated');

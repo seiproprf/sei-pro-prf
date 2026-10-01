@@ -12,6 +12,8 @@ import { hojeISO } from "@comum/datas/dias";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
+import { criarArmazemTextoPadrao } from "@nucleo/dominio/textoPadrao";
+import { Sei } from "@nucleo/sei";
 import { lerArquivoAntigo } from "../migracao/fontes";
 import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_PREFERENCIAS } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
@@ -19,9 +21,10 @@ import { ondeMostrar, temPainelLateral } from "../modelo/exibicao";
 import type { ContextoAba, Favorito, TipoLista } from "../modelo/tipos";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
+import { DESCRICAO_TEXTO, nomeDoTexto } from "../sincronia/textoPadrao";
 import { abrirBalao } from "./balao";
 import { instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral } from "./botao";
-import { contextoDe, documentoTopo, temaEscuroLegado } from "./contexto";
+import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
 import { instalarManterNoEnvio } from "./enviar";
 import { instalarEstrelaArvore } from "./estrelaArvore";
 import { instalarEstrelasCaixa } from "./estrelasCaixa";
@@ -31,6 +34,7 @@ import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
 import { montarPainel, ordemLegada } from "./painel";
 import { ServicoFavoritosPagina } from "./servico";
+import { ControleSincronia, ocultarTextosInternos } from "./sincronia";
 
 marcarAtivo(document);
 
@@ -53,6 +57,8 @@ function qualTela(doc: Document): "caixa" | "arvore" | "listas" | "enviar" | nul
 }
 
 async function principal(): Promise<void> {
+  // Cosmético e barato: os textos de dados do SEI Pro não aparecem como modelo ao gerar documento.
+  ocultarTextosInternos(document);
   const noTopo = window === window.top;
   const tela = qualTela(document);
   // A janela de topo de qualquer tela com sessão atende o painel lateral; os frames, só as telas conhecidas.
@@ -70,8 +76,6 @@ async function principal(): Promise<void> {
       (u) => void window.open(u, "seiProPainel", "popup,width=420,height=760"),
       chrome.runtime.getURL("html/painel.html#aba=favoritos"),
     );
-  if (noTopo) ligarPainelLateral(ctx, area);
-  if (!tela) return;
   const dispositivo = await idDispositivo(area);
   const carimbo = () => ({ agora: Date.now(), dispositivo });
   const esc = escoposDoContexto(ctx);
@@ -79,6 +83,27 @@ async function principal(): Promise<void> {
     unidade: esc.unidade ? new RepositorioFavoritos(area, esc.unidade, carimbo) : null,
     pessoal: new RepositorioFavoritos(area, esc.pessoal, carimbo),
   };
+  // Sincronia por Texto Padrão: só na janela de topo (tem a sessão e o menu) e só com unidade.
+  const controle =
+    noTopo && repos.unidade && esc.unidade
+      ? new ControleSincronia({
+          ctx,
+          area,
+          sync,
+          repo: repos.unidade,
+          escopo: esc.unidade,
+          carimbo,
+          travar: travarComLocks,
+          armazem: () =>
+            criarArmazemTextoPadrao(new Sei(location.href, () => paginaDe(document)), {
+              nome: nomeDoTexto(ctx.login),
+              descricao: DESCRICAO_TEXTO,
+            }),
+        })
+      : null;
+  if (controle) await controle.iniciar(tela);
+  if (noTopo) ligarPainelLateral(ctx, area, controle);
+  if (!tela) return;
   const servico = new ServicoFavoritosPagina({
     ...repos,
     aoAdicionar: (f, repo, ancora) => void perguntar(f, repo, ancora, repos, ctx, sync),
@@ -86,7 +111,7 @@ async function principal(): Promise<void> {
   await servico.carregar();
   if (tela === "caixa") {
     instalarEstrelasCaixa(document, servico);
-    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral);
+    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle);
   } else if (tela === "arvore") {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
@@ -111,7 +136,7 @@ async function principal(): Promise<void> {
 }
 
 /** A aba do SEI atende o app do painel lateral quando ele anuncia que abriu. */
-function ligarPainelLateral(ctx: ContextoAba, area: Area): void {
+function ligarPainelLateral(ctx: ContextoAba, area: Area, sincronia: ControleSincronia | null): void {
   let foco = document.hasFocus() ? Date.now() : 0;
   const lado = ligarLadoAba({
     area,
@@ -122,6 +147,7 @@ function ligarPainelLateral(ctx: ContextoAba, area: Area): void {
       iframe: null,
       armazenamento: localStorage,
       lerArquivo: () => lerArquivoAntigo(),
+      sincronia,
     }),
     estado: () => ({ visivel: document.visibilityState === "visible", foco, chave: chaveDoContexto(ctx) }),
   });
@@ -174,12 +200,18 @@ async function perguntar(
  * O painel abaixo da lista segue a preferência "onde mostrar", inclusive
  * quando ela muda com a página aberta (pelas opções ou pelo próprio app).
  */
-async function controlarPainelEmbutido(ctx: ContextoAba, sync: Area, lateral: boolean, abrirLateral: () => void): Promise<void> {
+async function controlarPainelEmbutido(
+  ctx: ContextoAba,
+  sync: Area,
+  lateral: boolean,
+  abrirLateral: () => void,
+  sincronia: ControleSincronia | null,
+): Promise<void> {
   let prefs = await lerPreferencias(sync);
   let montado: { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null = null;
   const aplicar = () => {
     const onde = ondeMostrar(prefs.exibir, lateral);
-    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido);
+    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido, sincronia);
     else if (!onde.abaixo && montado) {
       montado.fechar();
       montado = null;
@@ -209,6 +241,7 @@ function montarEmbutido(
   ctx: ContextoAba,
   sync: Area,
   recolhido: boolean,
+  sincronia: ControleSincronia | null,
 ): { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null {
   const montado = montarPainel(document, {
     urlApp: chrome.runtime.getURL("html/favoritos.html"),
@@ -223,6 +256,7 @@ function montarEmbutido(
     iframe: montado.iframe,
     armazenamento: localStorage,
     lerArquivo: () => lerArquivoAntigo(),
+    sincronia,
   });
   let rpc: Rpc | null = null;
   // A cada carga do iframe, uma porta nova: o app só aceita a porta da própria aba (app/ponte.ts).
@@ -238,4 +272,11 @@ function montarEmbutido(
       montado.painel.remove();
     },
   };
+}
+
+/** Uma aba sincroniza por vez (Web Locks; o SEI em HTTP não tem: aí vale a comparação de conteúdo do motor). */
+function travarComLocks<T>(nome: string, fn: () => Promise<T>): Promise<T | null> {
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  if (!locks) return fn();
+  return locks.request(nome, { ifAvailable: true }, async (lock): Promise<T | null> => (lock ? fn() : null)) as Promise<T | null>;
 }
