@@ -1,4 +1,5 @@
 import { resumo } from "./util";
+import { verificarApp } from "./verificar-app";
 import { verificarBalao } from "./verificar-balao";
 import { verificarDialogos } from "./verificar-dialogos";
 import { verificarLista } from "./verificar-lista";
@@ -18,4 +19,5 @@ await verificarBalao();
 await verificarPainel();
 verificarLista();
 await verificarDialogos();
+await verificarApp();
 resumo();
