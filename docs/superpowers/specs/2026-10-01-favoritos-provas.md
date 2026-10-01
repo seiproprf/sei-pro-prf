@@ -31,9 +31,22 @@ ficava preso em 80 px até ser rolado até ele. Correção no commit `3c0a16d`: 
 redesenho (`aoRedesenhar`) e a altura é lida na hora, porque ler a geometria força o layout.
 Conferido ao vivo: numa navegação limpa, a altura vai de 120 para 185 px em meio segundo, sem rolar.
 
-**SEI MJ de homologação 5.0.4: PENDENTE.** O login no `hmlsei.mj.gov.br` é feito pelo autor, na
-janela do harness. Rode o mesmo roteiro (`scratchpad/harness/p2.mjs`, `p2b.mjs`, `persiste.mjs`,
-`naovisto.mjs`) com `VISIVEL=1` no daemon.
+**SEI MJ de homologação, SEI 5.0.4 (CKEditor 5), unidade TESTE, 01/10/2026.** O autor fez o login
+na janela do harness.
+
+| Verificação | Resultado |
+|---|---|
+| Marca e legado fora | ok |
+| Estrelas na caixa | 27 de 27 linhas |
+| Painel e app | ok, conectado **pela aba**; altura ajustada sozinha (151 px vazio, 224 px com 3 itens) |
+| Clique com mouse real em duas linhas | estrela acesa e balão aberto nas duas; persistem depois de recarregar; o app lista os 3 favoritos |
+| Requisições ao SEI no clique | 0 |
+| Estrela no topo da árvore (`ifrArvore`) | ok |
+
+O **primeiro** clique da rodada, logo depois do login, não registrou: a estrela ficou apagada,
+sem balão e sem requisição. O clique pelo DOM na mesma linha funcionou, e os dois cliques
+seguintes com mouse real também. O mais provável é a janela visível ter recebido interação no
+mesmo instante. Ainda assim, vale observar na checklist manual se algum clique "se perde".
 
 **Checklist manual do autor (Tarefa 19, Step 9): PENDENTE.** A automação não alcança a interação
 dentro do app (diálogos, arrastar, área de transferência, download). Marque cada item ao conferir:
@@ -87,4 +100,26 @@ com hashes zerados e nomes de terceiros trocados por neutros):
 - Base64url continua sendo a escolha, por robustez diante do editor (o CK5 ainda não foi medido) e do filtro de XSS das outras versões.
 - O ciclo criar → localizar pelo nome → alterar → consultar → excluir funciona com o `Formulario` do núcleo, sem código novo de infraestrutura.
 
-**SEI MJ de homologação 5.0.4:** ver abaixo.
+**SEI MJ de homologação, SEI 5.0.4 (CKEditor 5), unidade TESTE, 01/10/2026.** Mesmo roteiro.
+O texto de prova foi criado e **excluído** (id 22966).
+
+| Conteúdo | Gravou | Leitura idêntica | Tempo |
+|---|---|---|---|
+| 10 KB | sim | sim | 0,7 s |
+| 60 KB | sim | sim | 0,8 s |
+| 120 KB | sim | sim | 1,0 s |
+| 250 KB | sim | sim | 1,4 s |
+| 1 MB | sim | sim | 4,0 s |
+
+**Diferenças do SEI 5 que a F3 precisa tratar:**
+- O conteúdo fica num `<textarea name="txaConteudo" class="infraTextarea editor-simples">` **sem id**.
+  O `#txaConteudo` só existe no 4.1, então leia por `textarea[name="txaConteudo"]`. O envio por
+  `name` funciona igual nos dois. O resto do formulário (`#frmTextoPadraoInternoCadastro`,
+  `txtNome` 50, `txtDescricao` 300, `hdnIdTextoPadraoInterno`, botões `sbm*`) é igual ao 4.1.5.
+- A leitura volta com **um nível a mais de escape HTML**: `&amp;`, `&#8212;` e `&#8220;` aparecem
+  como texto. JSON cru exigiria desfazer o escape conforme a versão; o **base64url passa imune**,
+  e isso confirma a escolha do spec. O parágrafo legível pode trazer entidades, o que não importa.
+- A lista da unidade tinha 12 textos, sem paginação.
+- As fixtures do SEI 5 **não foram versionadas**: são páginas do ambiente de homologação de um
+  ministério, e o repositório é público. Elas ficaram no rascunho da sessão
+  (`scratchpad/harness/fixtures-p1/sei5/`), e cabe ao autor decidir se e como publicar.
