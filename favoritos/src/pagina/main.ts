@@ -10,8 +10,11 @@ import { type Area, areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { hojeISO } from "@comum/datas/dias";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
-import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
+import { criarRpc, ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
+import { acaoNaArvore } from "@nucleo/dominio/arvore";
+import { listarCaixa } from "@nucleo/dominio/caixa";
+import { lerHistorico } from "@nucleo/dominio/historico";
 import { criarArmazemTextoPadrao } from "@nucleo/dominio/textoPadrao";
 import { Sei } from "@nucleo/sei";
 import { criarHttp } from "@nucleo/sessao/http";
@@ -23,6 +26,7 @@ import type { ContextoAba, Favorito, TipoLista } from "../modelo/tipos";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { DESCRICAO_TEXTO, nomeDoTexto } from "../sincronia/textoPadrao";
+import { ControleAtualizar, chaveProgresso } from "./atualizar";
 import { abrirBalao } from "./balao";
 import { instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral } from "./botao";
 import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
@@ -104,7 +108,8 @@ async function principal(): Promise<void> {
         })
       : null;
   if (controle) await controle.iniciar(tela);
-  if (noTopo) ligarPainelLateral(ctx, area, controle);
+  const atualizar = noTopo ? controleAtualizar(ctx, area, repos) : null;
+  if (noTopo) ligarPainelLateral(ctx, area, controle, atualizar);
   if (!tela) return;
   const servico = new ServicoFavoritosPagina({
     ...repos,
@@ -115,7 +120,7 @@ async function principal(): Promise<void> {
     instalarEstrelasCaixa(document, servico);
     // "O que mudou": os sinais que a caixa já mostra, sem requisição.
     if (repos.unidade) void capturarDaCaixa(document, repos.unidade).catch((e) => console.warn("[SEI Pro] favoritos: captura da caixa", e));
-    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle);
+    if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle, atualizar);
   } else if (tela === "arvore") {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
@@ -148,7 +153,7 @@ async function principal(): Promise<void> {
 }
 
 /** A aba do SEI atende o app do painel lateral quando ele anuncia que abriu. */
-function ligarPainelLateral(ctx: ContextoAba, area: Area, sincronia: ControleSincronia | null): void {
+function ligarPainelLateral(ctx: ContextoAba, area: Area, sincronia: ControleSincronia | null, atualizar: ControleAtualizar | null): void {
   let foco = document.hasFocus() ? Date.now() : 0;
   const lado = ligarLadoAba({
     area,
@@ -160,6 +165,7 @@ function ligarPainelLateral(ctx: ContextoAba, area: Area, sincronia: ControleSin
       armazenamento: localStorage,
       lerArquivo: () => lerArquivoAntigo(),
       sincronia,
+      atualizar,
     }),
     estado: () => ({ visivel: document.visibilityState === "visible", foco, chave: chaveDoContexto(ctx) }),
   });
@@ -218,12 +224,13 @@ async function controlarPainelEmbutido(
   lateral: boolean,
   abrirLateral: () => void,
   sincronia: ControleSincronia | null,
+  atualizar: ControleAtualizar | null,
 ): Promise<void> {
   let prefs = await lerPreferencias(sync);
   let montado: { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null = null;
   const aplicar = () => {
     const onde = ondeMostrar(prefs.exibir, lateral);
-    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido, sincronia);
+    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido, sincronia, atualizar);
     else if (!onde.abaixo && montado) {
       montado.fechar();
       montado = null;
@@ -254,6 +261,7 @@ function montarEmbutido(
   sync: Area,
   recolhido: boolean,
   sincronia: ControleSincronia | null,
+  atualizar: ControleAtualizar | null,
 ): { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null {
   const montado = montarPainel(document, {
     urlApp: chrome.runtime.getURL("html/favoritos.html"),
@@ -269,6 +277,7 @@ function montarEmbutido(
     armazenamento: localStorage,
     lerArquivo: () => lerArquivoAntigo(),
     sincronia,
+    atualizar,
   });
   let rpc: Rpc | null = null;
   // A cada carga do iframe, uma porta nova: o app só aceita a porta da própria aba (app/ponte.ts).
@@ -291,4 +300,47 @@ function travarComLocks<T>(nome: string, fn: () => Promise<T>): Promise<T | null
   const locks = (navigator as Navigator & { locks?: LockManager }).locks;
   if (!locks) return fn();
   return locks.request(nome, { ifAvailable: true }, async (lock): Promise<T | null> => (lock ? fn() : null)) as Promise<T | null>;
+}
+
+/** "Atualizar fora da unidade": a caixa inteira como trava, depois um processo por vez (pagina/atualizar.ts). */
+function controleAtualizar(ctx: ContextoAba, area: Area, repos: Repos): ControleAtualizar {
+  return new ControleAtualizar(
+    () => {
+      const sei = new Sei(location.href, () => paginaDe(document));
+      return {
+        repos: [repos.unidade, repos.pessoal].filter((r): r is RepositorioFavoritos => !!r),
+        listarCaixa: async (sinal) => {
+          const r = await listarCaixa(sei, { limite: Number.MAX_SAFE_INTEGER, sinal });
+          // Sem a caixa inteira não há trava: ler a árvore de um processo da unidade marcaria o recebimento.
+          if (r.processos.length < r.total)
+            throw new ErroRpc("CAIXA_INCOMPLETA", "Não foi possível ler a caixa inteira; nada foi atualizado.");
+          return new Set(r.processos.map((p) => p.idProcedimento));
+        },
+        lerProcesso: async (protocolo, sinal) => {
+          const arv = await sei.arvore(protocolo, { sinal, forcar: true });
+          const link = acaoNaArvore(arv, "procedimento_consultar_historico");
+          const a = link ? lerHistorico(await sei.http.obter(link, { sinal }))[0] : undefined;
+          return {
+            qtdDocumentos: arv.documentos.length,
+            // "Enviar Processo" na barra só existe com o processo aberto na unidade.
+            abertoNaUnidade: !!acaoNaArvore(arv, "procedimento_enviar"),
+            ultimoAndamento: a ? { data: a.data, unidade: a.unidade, descricao: a.descricao } : undefined,
+          };
+        },
+        esperar: (ms, sinal) =>
+          new Promise<void>((ok) => {
+            const t = setTimeout(ok, ms);
+            sinal.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(t);
+                ok();
+              },
+              { once: true },
+            );
+          }),
+      };
+    },
+    (p) => area.gravar({ [chaveProgresso(ctx.host, ctx.login)]: { ...p, quando: Date.now() } }),
+  );
 }

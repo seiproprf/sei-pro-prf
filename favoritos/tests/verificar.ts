@@ -1,5 +1,6 @@
 import { resumo } from "./util";
 import { verificarApp } from "./verificar-app";
+import { verificarAtualizar } from "./verificar-atualizar";
 import { verificarBalao } from "./verificar-balao";
 import { verificarBotao } from "./verificar-botao";
 import { verificarCaptura } from "./verificar-captura";
@@ -52,4 +53,5 @@ await verificarCopias();
 await verificarControleArquivo();
 await verificarNovidades();
 await verificarCaptura();
+await verificarAtualizar();
 resumo();

@@ -19,6 +19,8 @@ export interface DepsExecutor {
   iframe: HTMLIFrameElement | null;
   armazenamento: Pick<Storage, "getItem">;
   lerArquivo?: () => Promise<unknown | null>;
+  /** "Atualizar fora da unidade" (só na janela de topo). */
+  atualizar?: { iniciar(): Promise<unknown>; cancelar(): boolean } | null;
   /** Sincronia por Texto Padrão desta aba (só na janela de topo, com unidade). */
   sincronia?: { agora(): Promise<unknown>; apagar(): Promise<boolean> } | null;
 }
@@ -36,6 +38,11 @@ export function tratadoresDaAba(d: DepsExecutor): Record<string, Tratador> {
       return abrirProcesso(d.doc, String(a.id ?? ""), String(a.protocolo ?? ""), a.novaAba === true);
     },
     lerLegado: async () => ({ local: lerLegadoLocal(d.armazenamento), arquivo: d.lerArquivo ? await d.lerArquivo() : null }),
+    atualizarForaDaUnidade: () => {
+      if (!d.atualizar) throw new ErroRpc("SEM_ATUALIZAR", "Abra uma tela do SEI para atualizar.");
+      return d.atualizar.iniciar();
+    },
+    cancelarAtualizacao: () => d.atualizar?.cancelar() ?? false,
     sincronizarAgora: () => {
       if (!d.sincronia) throw new ErroRpc("SEM_SINCRONIA", "A sincronia pelo Texto Padrão só funciona numa tela do SEI com unidade.");
       return d.sincronia.agora();
