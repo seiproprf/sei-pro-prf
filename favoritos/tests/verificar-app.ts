@@ -1,7 +1,8 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { type AbrirModal, AppFavoritos, type DepsApp } from "../src/app/app";
-import { chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
+import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
+import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { botao, checar, disparar, instalarDom, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
@@ -52,7 +53,7 @@ function montar(extra: Partial<DepsApp> = {}, inicial: Record<string, unknown> =
     ...extra,
   };
   const raiz = doc.getElementById("app")!;
-  return { doc, raiz, area, repos, chamadas, modais, baixados, copiados, app: new AppFavoritos(raiz, deps) };
+  return { doc, raiz, area, sync, repos, chamadas, modais, baixados, copiados, app: new AppFavoritos(raiz, deps) };
 }
 
 export async function verificarApp(): Promise<void> {
@@ -140,11 +141,11 @@ export async function verificarApp(): Promise<void> {
   secao("app montado: troca de unidade");
   const b = montar({}, { [chaveUltimaUnidade(CTX.host, CTX.login.toLowerCase())]: { id: "999", sigla: "SFC" } });
   await b.app.iniciar();
-  const faixa = b.raiz.querySelector(".fav-faixa")?.textContent ?? "";
+  const faixa = b.raiz.querySelector(".fav-faixa-unidade")?.textContent ?? "";
   checar("faixa explica a troca de unidade", faixa.includes("GPF") && faixa.includes("SFC"), faixa);
   const c = montar({}, { [chaveUltimaUnidade(CTX.host, CTX.login.toLowerCase())]: { id: "110000001", sigla: "GPF" } });
   await c.app.iniciar();
-  checar("mesma unidade, sem faixa", !c.raiz.querySelector(".fav-faixa"));
+  checar("mesma unidade, sem faixa", !c.raiz.querySelector(".fav-faixa-unidade"));
 
   secao("app montado: migracao dos favoritos antigos");
   const legado = { favorites: [{ id_procedimento: "70", processo: "70/2026", categoria: "Contratos" }] };
@@ -236,4 +237,67 @@ export async function verificarApp(): Promise<void> {
   const semMapa = montar();
   await semMapa.app.iniciar();
   checar("sem carregador de mapa, sem item de mapa", !botao(semMapa.raiz, "Mapa dos favoritos"));
+
+  secao("app: sincronia pelo Texto Padrao");
+  const sy = montar();
+  await sy.app.iniciar();
+  const convite = () => sy.raiz.querySelector(".fav-convite-sync");
+  checar("convida a sincronizar (unidade e ainda nao perguntado)", !!convite() && /outros computadores/.test(convite()!.textContent ?? ""));
+  botao(convite()!, "Saiba mais e ligar")!.click();
+  await tique(20);
+  const dlgC = sy.modais.at(-1);
+  checar(
+    "o consentimento explica os quatro pontos",
+    dlgC?.titulo === "Sincronizar pelo Texto Padrão" &&
+      /toda a unidade/.test(dlgC.conteudo.textContent ?? "") &&
+      /sigilosos/.test(dlgC.conteudo.textContent ?? "") &&
+      /Pessoal/.test(dlgC.conteudo.textContent ?? "") &&
+      /desligar/i.test(dlgC.conteudo.textContent ?? ""),
+  );
+  botao(dlgC!.conteudo, "Ligar")!.click();
+  await tique(30);
+  const prefSy = (await sy.sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string };
+  checar("ligar grava o consentimento e tira o convite", prefSy.textoPadrao === "ligado" && !convite(), prefSy);
+  const esc = escoposDoContexto(CTX).unidade!;
+  await sy.area.gravar({
+    [chaveStatusTexto(esc)]: { estado: "ok", quando: Date.now() - 120_000, ultimoOk: Date.now() - 120_000, pendente: false },
+  });
+  await tique(30);
+  const rodape = () => sy.raiz.querySelector(".fav-status-sync")?.textContent ?? "";
+  checar("linha de status: sincronizado ha 2 min", /Sincronizado há 2 min/.test(rodape()), rodape());
+  await sy.area.gravar({
+    [chaveStatusTexto(esc)]: {
+      estado: "erro",
+      quando: Date.now(),
+      pendente: true,
+      mensagem: "Sessão do SEI expirada. Entre de novo no SEI.",
+    },
+  });
+  await tique(30);
+  checar("linha de status: erro com a mensagem", /expirada/.test(rodape()), rodape());
+  botao(sy.raiz, "Sincronização…")!.click();
+  await tique(20);
+  const dlgS = sy.modais.at(-1)!;
+  botao(dlgS.conteudo, "Sincronizar agora")!.click();
+  await tique(20);
+  checar(
+    "sincronizar agora pede a aba",
+    sy.chamadas.some(([op]) => op === "sincronizarAgora"),
+  );
+  botao(dlgS.conteudo, "Desligar e apagar do SEI")!.click();
+  await tique(30);
+  checar(
+    "desligar e apagar pede a aba para excluir o texto",
+    sy.chamadas.some(([op]) => op === "apagarDoSei"),
+  );
+
+  const naoAgora = montar();
+  await naoAgora.app.iniciar();
+  botao(naoAgora.raiz.querySelector(".fav-convite-sync")!, "Agora não")!.click();
+  await tique(20);
+  checar(
+    "'Agora nao' desliga e some",
+    !naoAgora.raiz.querySelector(".fav-convite-sync") &&
+      ((await naoAgora.sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string }).textoPadrao === "desligado",
+  );
 }

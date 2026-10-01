@@ -11,11 +11,13 @@ import { h, icone } from "@comum/ui/dom";
 import { exportarTudo, importarEnvelope, lerEnvelope } from "../arquivo";
 import { converterLegado } from "../migracao/legado";
 import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../modelo/constantes";
+import { escoposDoContexto } from "../modelo/escopo";
 import { filtrar, ordenar } from "../modelo/operacoes";
 import { calcularPrazo } from "../modelo/prazo";
 import {
   type Carimbo,
   type ContextoAba,
+  type Escopo,
   type Etiqueta,
   type Favorito,
   type Filtro,
@@ -27,8 +29,11 @@ import {
 } from "../modelo/tipos";
 import { montarOpcoesExibicao } from "../opcoes/exibicao";
 import type { DocumentoAssinado } from "../pagina/documentos";
+import { chaveStatusTexto } from "../pagina/sincronia";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, type RepositorioFavoritos } from "../repositorio";
+import type { StatusSync } from "../sincronia/motor";
+import { nomeDoTexto } from "../sincronia/textoPadrao";
 import { avisar } from "./aviso";
 import { montarEditor } from "./componentes/editor";
 import { renderFiltros, renderLote } from "./componentes/filtros";
@@ -79,7 +84,14 @@ export class AppFavoritos {
   private recargaAgendada = false;
   private destruido = false;
   private readonly parar: Array<() => void> = [];
-  private readonly el: { faixas: HTMLElement; abas: HTMLElement; filtros: HTMLElement; lote: HTMLElement; corpo: HTMLElement };
+  private readonly el: {
+    faixas: HTMLElement;
+    abas: HTMLElement;
+    filtros: HTMLElement;
+    lote: HTMLElement;
+    corpo: HTMLElement;
+    status: HTMLElement;
+  };
 
   constructor(
     raiz: HTMLElement,
@@ -103,6 +115,7 @@ export class AppFavoritos {
       filtros: h("div"),
       lote: h("div", { hidden: true }),
       corpo: h("div", { class: "fav-corpo" }),
+      status: h("p", { class: "fav-status-sync", hidden: true }),
     };
     raiz.replaceChildren(
       this.el.faixas,
@@ -110,6 +123,7 @@ export class AppFavoritos {
       h("div", { class: "fav-ferramentas" }, busca, this.el.filtros),
       this.el.lote,
       this.el.corpo,
+      this.el.status,
     );
   }
 
@@ -148,6 +162,8 @@ export class AppFavoritos {
       }),
     );
     await this.verificarFaixaUnidade();
+    this.convidarSincronia();
+    this.ligarStatusSync();
     await this.oferecerMigracao(false);
     void this.repo.limpar().catch(() => undefined);
   }
@@ -446,6 +462,7 @@ export class AppFavoritos {
         item("Exportar arquivo (.json)", () => void this.exportar()),
         item("Importar arquivo", () => void this.importar()),
         item("Trazer favoritos da versão anterior", () => void this.oferecerMigracao(true)),
+        this.escopoUnidade ? item("Sincronização…", () => this.abrirSincronizacao()) : null,
         item("Preferências…", () => void this.abrirPreferencias()),
       ),
     );
@@ -496,6 +513,205 @@ export class AppFavoritos {
     });
     this.d.abrirModal({ titulo: "Mapa dos favoritos", conteudo: m.el });
     m.iniciar();
+  }
+
+  private get escopoUnidade(): Escopo | null {
+    return escoposDoContexto(this.d.ctx).unidade;
+  }
+
+  /** Convite único (por navegador) para sincronizar a lista da unidade pelo Texto Padrão. */
+  private convidarSincronia(): void {
+    if (!this.escopoUnidade || this.prefs.textoPadrao !== "nao-perguntado") return;
+    const faixa: HTMLElement = h(
+      "div",
+      { class: "fav-faixa fav-convite-sync", role: "note" },
+      h(
+        "span",
+        {},
+        `Quer ver os favoritos da ${this.sigla} também em outros computadores? O SEI Pro pode guardá-los num Texto Padrão da unidade, sem servidor nenhum.`,
+      ),
+      h(
+        "button",
+        { type: "button", class: "spro-botao primario", onclick: () => this.pedirConsentimento(() => faixa.remove()) },
+        "Saiba mais e ligar",
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "spro-botao",
+          onclick: () => {
+            faixa.remove();
+            this.d.aoRedesenhar?.();
+            void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+          },
+        },
+        "Agora não",
+      ),
+    );
+    this.el.faixas.append(faixa);
+    this.d.aoRedesenhar?.();
+  }
+
+  private pedirConsentimento(aoLigar?: () => void): void {
+    let modal: { fechar(): void } | null = null;
+    const nome = nomeDoTexto(this.d.ctx.login);
+    const conteudo = h(
+      "div",
+      { class: "fav-form" },
+      h(
+        "p",
+        {},
+        `Os favoritos da ${this.sigla} ficam guardados no próprio SEI, num Texto Padrão chamado “${nome}”, e aparecem em qualquer computador em que você usar o SEI Pro. Antes de ligar:`,
+      ),
+      h(
+        "ul",
+        {},
+        h("li", {}, `O texto fica visível para toda a unidade: qualquer pessoa da ${this.sigla} pode abri-lo na lista de Textos Padrão.`),
+        h("li", {}, "Não use esse texto em documentos e não o edite: o SEI Pro o regrava sozinho."),
+        h("li", {}, "Processos sigilosos e a lista Pessoal nunca vão para o SEI."),
+        h("li", {}, "Para desligar, use “Sincronização…” no menu dos favoritos. Lá você também pode apagar o texto do SEI na hora."),
+      ),
+      h(
+        "div",
+        { class: "spro-dialogo-rodape" },
+        h("button", { type: "button", class: "spro-botao", onclick: () => modal?.fechar() }, "Agora não"),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "spro-botao primario",
+            onclick: () => {
+              modal?.fechar();
+              aoLigar?.();
+              this.d.aoRedesenhar?.();
+              void gravarPreferencias(this.d.sync, { textoPadrao: "ligado" });
+            },
+          },
+          "Ligar",
+        ),
+      ),
+    );
+    modal = this.d.abrirModal({ titulo: "Sincronizar pelo Texto Padrão", conteudo });
+  }
+
+  private ligarStatusSync(): void {
+    const esc = this.escopoUnidade;
+    if (!esc) return;
+    const chave = chaveStatusTexto(esc);
+    const pintar = async () => {
+      const st = (await this.d.area.obter(chave))[chave] as StatusSync | undefined;
+      const texto = this.prefs.textoPadrao === "ligado" ? textoDoStatus(st, Date.now()) : "";
+      this.el.status.hidden = !texto;
+      this.el.status.replaceChildren(
+        ...(texto
+          ? [
+              h(
+                "button",
+                { type: "button", class: "fav-status-botao", title: "Abrir a sincronização", onclick: () => this.abrirSincronizacao() },
+                icone("nuvem", 14),
+                texto,
+              ),
+            ]
+          : []),
+      );
+      this.el.status.dataset.estado = st?.estado ?? "nunca";
+      this.d.aoRedesenhar?.();
+    };
+    void pintar();
+    this.parar.push(
+      this.d.area.aoMudar((m) => {
+        if (chave in m) void pintar();
+      }),
+      this.d.sync.aoMudar((m) => {
+        if (CHAVE_PREFERENCIAS in m) setTimeout(() => void pintar(), 20);
+      }),
+    );
+    const relogio = setInterval(() => void pintar(), 60_000);
+    // Só atualiza o "há N min": não pode segurar o processo dos testes (Node) aberto.
+    (relogio as unknown as { unref?: () => void }).unref?.();
+    this.parar.push(() => clearInterval(relogio));
+  }
+
+  private abrirSincronizacao(): void {
+    const esc = this.escopoUnidade;
+    if (!esc) return;
+    let modal: { fechar(): void } | null = null;
+    const situacao = h("p", { class: "fav-dica" });
+    const pintar = async () => {
+      const st = (await this.d.area.obter(chaveStatusTexto(esc)))[chaveStatusTexto(esc)] as StatusSync | undefined;
+      situacao.textContent =
+        this.prefs.textoPadrao === "ligado"
+          ? textoDoStatus(st, Date.now()) || "Ligada. A primeira sincronia acontece numa tela do SEI desta unidade."
+          : "Desligada: estes favoritos ficam só neste navegador.";
+    };
+    void pintar();
+    const ligado = this.prefs.textoPadrao === "ligado";
+    const acao = (op: string, aviso: string) => async () => {
+      try {
+        await this.d.rpc.chamar(op, undefined, 120_000);
+        avisar(aviso);
+      } catch (e) {
+        avisar(e instanceof Error ? e.message : String(e));
+      }
+      void pintar();
+    };
+    const conteudo = h(
+      "div",
+      { class: "fav-form" },
+      h("h3", {}, `Texto Padrão da ${this.sigla}`),
+      situacao,
+      ligado
+        ? h(
+            "div",
+            { class: "linha" },
+            h("button", { type: "button", class: "spro-botao", onclick: acao("sincronizarAgora", "Sincronizado.") }, "Sincronizar agora"),
+            h(
+              "button",
+              {
+                type: "button",
+                class: "spro-botao",
+                onclick: () => {
+                  void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+                  modal?.fechar();
+                  avisar("Sincronização desligada. O texto continua no SEI até você apagá-lo.");
+                },
+              },
+              "Desligar",
+            ),
+            h(
+              "button",
+              {
+                type: "button",
+                class: "spro-botao perigo",
+                onclick: async () => {
+                  if (
+                    !(await this.d.confirmar(
+                      `Apagar do SEI o texto “${nomeDoTexto(this.d.ctx.login)}” e desligar? Os favoritos continuam neste navegador.`,
+                    ))
+                  )
+                    return;
+                  await acao("apagarDoSei", "Texto apagado do SEI e sincronização desligada.")();
+                  modal?.fechar();
+                },
+              },
+              "Desligar e apagar do SEI",
+            ),
+          )
+        : h(
+            "button",
+            {
+              type: "button",
+              class: "spro-botao primario",
+              onclick: () => {
+                modal?.fechar();
+                this.pedirConsentimento();
+              },
+            },
+            "Ligar…",
+          ),
+    );
+    modal = this.d.abrirModal({ titulo: "Sincronização", conteudo });
   }
 
   private async abrirPreferencias(): Promise<void> {
@@ -598,7 +814,7 @@ export class AppFavoritos {
     if (!ultima?.id || ultima.id === u.id || this.prefs.faixaUnidadeDispensada) return;
     const faixa: HTMLElement = h(
       "div",
-      { class: "fav-faixa", role: "note" },
+      { class: "fav-faixa fav-faixa-unidade", role: "note" },
       h(
         "span",
         {},
@@ -621,4 +837,21 @@ export class AppFavoritos {
     this.el.faixas.append(faixa);
     this.d.aoRedesenhar?.();
   }
+}
+
+/** "Sincronizado há 2 min", "Erro: …" — a linha de status do Texto Padrão. */
+export function textoDoStatus(st: StatusSync | undefined, agora: number): string {
+  if (!st || st.estado === "nunca") return "Sincronia pelo Texto Padrão ligada: aguardando uma tela do SEI desta unidade.";
+  if (st.estado === "erro") return `Erro na sincronia: ${st.mensagem ?? "tente de novo"}`;
+  if (st.estado === "indisponivel") return st.mensagem ?? "Sincronia indisponível nesta unidade.";
+  const min = Math.max(0, Math.round((agora - (st.ultimoOk ?? st.quando)) / 60_000));
+  const quando =
+    min < 1
+      ? "agora há pouco"
+      : min < 60
+        ? `há ${min} min`
+        : min < 1440
+          ? `há ${Math.round(min / 60)} h`
+          : `há ${Math.round(min / 1440)} dia(s)`;
+  return `${st.pendente ? "Alterações a enviar · " : ""}Sincronizado ${quando} · Texto Padrão${st.mensagem ? ` · ${st.mensagem}` : ""}`;
 }
