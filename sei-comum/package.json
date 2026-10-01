@@ -1,0 +1,20 @@
+{
+  "name": "sei-comum",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pecas genericas do SEI Pro (UI, datas, armazenamento, sincronia, opcoes, ponte), sem conhecimento do SEI",
+  "scripts": {
+    "tipos": "tsc --noEmit",
+    "verificar": "tsx tests/verificar.ts",
+    "checar": "biome check src tests"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@types/chrome": "^0.0.300",
+    "@types/node": "^22.20.4",
+    "linkedom": "^0.18.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
