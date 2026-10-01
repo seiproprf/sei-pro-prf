@@ -23,6 +23,7 @@ import { RepositorioFavoritos } from "../repositorio";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
 import { PonteLateral } from "./lateral";
+import { carregarLeaflet } from "./mapa";
 import { esperarConexaoDaAba } from "./ponte";
 
 const lateral = new URLSearchParams(location.hash.slice(1)).get("modo") === "lateral";
@@ -228,5 +229,6 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
     hoje: () => hojeISO(),
     aoRedesenhar: g.aoRedesenhar,
     lateralDisponivel: temPainelLateral(chrome.runtime.getManifest()),
+    carregarMapa: () => carregarLeaflet(document, (c) => `../${c}`),
   });
 }

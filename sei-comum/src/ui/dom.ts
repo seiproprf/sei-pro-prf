@@ -131,6 +131,27 @@ const ICONES = {
   ],
   recolher: [["path", { d: "M6 15l6-6 6 6" }]],
   expandir: [["path", { d: "M6 9l6 6 6-6" }]],
+  local: [
+    ["path", { d: "M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z" }],
+    ["circle", { cx: "12", cy: "10", r: "2.3" }],
+  ],
+  sino: [
+    ["path", { d: "M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5h-14z" }],
+    ["path", { d: "M10 20.5a2 2 0 0 0 4 0" }],
+  ],
+  documento: [
+    ["path", { d: "M7 3.5h7l4 4v13H7z" }],
+    ["path", { d: "M14 3.5v4h4" }],
+  ],
+  painel: [
+    ["rect", { x: "3.5", y: "4.5", width: "17", height: "15", rx: "2" }],
+    ["path", { d: "M14.5 4.5v15" }],
+  ],
+  atualizar: [
+    ["path", { d: "M19.5 12a7.5 7.5 0 1 1-2.2-5.3" }],
+    ["path", { d: "M19.5 4.5v4h-4" }],
+  ],
+  nuvem: [["path", { d: "M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5a4.5 4.5 0 0 0 0 9z" }]],
 } satisfies Record<string, Forma[]>;
 
 export type NomeIcone = keyof typeof ICONES;

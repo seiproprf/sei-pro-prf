@@ -50,7 +50,7 @@ export function instalarBotaoArvore(doc: Document, o: { url: (c: string) => stri
   if (!estrela || estrela.parentElement?.querySelector(".spro-fav-abrir")) return null;
   const rotulo = "Abrir a lista de favoritos no painel lateral";
   // Classe própria: `.spro-fav-estrela` seria capturada pela delegação das estrelas e alternaria o favorito.
-  const b = h("button", { type: "button", class: "spro-fav-abrir", title: rotulo, "aria-label": rotulo }, icone("menu", 16));
+  const b = h("button", { type: "button", class: "spro-fav-abrir", title: rotulo, "aria-label": rotulo }, icone("painel", 16));
   b.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();

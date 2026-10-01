@@ -19,6 +19,8 @@ export interface AcoesItem {
   remover(f: Favorito): void;
   moverLista(f: Favorito): void;
   moverOrdem(f: Favorito, direcao: -1 | 1): void;
+  /** Ausente quando o mapa não está disponível (testes, pacote sem Leaflet). */
+  mapa?(f: Favorito): void;
 }
 
 const itemMenu = (rotulo: string, fazer: () => void, classe?: string) =>
@@ -80,6 +82,19 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         ? h("span", { class: `fav-prazo fav-prazo-${a.resumo.situacao}`, title: a.resumo.dica }, icone("relogio", 13), a.resumo.texto)
         : null,
       f.nota ? h("span", { class: "fav-nota", title: f.nota, "aria-label": `Nota: ${f.nota}` }, icone("nota", 14)) : null,
+      f.local && acoes.mapa
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "fav-local",
+              title: "Ver o local no mapa",
+              "aria-label": "Ver o local no mapa",
+              onclick: () => acoes.mapa?.(f),
+            },
+            icone("local", 14),
+          )
+        : null,
     ),
     h(
       "details",
@@ -92,6 +107,7 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         a.outraLista ? itemMenu(`Mover para ${a.outraLista}`, () => acoes.moverLista(f)) : null,
         itemMenu("Mover para cima", () => acoes.moverOrdem(f, -1)),
         itemMenu("Mover para baixo", () => acoes.moverOrdem(f, 1)),
+        acoes.mapa ? itemMenu("Local no mapa…", () => acoes.mapa?.(f)) : null,
         itemMenu("Remover", () => acoes.remover(f), "perigo"),
       ),
     ),

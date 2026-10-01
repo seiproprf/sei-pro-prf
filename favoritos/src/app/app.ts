@@ -37,6 +37,7 @@ import { renderLista, vizinhosAoMover } from "./componentes/lista";
 import { montarLixeira } from "./componentes/lixeira";
 import { montarMigracao } from "./componentes/migracao";
 import { gerarCsv, linhasCsv } from "./csv";
+import { type LeafletMinimo, montarMapaFavorito, montarMapaGeral, pontosDoMapa } from "./mapa";
 
 export type AbrirModal = (o: { titulo: string; conteudo: HTMLElement; aoFechar?: () => void }) => { fechar(): void };
 
@@ -60,6 +61,8 @@ export interface DepsApp {
   aoRedesenhar?: () => void;
   /** O pacote tem painel lateral (decide as opções de "onde mostrar"). */
   lateralDisponivel?: boolean;
+  /** Carrega o Leaflet sob demanda; ausente, o app não oferece mapa. */
+  carregarMapa?: () => Promise<LeafletMinimo>;
 }
 
 export class AppFavoritos {
@@ -336,6 +339,7 @@ export class AppFavoritos {
       },
       remover: (f) => void this.remover([f.id]),
       moverLista: (f) => void this.moverParaOutra([f.id]),
+      mapa: this.d.carregarMapa ? (f) => void this.abrirMapa(f) : undefined,
       moverOrdem: (f, direcao) => {
         const v = vizinhosAoMover(ids, f.id, direcao);
         if (!v) return;
@@ -429,6 +433,7 @@ export class AppFavoritos {
         "div",
         { class: "fav-menu-lista", role: "menu" },
         item("Pastas e etiquetas", () => void this.abrirGerenciar()),
+        this.d.carregarMapa ? item("Mapa dos favoritos", () => void this.abrirMapaGeral()) : null,
         item("Lixeira", () => {
           this.visao = "lixeira";
           this.redesenhar();
@@ -440,6 +445,52 @@ export class AppFavoritos {
       ),
     );
     return detalhes;
+  }
+
+  private async abrirMapa(f: Favorito): Promise<void> {
+    let L: LeafletMinimo;
+    try {
+      L = await this.d.carregarMapa!();
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : "Não foi possível abrir o mapa.");
+      return;
+    }
+    const repo = this.repo;
+    let modal: { fechar(): void } | null = null;
+    const m = montarMapaFavorito({
+      L,
+      favorito: f,
+      salvar: async (local) => {
+        await repo.editar(f.id, { local });
+      },
+      fechar: () => modal?.fechar(),
+    });
+    modal = this.d.abrirModal({ titulo: `Local no mapa — ${f.protocolo}`, conteudo: m.el });
+    m.iniciar();
+  }
+
+  private async abrirMapaGeral(): Promise<void> {
+    let L: LeafletMinimo;
+    try {
+      L = await this.d.carregarMapa!();
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : "Não foi possível abrir o mapa.");
+      return;
+    }
+    const porId = new Map(this.todos.map((f) => [f.id, f]));
+    const m = montarMapaGeral({
+      L,
+      pontos: pontosDoMapa(this.visiveis()),
+      abrir: (id) => {
+        const f = porId.get(id);
+        if (f)
+          void this.d.rpc
+            .chamar("abrirProcesso", { id: f.id, protocolo: f.protocolo, novaAba: false })
+            .catch((e: Error) => avisar(e.message));
+      },
+    });
+    this.d.abrirModal({ titulo: "Mapa dos favoritos", conteudo: m.el });
+    m.iniciar();
   }
 
   private async abrirPreferencias(): Promise<void> {

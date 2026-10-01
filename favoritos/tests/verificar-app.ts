@@ -195,4 +195,45 @@ export async function verificarApp(): Promise<void> {
   const dlgPref = pr.modais.at(-1);
   checar("abre o dialogo de preferencias", dlgPref?.titulo === "Preferências dos favoritos");
   checar("com 'onde mostrar' (painel lateral disponivel)", !!dlgPref?.conteudo.querySelector('input[value="lateral"]'));
+
+  secao("app: mapa");
+  const marcadores: Array<[number, number]> = [];
+  const objeto = (): Record<string, unknown> => {
+    const o: Record<string, unknown> = {};
+    for (const k of ["addTo", "setView", "on", "bindPopup", "fitBounds", "invalidateSize", "setLatLng"]) o[k] = () => o;
+    return o;
+  };
+  const Lfalso = {
+    map: () => objeto(),
+    tileLayer: () => objeto(),
+    marker: (p: [number, number]) => {
+      marcadores.push(p);
+      return objeto();
+    },
+    latLngBounds: () => ({}),
+  };
+  const mp = montar({ carregarMapa: async () => Lfalso });
+  await mp.repos.unidade.adicionar({ id: "61", protocolo: "50300.000061/2026-61" });
+  await mp.repos.unidade.editar("61", { local: { lat: -3.7, lng: -38.5 } });
+  await mp.app.iniciar();
+  checar("item com local mostra o alfinete", !!mp.raiz.querySelector('li[data-id="61"] .fav-local'));
+  botao(mp.raiz.querySelector('li[data-id="61"]')!, "Local no mapa…")!.click();
+  await tique(80);
+  checar("abre o mapa do favorito", mp.modais.at(-1)?.titulo === "Local no mapa — 50300.000061/2026-61");
+  checar(
+    "ja com o marcador no local salvo",
+    marcadores.some(([a, b]) => a === -3.7 && b === -38.5),
+  );
+  botao(mp.modais.at(-1)!.conteudo, "Remover local")!.click();
+  await tique(40);
+  checar("remover local grava", (await mp.repos.unidade.obter("61"))?.local === undefined);
+  botao(mp.raiz, "Mapa dos favoritos")!.click();
+  await tique(80);
+  checar(
+    "mapa geral abre mesmo sem locais e explica",
+    mp.modais.at(-1)?.titulo === "Mapa dos favoritos" && /Nenhum favorito/.test(mp.modais.at(-1)!.conteudo.textContent ?? ""),
+  );
+  const semMapa = montar();
+  await semMapa.app.iniciar();
+  checar("sem carregador de mapa, sem item de mapa", !botao(semMapa.raiz, "Mapa dos favoritos"));
 }
