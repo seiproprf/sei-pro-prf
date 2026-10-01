@@ -123,6 +123,20 @@ export async function verificarApp(): Promise<void> {
   await tique(20);
   checar("lixeira abre (vazia depois do desfazer)", (a.raiz.textContent ?? "").includes("A lixeira está vazia."));
 
+  secao("app montado: altura do iframe fora da tela");
+  // Fora da tela o Chrome suspende o ResizeObserver do iframe de outra origem
+  // (prova P2, SEI SP 4.1.5): o app avisa a cada redesenho para a altura ser medida na hora.
+  let redesenhos = 0;
+  const h = montar({ aoRedesenhar: () => (redesenhos += 1) });
+  await h.app.iniciar();
+  const depoisDeIniciar = redesenhos;
+  await h.repos.unidade.adicionar({ id: "9", protocolo: "9/2026" });
+  await tique(80);
+  checar("avisa o redesenho ao iniciar e quando a lista muda", depoisDeIniciar >= 1 && redesenhos > depoisDeIniciar, {
+    depoisDeIniciar,
+    redesenhos,
+  });
+
   secao("app montado: troca de unidade");
   const b = montar({}, { [chaveUltimaUnidade(CTX.host, CTX.login.toLowerCase())]: { id: "999", sigla: "SFC" } });
   await b.app.iniciar();

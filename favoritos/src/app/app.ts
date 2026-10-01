@@ -52,6 +52,11 @@ export interface DepsApp {
   copiar(texto: string): Promise<void>;
   escolherArquivo(): Promise<string | null>;
   hoje(): DataISO;
+  /**
+   * Depois de cada redesenho. Fora da tela o Chrome suspende o ResizeObserver de
+   * iframe de outra origem (prova P2): quem embute o app mede a altura aqui.
+   */
+  aoRedesenhar?: () => void;
 }
 
 export class AppFavoritos {
@@ -174,6 +179,11 @@ export class AppFavoritos {
   }
 
   private redesenhar(): void {
+    this.desenhar();
+    this.d.aoRedesenhar?.();
+  }
+
+  private desenhar(): void {
     this.desenharAbas();
     this.el.filtros.replaceChildren(
       renderFiltros(
@@ -540,5 +550,6 @@ export class AppFavoritos {
       ),
     );
     this.el.faixas.append(faixa);
+    this.d.aoRedesenhar?.();
   }
 }

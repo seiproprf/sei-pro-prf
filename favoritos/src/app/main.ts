@@ -122,6 +122,7 @@ async function iniciar(): Promise<void> {
     copiar: (texto) => navigator.clipboard.writeText(texto),
     escolherArquivo,
     hoje: () => hojeISO(),
+    aoRedesenhar: () => altura.medir(),
   });
   await app.iniciar();
 }
