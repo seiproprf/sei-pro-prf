@@ -82,8 +82,8 @@ export async function atualizarForaDaUnidade(
           recebidoNaLeitura: l.abertoNaUnidade ? true : undefined,
         };
         await r.gravarAtual(id, novo);
-        const f = await r.obter(id);
-        if (f && !f.visto) await r.editar(id, { visto: { ...novo, recebidoNaLeitura: undefined } });
+        // Primeira leitura vira a base do "o que mudou" (sem novidade falsa).
+        if (!(await r.vistos()).has(id)) await r.gravarVisto(id, novo);
       }
     } catch {
       if (sinal.aborted) break;

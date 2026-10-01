@@ -10,13 +10,15 @@ import type { Area } from "@comum/armazenamento/area";
 import { indiceValido } from "@comum/ordem/indice";
 import { corPadrao } from "./modelo/cores";
 import type { Carimbo, Escopo, Etiqueta, Favorito, Pasta } from "./modelo/tipos";
-import { RepositorioFavoritos } from "./repositorio";
+import { type RegistroVisto, RepositorioFavoritos } from "./repositorio";
 
 export interface EscopoExportado {
   escopo: Escopo;
   favoritos: Favorito[];
   pastas: Pasta[];
   etiquetas: Etiqueta[];
+  /** O "visto" de cada favorito (entidade própria; arquivos antigos não têm). */
+  vistos?: RegistroVisto[];
 }
 
 export interface Envelope {
@@ -51,6 +53,7 @@ export async function exportarTudo(area: Area, host: string, login: string, c: C
       favoritos: pegar("f/") as Favorito[],
       pastas: pegar("p/") as Pasta[],
       etiquetas: pegar("e/") as Etiqueta[],
+      vistos: pegar("v/") as RegistroVisto[],
     });
   }
   return { formato: "seipro-favoritos", versao: 1, escopos, gravadoEm: c.agora, dispositivo: c.dispositivo, revisao: 0 };
@@ -110,6 +113,10 @@ const etiqueta = (v: unknown): Etiqueta | null => {
   if (!o || !versionada(o) || !ehTexto(o.nome)) return null;
   return { ...o, cor: ehTexto(o.cor) && COR.test(o.cor) ? o.cor : corPadrao(o.nome) } as unknown as Etiqueta;
 };
+const registroVisto = (v: unknown): RegistroVisto | null => {
+  const o = objeto(v);
+  return o && versionada(o) && objeto(o.visto) && ehNumero(objeto(o.visto)!.quando) ? (o as unknown as RegistroVisto) : null;
+};
 const escopoValido = (v: unknown): v is Escopo => {
   const o = objeto(v);
   if (!o || !ehTexto(o.host) || !ehTexto(o.login)) return false;
@@ -138,6 +145,7 @@ export function lerEnvelope(bruto: unknown): { envelope: Envelope; descartados: 
       favoritos: filtrar(eo.favoritos, favorito),
       pastas: filtrar(eo.pastas, pasta),
       etiquetas: filtrar(eo.etiquetas, etiqueta),
+      vistos: filtrar(eo.vistos, registroVisto),
     });
   }
   return {

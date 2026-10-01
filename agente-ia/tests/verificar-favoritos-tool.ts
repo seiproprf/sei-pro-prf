@@ -22,7 +22,8 @@ export async function verificarFavoritosTool(): Promise<void> {
   await u.adicionar({ id: "2", protocolo: "50300.000002/2026-02", sigiloso: true });
   // Veio da Pesquisa: o sigilo ainda não foi confirmado.
   await u.adicionar({ id: "5", protocolo: "50300.000005/2026-05", sigiloAConfirmar: true });
-  await u.editar("1", { nota: "cobrar a SFC", lembrete: { em: "2026-01-01" }, visto: { quando: 1, fonte: "caixa", qtdDocumentos: 1 } });
+  await u.editar("1", { nota: "cobrar a SFC", lembrete: { em: "2026-01-01" } });
+  await u.gravarVisto("1", { quando: 1, fonte: "caixa", qtdDocumentos: 1 });
   await u.gravarAtual("1", { quando: 2, fonte: "caixa", qtdDocumentos: 3 });
   await p.adicionar({ id: "3", protocolo: "50300.000003/2026-03", tipo: "Contrato" });
   definirAreaFavoritos(() => area);

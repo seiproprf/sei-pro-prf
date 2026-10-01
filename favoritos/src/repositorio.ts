@@ -14,6 +14,7 @@ import { normalizarTexto } from "@comum/texto";
 import { DIAS_LAPIDE, MAX_ETIQUETAS, MAX_NOTA } from "./modelo/constantes";
 import { corPadrao } from "./modelo/cores";
 import { chaveEscopo } from "./modelo/escopo";
+import { mesmaLeitura } from "./modelo/novidades";
 import { editar, novoFavorito, remover, restaurar } from "./modelo/operacoes";
 import type { Carimbo, DadosProcesso, Escopo, Etiqueta, Favorito, Instantaneo, MudancasFavorito, Pasta } from "./modelo/tipos";
 
@@ -23,12 +24,18 @@ const maiorOrdem = (itens: Array<{ ordem: string }>): string | null =>
 
 const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, "pt-BR");
 
+export interface RegistroVisto extends Versionada {
+  visto: Instantaneo;
+}
+
 export class RepositorioFavoritos {
   readonly favoritos: Colecao<Favorito>;
   readonly pastas: Colecao<Pasta>;
   readonly etiquetas: Colecao<Etiqueta>;
   /** Últimas leituras (local; ver `gravarAtual`). */
   readonly atuaisCol: Colecao<Instantaneo & { id: string }>;
+  /** O que o usuário viu por último: entidade PRÓPRIA (sincroniza), para leitura automática nunca vencer edição do usuário. */
+  readonly vistosCol: Colecao<RegistroVisto>;
   private readonly chaveMeta: string;
   private readonly base: string;
 
@@ -42,6 +49,7 @@ export class RepositorioFavoritos {
     this.pastas = new Colecao<Pasta>(area, `${base}p/`);
     this.etiquetas = new Colecao<Etiqueta>(area, `${base}e/`);
     this.atuaisCol = new Colecao<Instantaneo & { id: string }>(area, `${base}a/`);
+    this.vistosCol = new Colecao<RegistroVisto>(area, `${base}v/`);
     this.chaveMeta = `${base}meta`;
     this.base = base;
   }
@@ -79,7 +87,26 @@ export class RepositorioFavoritos {
     return new Map((await this.atuaisCol.listar()).map(({ id, ...i }) => [id, i as Instantaneo]));
   }
 
-  /** "Marcar como visto": o visto passa a ser a última leitura. */
+  async vistosCompletos(): Promise<RegistroVisto[]> {
+    return this.vistosCol.listar();
+  }
+
+  async vistos(): Promise<Map<string, Instantaneo>> {
+    return new Map((await this.vistosCol.listar()).filter((v) => v.removidoEm === undefined).map((v) => [v.id, v.visto]));
+  }
+
+  /** Grava o visto só se a leitura mudou (quando e fonte não contam). Devolve se gravou. */
+  async gravarVisto(id: string, inst: Instantaneo): Promise<boolean> {
+    const atual = await this.vistosCol.obter(id);
+    if (atual && atual.removidoEm === undefined && mesmaLeitura(atual.visto, inst)) return false;
+    const c = this.carimbo();
+    const visto: Instantaneo = { ...inst };
+    delete visto.recebidoNaLeitura;
+    await this.vistosCol.gravar(id, { id, visto, atualizadoEm: c.agora, dispositivo: c.dispositivo });
+    return true;
+  }
+
+  /** "Marcar como visto": o visto passa a ser a última leitura. Não toca o favorito. */
   async marcarVisto(ids: string[]): Promise<number> {
     const atuais = await this.atuais();
     let n = 0;
@@ -87,17 +114,17 @@ export class RepositorioFavoritos {
       const a = atuais.get(id);
       const f = await this.obter(id);
       if (!a || !f || f.removidoEm !== undefined) continue;
-      await this.editar(id, { visto: { ...a, recebidoNaLeitura: undefined } });
+      await this.gravarVisto(id, a);
       n++;
     }
     return n;
   }
 
   /** Tudo desta lista, com as lápides de favoritos, pastas e etiquetas (para sincronizar). */
-  async instantaneoCompleto(): Promise<{ todos: Favorito[]; pastas: Pasta[]; etiquetas: Etiqueta[] }> {
+  async instantaneoCompleto(): Promise<{ todos: Favorito[]; pastas: Pasta[]; etiquetas: Etiqueta[]; vistos: RegistroVisto[] }> {
     const tudo = Object.entries(await obterPorPrefixo(this.area, this.base));
     const de = <T>(sub: string) => tudo.filter(([k]) => k.startsWith(this.base + sub)).map(([, v]) => v as T);
-    return { todos: de<Favorito>("f/"), pastas: de<Pasta>("p/"), etiquetas: de<Etiqueta>("e/") };
+    return { todos: de<Favorito>("f/"), pastas: de<Pasta>("p/"), etiquetas: de<Etiqueta>("e/"), vistos: de<RegistroVisto>("v/") };
   }
 
   todos(): Promise<Favorito[]> {
@@ -259,10 +286,16 @@ export class RepositorioFavoritos {
   }
 
   /** Mescla entidades vindas de fora (arquivo, migração): vence a versão mais recente de cada uma. */
-  async importar(d: { favoritos?: Favorito[]; pastas?: Pasta[]; etiquetas?: Etiqueta[] }): Promise<{ novos: number; atualizados: number }> {
+  async importar(d: {
+    favoritos?: Favorito[];
+    pastas?: Pasta[];
+    etiquetas?: Etiqueta[];
+    vistos?: RegistroVisto[];
+  }): Promise<{ novos: number; atualizados: number }> {
     const r = await this.mesclarEm(this.favoritos, d.favoritos ?? [], combinarResumido);
     await this.mesclarEm(this.pastas, d.pastas ?? []);
     await this.mesclarEm(this.etiquetas, d.etiquetas ?? []);
+    await this.mesclarEm(this.vistosCol, d.vistos ?? []);
     return r;
   }
 
@@ -304,7 +337,7 @@ export class RepositorioFavoritos {
   }
 
   aoMudar(cb: () => void): () => void {
-    const parar = [this.favoritos.aoMudar(cb), this.pastas.aoMudar(cb), this.etiquetas.aoMudar(cb)];
+    const parar = [this.favoritos.aoMudar(cb), this.pastas.aoMudar(cb), this.etiquetas.aoMudar(cb), this.vistosCol.aoMudar(cb)];
     return () => {
       for (const p of parar) p();
     };

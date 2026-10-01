@@ -54,7 +54,7 @@ export async function envelopeDaUnidade(
   c: Carimbo,
   idsRemotos: ReadonlySet<string> = new Set(),
 ): Promise<Envelope> {
-  const { todos, pastas, etiquetas } = await repo.instantaneoCompleto();
+  const { todos, pastas, etiquetas, vistos } = await repo.instantaneoCompleto();
   const favoritos: Favorito[] = [];
   for (const f of todos) {
     if (f.sigiloAConfirmar && !f.removidoEm) continue;
@@ -71,7 +71,16 @@ export async function envelopeDaUnidade(
   return {
     formato: "seipro-favoritos",
     versao: 1,
-    escopos: [{ escopo, favoritos, pastas, etiquetas }],
+    // O visto só acompanha favorito ativo, que vai inteiro (nunca de sigiloso, a confirmar ou removido).
+    escopos: [
+      {
+        escopo,
+        favoritos,
+        pastas,
+        etiquetas,
+        vistos: vistos.filter((v) => favoritos.some((f) => f.id === v.id && !f.resumido && !f.removidoEm)),
+      },
+    ],
     gravadoEm: c.agora,
     dispositivo: c.dispositivo,
     revisao: 0,

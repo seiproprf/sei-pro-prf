@@ -109,7 +109,7 @@ export async function verificarNovidades(): Promise<void> {
   await repo.gravarAtual("5", I({ qtdDocumentos: 4 }));
   checar("le o atual", (await repo.atuais()).get("5")?.qtdDocumentos === 4);
   await repo.marcarVisto(["5"]);
-  checar("marcar visto copia o atual", (await repo.obter("5"))?.visto?.qtdDocumentos === 4);
+  checar("marcar visto copia o atual", (await repo.vistos()).get("5")?.qtdDocumentos === 4);
   await repo.gravarAtual("5", I({ qtdDocumentos: 777 }));
   const env = await exportarTudo(area, CTX.host, CTX.login, { agora: 99, dispositivo: "A" });
   checar(
@@ -137,4 +137,36 @@ export async function verificarContador(): Promise<void> {
   checar("selo no botao com o numero", b.querySelector(".spro-fav-contador")?.textContent === "2" && /2 favoritos/.test(b.title));
   pintarContador(b, 0);
   checar("zerado: sem selo", !b.querySelector(".spro-fav-contador"));
+}
+
+export async function verificarVistoSeparado(): Promise<void> {
+  secao("visto em entidade propria (abrir o processo nao vence edicao de outro computador)");
+  const esc = escoposDoContexto(CTX).unidade!;
+  let ta = 1000;
+  const a = new RepositorioFavoritos(areaMemoria(), esc, () => ({ agora: ta, dispositivo: "A" }));
+  await a.registrar();
+  await a.adicionar({ id: "1", protocolo: "P1" });
+  const antes = (await a.obter("1"))!;
+  // B edita a nota em t=2000 (ainda nao chegou a A).
+  const deB = { ...antes, nota: "nota de B", atualizadoEm: 2000, dispositivo: "B" };
+  // Em A, o usuario abre a arvore em t=3000: a leitura vira o visto.
+  ta = 3000;
+  await a.gravarAtual("1", I({ qtdDocumentos: 4, fonte: "arvore" }));
+  await a.marcarVisto(["1"]);
+  checar("marcar visto nao reescreve o favorito", (await a.obter("1"))!.atualizadoEm === antes.atualizadoEm);
+  await a.importar({ favoritos: [deB] });
+  checar("a nota de B sobrevive", (await a.obter("1"))?.nota === "nota de B");
+  checar("e o visto continua", (await a.vistos()).get("1")?.qtdDocumentos === 4);
+  ta = 4000;
+  const antesDeRepetir = (await a.vistosCompletos())[0]!.atualizadoEm;
+  await a.gravarAtual("1", I({ qtdDocumentos: 4, fonte: "arvore", quando: 99 }));
+  await a.marcarVisto(["1"]);
+  checar("reabrir sem mudanca nao grava de novo (nada a sincronizar)", (await a.vistosCompletos())[0]!.atualizadoEm === antesDeRepetir);
+  const env = await exportarTudo(areaFake(a), CTX.host, CTX.login, { agora: 1, dispositivo: "A" });
+  checar("o visto vai no envelope (sincroniza)", JSON.stringify(env).includes('"vistos"'));
+}
+
+/** A área interna do repositório (só para exportar nos testes). */
+function areaFake(r: RepositorioFavoritos) {
+  return (r as unknown as { area: import("@comum/armazenamento/area").Area }).area;
 }

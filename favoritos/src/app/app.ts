@@ -90,6 +90,7 @@ export class AppFavoritos {
   private visao: "lista" | "lixeira" = "lista";
   private todos: Favorito[] = [];
   private atuais = new Map<string, Instantaneo>();
+  private vistos = new Map<string, Instantaneo>();
   private pastas: Pasta[] = [];
   private etiquetas: Etiqueta[] = [];
   private contagem = { unidade: 0, pessoal: 0 };
@@ -229,11 +230,13 @@ export class AppFavoritos {
   async recarregar(): Promise<void> {
     // Uma leitura para a lista aberta e outra só para a contagem da outra aba.
     const outra = this.outra?.repo;
-    const [inst, daOutra, atuais] = await Promise.all([
+    const [inst, daOutra, atuais, vistos] = await Promise.all([
       this.repo.instantaneo(),
       outra ? outra.ativos() : Promise.resolve([]),
       this.repo.atuais(),
+      this.repo.vistos(),
     ]);
+    this.vistos = vistos;
     const { todos, pastas, etiquetas } = inst;
     this.todos = todos;
     this.atuais = atuais;
@@ -247,7 +250,7 @@ export class AppFavoritos {
 
   private readonly resumo = (f: Favorito): ResumoPrazo | undefined => (f.prazo ? calcularPrazo(f.prazo, this.d.hoje()) : undefined);
 
-  private readonly novidades = (f: Favorito): Mudanca[] => compararInstantaneos(f.visto, this.atuais.get(f.id));
+  private readonly novidades = (f: Favorito): Mudanca[] => compararInstantaneos(this.vistos.get(f.id) ?? f.visto, this.atuais.get(f.id));
 
   private visiveis(): Favorito[] {
     const apoio = {

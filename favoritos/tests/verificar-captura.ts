@@ -27,7 +27,7 @@ export async function verificarCaptura(): Promise<void> {
     a1,
   );
   checar("caixa paginada: o que nao esta na pagina NAO vira 'saiu'", !(await repo.atuais()).has("999999"));
-  checar("primeira leitura vira o visto (sem novidade falsa)", (await repo.obter(idNaCaixa))?.visto?.abertoNaUnidade === true);
+  checar("primeira leitura vira o visto (sem novidade falsa)", (await repo.vistos()).get(idNaCaixa)?.abertoNaUnidade === true);
   const { doc: inteira } = telaSei("sei41/caixa.html");
   for (const id of ["#tblProcessosRecebidos", "#tblProcessosGerados"]) {
     const tab = inteira.querySelector(id)!;
@@ -56,7 +56,7 @@ export async function verificarCaptura(): Promise<void> {
     pedidos.length === 1 && /procedimento_consultar_historico/.test(pedidos[0]!) && !!a2?.ultimoAndamento?.data,
     a2?.ultimoAndamento,
   );
-  checar("abrir o processo marca como visto", (await repo.obter("148265"))?.visto?.qtdDocumentos === a2?.qtdDocumentos);
+  checar("abrir o processo marca como visto", (await repo.vistos()).get("148265")?.qtdDocumentos === a2?.qtdDocumentos);
   const nada = await capturarDaArvore(arv, pagina.url, [pessoal], async () => historico.pagina);
   checar("processo que nao e favorito: nada lido", nada === 0);
 

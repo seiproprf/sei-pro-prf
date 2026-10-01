@@ -54,10 +54,10 @@ export const TOOL_FAVORITOS = definirTool({
     let sigilosos = 0;
     for (const { rotulo, repo } of fontes) {
       const { todos, pastas, etiquetas } = await repo.instantaneo();
-      const atuais = await repo.atuais();
+      const [atuais, vistos] = await Promise.all([repo.atuais(), repo.vistos()]);
       const porEtiqueta = new Map(etiquetas.map((x) => [x.id, x]));
       const porPasta = new Map(pastas.map((x) => [x.id, x]));
-      const novidades = (f: Favorito) => compararInstantaneos(f.visto, atuais.get(f.id));
+      const novidades = (f: Favorito) => compararInstantaneos(vistos.get(f.id) ?? f.visto, atuais.get(f.id));
       const ativos = todos.filter((f) => f.removidoEm === undefined);
       // Sigilo a confirmar (veio da Pesquisa) conta como sigiloso até a caixa ou a árvore dizerem o contrário.
       const fechado = (f: Favorito) => !!f.sigiloso || !!f.sigiloAConfirmar;

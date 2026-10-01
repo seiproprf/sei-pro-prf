@@ -53,7 +53,7 @@ export async function capturarDaCaixa(doc: Document, repo: RepositorioFavoritos,
   const linhas = new Map(lerCaixaDaPagina(paginaDe(doc)).map((p) => [p.idProcedimento, p]));
   // Caixa filtrada (atribuídos a mim, marcador, painel…) não diz quem está FORA da unidade.
   const inteira = caixaInteira(doc) && !filtroAtivoNaCaixa(doc);
-  const [ativos, atuais] = await Promise.all([repo.ativos(), repo.atuais()]);
+  const [ativos, atuais, vistos] = await Promise.all([repo.ativos(), repo.atuais(), repo.vistos()]);
   const gravar: Array<[string, Instantaneo]> = [];
   const semVisto: Array<[string, Instantaneo]> = [];
   for (const f of ativos) {
@@ -95,10 +95,10 @@ export async function capturarDaCaixa(doc: Document, repo: RepositorioFavoritos,
       continue;
     }
     if (!igual(anterior, novo)) gravar.push([f.id, novo]);
-    if (!f.visto) semVisto.push([f.id, novo]);
+    if (!vistos.has(f.id) && !f.visto) semVisto.push([f.id, novo]);
   }
   if (gravar.length) await repo.gravarAtuais(gravar);
-  for (const [id, inst] of semVisto) await repo.editar(id, { visto: inst });
+  for (const [id, inst] of semVisto) await repo.gravarVisto(id, inst);
   return gravar.length;
 }
 

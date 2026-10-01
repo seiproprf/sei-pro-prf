@@ -72,8 +72,10 @@ export function pedirPainelLateral(enviar: (m: unknown) => Promise<unknown>, abr
 export async function contarPendencias(repos: RepositorioFavoritos[], hoje: DataISO): Promise<number> {
   let n = 0;
   for (const r of repos) {
-    const [ativos, atuais] = await Promise.all([r.ativos(), r.atuais()]);
-    n += ativos.filter((f) => lembreteVencido(f, hoje) || compararInstantaneos(f.visto, atuais.get(f.id)).length > 0).length;
+    const [ativos, atuais, vistos] = await Promise.all([r.ativos(), r.atuais(), r.vistos()]);
+    n += ativos.filter(
+      (f) => lembreteVencido(f, hoje) || compararInstantaneos(vistos.get(f.id) ?? f.visto, atuais.get(f.id)).length > 0,
+    ).length;
   }
   return n;
 }

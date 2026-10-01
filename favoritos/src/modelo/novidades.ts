@@ -36,3 +36,20 @@ export function resumoNovidade(m: Mudanca[]): string {
   const curtas = m.filter((x) => x.tipo !== "andamento");
   return (curtas.length ? curtas : m).map((x) => x.texto).join(" · ");
 }
+
+/** A mesma leitura, ignorando quando e de onde veio: gravar o "visto" de novo não muda nada. */
+export function mesmaLeitura(a: Instantaneo | undefined, b: Instantaneo | undefined): boolean {
+  if (!a || !b) return a === b;
+  const chave = (i: Instantaneo) =>
+    JSON.stringify([
+      i.abertoNaUnidade,
+      i.naoVisualizado,
+      i.documentoNovo,
+      i.atribuido,
+      i.marcadores ?? [],
+      i.concluido,
+      i.qtdDocumentos,
+      i.ultimoAndamento ?? null,
+    ]);
+  return chave(a) === chave(b);
+}
