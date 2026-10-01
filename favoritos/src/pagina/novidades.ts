@@ -23,10 +23,13 @@ import type { Pagina } from "@nucleo/sessao/http";
 import type { Instantaneo, Prazo } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
 import { paginaDe } from "./contexto";
+import { filtroAtivoNaCaixa } from "./filtroCaixa";
 import { type DocumentoAssinado, lerDocumentosGerarPdf } from "./documentos";
 
 /** A caixa está inteira na tela? (O caption diz "N registros"; a página mostra as linhas.) */
 function caixaInteira(doc: Document): boolean {
+  // Sem as duas áreas da visualização resumida não há como saber (detalhada, lista por marcador, tela vazia).
+  if (!doc.querySelector("#divRecebidos") || !doc.querySelector("#divGerados")) return false;
   for (const id of ["#tblProcessosRecebidos", "#tblProcessosGerados"]) {
     const t = doc.querySelector(id);
     if (!t) continue;
@@ -48,7 +51,8 @@ const igual = (a: Instantaneo | undefined, b: Instantaneo) =>
 export async function capturarDaCaixa(doc: Document, repo: RepositorioFavoritos, agora = Date.now()): Promise<number> {
   if (repo.escopo.lista !== "unidade") return 0;
   const linhas = new Map(lerCaixaDaPagina(paginaDe(doc)).map((p) => [p.idProcedimento, p]));
-  const inteira = caixaInteira(doc);
+  // Caixa filtrada (atribuídos a mim, marcador, painel…) não diz quem está FORA da unidade.
+  const inteira = caixaInteira(doc) && !filtroAtivoNaCaixa(doc);
   const [ativos, atuais] = await Promise.all([repo.ativos(), repo.atuais()]);
   const gravar: Array<[string, Instantaneo]> = [];
   const semVisto: Array<[string, Instantaneo]> = [];
