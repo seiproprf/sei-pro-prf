@@ -1,7 +1,7 @@
-import { filtroAtivoNaCaixa } from "../src/pagina/filtroCaixa";
-import { capturarDaCaixa } from "../src/pagina/novidades";
 import { areaMemoria } from "@comum/armazenamento/area";
 import { escoposDoContexto } from "../src/modelo/escopo";
+import { filtroAtivoNaCaixa } from "../src/pagina/filtroCaixa";
+import { capturarDaCaixa } from "../src/pagina/novidades";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { checar, secao, telaSei } from "./util";
 import { CTX } from "./verificar-modelo";
@@ -28,7 +28,9 @@ export async function verificarFiltroCaixa(): Promise<void> {
   semOpcoes.getElementById("lnkAtribuidosMim")?.remove();
   checar("SEI 4+/5 sem as opcoes de filtro (o SEI as esconde com filtro do painel)", filtroAtivoNaCaixa(semOpcoes) !== null);
   const chip = caixa();
-  chip.querySelector("#frmProcedimentoControlar")!.insertAdjacentHTML("afterbegin", '<div id="divFiltroTipoProcesso" class="caixaFiltroControle"><p>Contrato</p></div>');
+  chip
+    .querySelector("#frmProcedimentoControlar")!
+    .insertAdjacentHTML("afterbegin", '<div id="divFiltroTipoProcesso" class="caixaFiltroControle"><p>Contrato</p></div>');
   checar("caixinha de filtro (tipo, prioridade, marcador)", /Contrato/.test(filtroAtivoNaCaixa(chip) ?? ""));
 
   secao("captura: caixa filtrada nao conclui 'saiu da unidade'");

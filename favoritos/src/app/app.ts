@@ -31,7 +31,7 @@ import {
   type TipoLista,
 } from "../modelo/tipos";
 import { montarOpcoesExibicao } from "../opcoes/exibicao";
-import { chaveProgresso, type ProgressoAtualizacao } from "../pagina/atualizar";
+import { chaveProgresso, type ProgressoAtualizacao, pedirCancelamento } from "../pagina/atualizar";
 import type { DocumentoAssinado } from "../pagina/documentos";
 import { chaveStatusTexto } from "../pagina/sincronia";
 import { definirTextoPadrao, estadoTextoPadrao, gravarPreferencias, lerPreferencias } from "../preferencias";
@@ -441,7 +441,7 @@ export class AppFavoritos {
         h("span", {}, `Atualizando ${p.feitos} de ${p.total}${p.atual ? ` (${p.atual})` : ""}…`),
         h(
           "button",
-          { type: "button", class: "spro-botao", onclick: () => void this.d.rpc.chamar("cancelarAtualizacao").catch(() => undefined) },
+          { type: "button", class: "spro-botao", onclick: () => void pedirCancelamento(this.d.area, this.d.ctx.host, this.login) },
           "Cancelar",
         ),
       );

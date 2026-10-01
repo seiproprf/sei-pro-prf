@@ -22,7 +22,8 @@ export function filtroAtivoNaCaixa(doc: Document): string | null {
     ["hdnIdTipoProcedimento", "filtro por tipo de processo"],
     ["hdnIdTipoPrioridade", "filtro por prioridade"],
   ] as const) {
-    if ([...doc.querySelectorAll<HTMLInputElement>(`input[id^="${prefixo}"]`)].some((i) => (i.getAttribute("value") ?? "").trim())) return rotulo;
+    if ([...doc.querySelectorAll<HTMLInputElement>(`input[id^="${prefixo}"]`)].some((i) => (i.getAttribute("value") ?? "").trim()))
+      return rotulo;
   }
   const caixinhas = [...doc.querySelectorAll(".caixaFiltroControle")].map((c) => (c.textContent ?? "").trim()).filter(Boolean);
   if (caixinhas.length) return `filtro ativo: ${caixinhas.join(", ")}`;
@@ -34,6 +35,7 @@ export function filtroAtivoNaCaixa(doc: Document): string | null {
   }
   // SEI 4+/5: as opções de filtro ("atribuídos a mim", "ver por marcadores"…) só aparecem SEM filtro do
   // painel (`$bolOpcoesFiltro`). Na barra nova (#divFiltro), sumir a opção e a caixinha dela = filtro.
-  if (doc.querySelector("#divFiltro") && !doc.querySelector("#lnkAtribuidosMim, #divFiltroMeusProcessos")) return "filtro do painel de controle";
+  if (doc.querySelector("#divFiltro") && !doc.querySelector("#lnkAtribuidosMim, #divFiltroMeusProcessos"))
+    return "filtro do painel de controle";
   return null;
 }

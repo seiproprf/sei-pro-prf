@@ -9,6 +9,7 @@
  * o processo chegou à unidade nesse meio tempo, o item ganha o aviso.
  */
 
+import type { Area } from "@comum/armazenamento/area";
 import type { Instantaneo } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
 
@@ -96,6 +97,15 @@ export async function atualizarForaDaUnidade(
 }
 
 export const chaveProgresso = (host: string, login: string): string => `favoritos/atualizando/${host}|${login.toLowerCase()}`;
+export const chaveCancelar = (host: string, login: string): string => `favoritos/atualizarCancelar/${host}|${login.toLowerCase()}`;
+
+/**
+ * "Cancelar" vale de qualquer app (embutido ou lateral, qualquer aba): o pedido vai pelo storage, que a
+ * aba que está atualizando escuta. Pela ponte, o pedido podia cair numa aba que não estava rodando nada.
+ */
+export function pedirCancelamento(area: Area, host: string, login: string): Promise<void> {
+  return area.gravar({ [chaveCancelar(host, login)]: Date.now() });
+}
 
 /** Uma atualização por aba; o app pede, acompanha pelo storage e pode cancelar. */
 export class ControleAtualizar {
@@ -104,15 +114,21 @@ export class ControleAtualizar {
   constructor(
     private readonly criarDeps: () => Omit<DepsAtualizar, "progresso">,
     private readonly gravarProgresso: (p: ProgressoAtualizacao) => Promise<void>,
+    private readonly ouvir?: { area: Area; host: string; login: string },
   ) {}
 
   async iniciar(): Promise<{ lidos: number; erros: number; chegaram: number }> {
     if (this.emCurso) throw Object.assign(new Error("Já há uma atualização em andamento nesta aba."), { codigo: "EM_ANDAMENTO" });
     const ctl = new AbortController();
     this.emCurso = ctl;
+    const k = this.ouvir ? chaveCancelar(this.ouvir.host, this.ouvir.login) : "";
+    const parar = this.ouvir?.area.aoMudar((m) => {
+      if (k in m && m[k]?.novo !== undefined) ctl.abort();
+    });
     try {
       return await atualizarForaDaUnidade({ ...this.criarDeps(), progresso: (p) => this.gravarProgresso(p) }, ctl.signal);
     } finally {
+      parar?.();
       this.emCurso = null;
     }
   }

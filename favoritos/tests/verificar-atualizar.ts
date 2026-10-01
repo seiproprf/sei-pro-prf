@@ -1,8 +1,8 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { escoposDoContexto } from "../src/modelo/escopo";
-import { atualizarForaDaUnidade, type ProgressoAtualizacao } from "../src/pagina/atualizar";
+import { atualizarForaDaUnidade, ControleAtualizar, type ProgressoAtualizacao, pedirCancelamento } from "../src/pagina/atualizar";
 import { RepositorioFavoritos } from "../src/repositorio";
-import { checar, secao } from "./util";
+import { checar, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 export async function verificarAtualizar(): Promise<void> {
@@ -78,7 +78,7 @@ export async function verificarAtualizar(): Promise<void> {
       ...deps,
       repos: [unidade],
       // P8 leva a OUTRO processo (id 1), que esta na caixa: abrir a arvore dele furaria a trava.
-      localizar: async (p: string) => (p === "P8" ? "1" : ({ P2: "2" } as Record<string, string>)[p] ?? "x"),
+      localizar: async (p: string) => (p === "P8" ? "1" : (({ P2: "2" } as Record<string, string>)[p] ?? "x")),
       lerProcesso: async (p: string) => {
         lidos3.push(p);
         return { qtdDocumentos: 1, abertoNaUnidade: false };
@@ -87,4 +87,26 @@ export async function verificarAtualizar(): Promise<void> {
     new AbortController().signal,
   );
   checar("numero que leva a outro processo nao e lido", !lidos3.includes("P8") && r3.erros >= 1, { lidos3, r3 });
+
+  secao("atualizar: cancelar de qualquer app (pelo storage)");
+  const areaC = areaMemoria();
+  const lidos4: string[] = [];
+  const ctlA = new ControleAtualizar(
+    () => ({
+      ...deps,
+      repos: [unidade],
+      localizar: async (p: string) => (({ P2: "2", P8: "8" }) as Record<string, string>)[p] ?? "x",
+      lerProcesso: async (p: string) => {
+        lidos4.push(p);
+        // Outro app (outra aba, mesma unidade) pede para cancelar no meio da leitura.
+        await pedirCancelamento(areaC, "sei.exemplo", "ana");
+        await tique(5);
+        return { qtdDocumentos: 1, abertoNaUnidade: false };
+      },
+    }),
+    async () => undefined,
+    { area: areaC, host: "sei.exemplo", login: "ana" },
+  );
+  await ctlA.iniciar();
+  checar("o pedido de cancelar chega a aba que roda, por onde quer que tenha sido feito", lidos4.length === 1, lidos4);
 }

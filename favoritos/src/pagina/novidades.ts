@@ -23,8 +23,8 @@ import type { Pagina } from "@nucleo/sessao/http";
 import type { Instantaneo, Prazo } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
 import { paginaDe } from "./contexto";
-import { filtroAtivoNaCaixa } from "./filtroCaixa";
 import { type DocumentoAssinado, lerDocumentosGerarPdf } from "./documentos";
+import { filtroAtivoNaCaixa } from "./filtroCaixa";
 
 /** A caixa está inteira na tela? (O caption diz "N registros"; a página mostra as linhas.) */
 function caixaInteira(doc: Document): boolean {

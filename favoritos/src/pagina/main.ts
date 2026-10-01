@@ -27,7 +27,6 @@ import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { DESCRICAO_TEXTO, nomeDoTexto } from "../sincronia/textoPadrao";
 import { ControleAtualizar, chaveProgresso } from "./atualizar";
-import { filtroAtivoNaCaixa } from "./filtroCaixa";
 import { abrirBalao } from "./balao";
 import { contarPendencias, instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral, pintarContador } from "./botao";
 import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
@@ -39,6 +38,7 @@ import { instalarEstrelasCaixa } from "./estrelasCaixa";
 import { instalarEstrelasListas } from "./estrelasListas";
 import { instalarEstrelasPesquisa } from "./estrelasPesquisa";
 import { tratadoresDaAba } from "./executor";
+import { filtroAtivoNaCaixa } from "./filtroCaixa";
 import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
 import { capturarDaArvore, capturarDaCaixa } from "./novidades";
@@ -330,7 +330,11 @@ function controleAtualizar(ctx: ContextoAba, area: Area, repos: Repos): Controle
           // A caixa como o SEI a devolve AGORA (com os filtros salvos do usuário): filtrada, não serve de trava.
           const primeira = await sei.http.obter(sei.linkMenu("procedimento_controlar"), { sinal, aceitarValidacao: true });
           const filtro = filtroAtivoNaCaixa(primeira.doc);
-          if (filtro) throw new ErroRpc("CAIXA_FILTRADA", `A caixa do Controle de Processos está com ${filtro}. Tire o filtro e tente de novo: sem a caixa inteira, o SEI Pro não sabe quais processos estão na sua unidade.`);
+          if (filtro)
+            throw new ErroRpc(
+              "CAIXA_FILTRADA",
+              `A caixa do Controle de Processos está com ${filtro}. Tire o filtro e tente de novo: sem a caixa inteira, o SEI Pro não sabe quais processos estão na sua unidade.`,
+            );
           const r = await listarCaixa(sei, { limite: Number.MAX_SAFE_INTEGER, sinal });
           // Sem a caixa inteira não há trava: ler a árvore de um processo da unidade marcaria o recebimento.
           if (r.processos.length < r.total)
@@ -364,6 +368,7 @@ function controleAtualizar(ctx: ContextoAba, area: Area, repos: Repos): Controle
       };
     },
     (p) => area.gravar({ [chaveProgresso(ctx.host, ctx.login)]: { ...p, quando: Date.now() } }),
+    { area, host: ctx.host, login: ctx.login },
   );
 }
 

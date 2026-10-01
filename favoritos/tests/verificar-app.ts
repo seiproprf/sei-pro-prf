@@ -2,7 +2,7 @@ import { areaMemoria } from "@comum/armazenamento/area";
 import { type AbrirModal, AppFavoritos, type DepsApp } from "../src/app/app";
 import { chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
-import { chaveProgresso } from "../src/pagina/atualizar";
+import { chaveCancelar, chaveProgresso } from "../src/pagina/atualizar";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../src/preferencias";
 import { RepositorioFavoritos } from "../src/repositorio";
@@ -433,8 +433,8 @@ export async function verificarApp(): Promise<void> {
   botao(faixaP()!, "Cancelar")!.click();
   await tique(20);
   checar(
-    "cancelar pede a aba",
-    pg.chamadas.some(([op]) => op === "cancelarAtualizacao"),
+    "cancelar vai pelo storage (a aba que roda escuta)",
+    (await pg.area.obter(chaveCancelar(CTX.host, CTX.login)))[chaveCancelar(CTX.host, CTX.login)] !== undefined,
   );
   await pg.area.gravar({ [chaveProgresso(CTX.host, CTX.login)]: { feitos: 5, total: 5, fim: true, quando: Date.now() } });
   await tique(40);
