@@ -20,7 +20,9 @@ export function dadosDaLinhaPesquisa(tr: Element): DadosProcesso | null {
   const id = parametros((link.getAttribute("href") ?? "").replace(/&amp;/g, "&")).get("id_procedimento");
   const protocolo = textoDe(link);
   if (!id || !protocolo) return null;
-  return { id, protocolo, tipo: link.getAttribute("title")?.trim() || undefined };
+  // O resultado da Pesquisa desenha igual o processo sigiloso a que o usuário tem credencial
+  // (SolrProtocolo.php): o sigilo fica a confirmar pela caixa ou pela árvore.
+  return { id, protocolo, tipo: link.getAttribute("title")?.trim() || undefined, sigiloAConfirmar: true };
 }
 
 export function instalarEstrelasPesquisa(doc: Document, servico: ServicoFavoritosPagina): void {

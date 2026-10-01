@@ -130,6 +130,8 @@ export class RepositorioFavoritos {
     } else {
       const sigiloso = d.sigiloso === undefined ? atual.sigiloso : d.sigiloso ? (true as const) : undefined;
       const m: MudancasFavorito = {
+        // Tela que informa o sigilo confirma; a que não informa não desfaz uma confirmação.
+        sigiloAConfirmar: d.sigiloso !== undefined ? undefined : atual.sigiloAConfirmar,
         protocolo: d.protocolo || atual.protocolo,
         tipo: d.tipo || atual.tipo,
         sigiloso,
@@ -258,13 +260,17 @@ export class RepositorioFavoritos {
 
   /** Mescla entidades vindas de fora (arquivo, migração): vence a versão mais recente de cada uma. */
   async importar(d: { favoritos?: Favorito[]; pastas?: Pasta[]; etiquetas?: Etiqueta[] }): Promise<{ novos: number; atualizados: number }> {
-    const r = await this.mesclarEm(this.favoritos, d.favoritos ?? []);
+    const r = await this.mesclarEm(this.favoritos, d.favoritos ?? [], combinarResumido);
     await this.mesclarEm(this.pastas, d.pastas ?? []);
     await this.mesclarEm(this.etiquetas, d.etiquetas ?? []);
     return r;
   }
 
-  private async mesclarEm<T extends Versionada>(col: Colecao<T>, itens: T[]): Promise<{ novos: number; atualizados: number }> {
+  private async mesclarEm<T extends Versionada>(
+    col: Colecao<T>,
+    itens: T[],
+    combinar: (vencedor: T, local: T | undefined) => T = (v) => v,
+  ): Promise<{ novos: number; atualizados: number }> {
     const atuais = new Map((await col.listar()).map((i) => [i.id, i]));
     const gravar: Array<[string, T]> = [];
     let novos = 0;
@@ -273,10 +279,10 @@ export class RepositorioFavoritos {
       const atual = atuais.get(item.id);
       if (!atual) {
         novos += 1;
-        gravar.push([item.id, item]);
+        gravar.push([item.id, combinar(item, undefined)]);
       } else if (vence(item, atual)) {
         atualizados += 1;
-        gravar.push([item.id, item]);
+        gravar.push([item.id, combinar(item, atual)]);
       }
     }
     await col.gravarVarios(gravar);
@@ -328,4 +334,26 @@ export async function moverEntreListas(origem: RepositorioFavoritos, destino: Re
   });
   await origem.remover([id]);
   return copiado;
+}
+
+/**
+ * O registro mínimo do Texto Padrão (lápide ou aviso de sigilo) traz só o ESTADO: quem tem a cópia
+ * completa mantém número, nota e o resto, e recebe a remoção ou o sigilo. Sigiloso perde a especificação.
+ */
+export function combinarResumido(vencedor: Favorito, local: Favorito | undefined): Favorito {
+  if (!vencedor.resumido || !local?.protocolo) return vencedor;
+  const f: Favorito = {
+    ...local,
+    atualizadoEm: vencedor.atualizadoEm,
+    dispositivo: vencedor.dispositivo,
+    removidoEm: vencedor.removidoEm,
+    sigiloso: vencedor.sigiloso ?? local.sigiloso,
+  };
+  delete f.resumido;
+  if (f.removidoEm === undefined) delete f.removidoEm;
+  if (f.sigiloso) {
+    delete f.especificacao;
+    delete f.sigiloAConfirmar;
+  } else delete f.sigiloso;
+  return f;
 }

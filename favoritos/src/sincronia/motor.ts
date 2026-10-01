@@ -118,16 +118,18 @@ export class MotorSincronia {
       const remoto = await this.d.destino.ler();
       let assinaturaRemota = "";
       let invalido: string | null = null;
+      let idsRemotos = new Set<string>();
       if (remoto !== null) {
         const r = await lerConteudoDoTexto(remoto, this.d.escopo);
         if ("envelope" in r) {
           await this.d.repo.importar(r.envelope.escopos[0]!);
           assinaturaRemota = assinaturaEnvelope(r.envelope);
+          idsRemotos = new Set(r.envelope.escopos[0]!.favoritos.map((f) => f.id));
         } else {
           invalido = r.invalido;
         }
       }
-      const env = await envelopeDaUnidade(this.d.repo, this.d.escopo, this.d.carimbo());
+      const env = await envelopeDaUnidade(this.d.repo, this.d.escopo, this.d.carimbo(), idsRemotos);
       if (remoto !== null && !invalido && assinaturaEnvelope(env) === assinaturaRemota) {
         return this.gravarStatus({
           estado: "ok",

@@ -49,7 +49,7 @@ export async function atualizarForaDaUnidade(
   const alvos = new Map<string, { protocolo: string; repos: RepositorioFavoritos[] }>();
   for (const r of d.repos) {
     for (const f of await r.ativos()) {
-      if (f.sigiloso || naCaixa.has(f.id)) continue;
+      if (f.sigiloso || f.sigiloAConfirmar || f.resumido || naCaixa.has(f.id)) continue;
       const a = alvos.get(f.id) ?? { protocolo: f.protocolo, repos: [] };
       a.repos.push(r);
       alvos.set(f.id, a);

@@ -31,6 +31,8 @@ export interface DadosProcesso {
   especificacao?: string;
   /** true/false quando a tela informa; undefined quando não sabe (mantém o que havia). */
   sigiloso?: boolean;
+  /** A tela não diz o nível de acesso (resultado da Pesquisa): fica fora do Texto Padrão, do agente e do Atualizar até confirmar. */
+  sigiloAConfirmar?: boolean;
 }
 
 /** Porta do `configdate` legado, com nomes legíveis (spec 6.2). */
@@ -113,6 +115,13 @@ export interface Favorito extends Versionada {
   /** Índice fracionário (comparar com < e >). */
   ordem: string;
   sigiloso?: true;
+  /** Veio de tela que não informa o sigilo (Pesquisa); a caixa ou a árvore confirmam depois. */
+  sigiloAConfirmar?: true;
+  /**
+   * Registro mínimo do Texto Padrão (lápide ou aviso de sigilo, sem número nem nota): na
+   * mesclagem leva só o estado, e os dados ficam os do computador que os tem.
+   */
+  resumido?: true;
   criadoEm: number;
 }
 

@@ -27,6 +27,7 @@ import { verificarPesquisa } from "./verificar-pesquisa";
 import { verificarPrazo } from "./verificar-prazo";
 import { verificarRepositorio } from "./verificar-repositorio";
 import { verificarShell } from "./verificar-shell";
+import { verificarSigilo } from "./verificar-sigilo";
 import { verificarSincroniaTexto } from "./verificar-sincronia";
 
 verificarModelo();
@@ -60,5 +61,6 @@ await verificarDocumentosFavoritos();
 await verificarPesquisa();
 await verificarCaptura();
 await verificarFiltroCaixa();
+await verificarSigilo();
 await verificarAtualizar();
 resumo();

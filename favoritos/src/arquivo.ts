@@ -91,6 +91,8 @@ function favorito(v: unknown): Favorito | null {
   if (!indiceValido(f.ordem as string)) f.ordem = "a0";
   if (f.sigiloso !== true) delete f.sigiloso;
   else delete f.especificacao;
+  if (f.sigiloAConfirmar !== true) delete f.sigiloAConfirmar;
+  if (f.resumido !== true) delete f.resumido;
   return f as unknown as Favorito;
 }
 

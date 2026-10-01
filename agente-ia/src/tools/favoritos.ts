@@ -4,7 +4,7 @@
  * O painel do agente é página da extensão, como o app dos favoritos: lê o
  * `chrome.storage.local` direto, pelo repositório dos favoritos, sem ponte. Da
  * aba vem só o escopo (SEI, usuário e unidade da tela ligada ao painel).
- * Processo sigiloso nunca sai daqui: nem o número.
+ * Processo sigiloso nunca sai daqui: nem o número (nem o de sigilo ainda não confirmado).
  */
 
 import { type Area, areaChrome } from "@comum/armazenamento/area";
@@ -59,9 +59,11 @@ export const TOOL_FAVORITOS = definirTool({
       const porPasta = new Map(pastas.map((x) => [x.id, x]));
       const novidades = (f: Favorito) => compararInstantaneos(f.visto, atuais.get(f.id));
       const ativos = todos.filter((f) => f.removidoEm === undefined);
-      sigilosos += ativos.filter((f) => f.sigiloso).length;
+      // Sigilo a confirmar (veio da Pesquisa) conta como sigiloso até a caixa ou a árvore dizerem o contrário.
+      const fechado = (f: Favorito) => !!f.sigiloso || !!f.sigiloAConfirmar;
+      sigilosos += ativos.filter(fechado).length;
       const visiveis = filtrar(
-        ativos.filter((f) => !f.sigiloso),
+        ativos.filter((f) => !fechado(f)),
         { busca: a.busca ? String(a.busca) : undefined, novidade: filtro === "novidades" || undefined, lembrete: filtro === "lembretes" || undefined },
         { etiquetas: porEtiqueta, resumo: (f) => (f.prazo ? calcularPrazo(f.prazo, hoje) : undefined), novidades, hoje },
       ).filter((f) => filtro !== "prazos" || !!f.prazo);

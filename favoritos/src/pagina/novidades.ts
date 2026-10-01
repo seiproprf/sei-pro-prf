@@ -58,6 +58,15 @@ export async function capturarDaCaixa(doc: Document, repo: RepositorioFavoritos,
   const semVisto: Array<[string, Instantaneo]> = [];
   for (const f of ativos) {
     const linha = linhas.get(f.id);
+    // A linha da caixa diz o nível de acesso: confirma o sigilo de quem veio da Pesquisa e marca quem virou sigiloso.
+    if (linha && (f.sigiloAConfirmar || !!f.sigiloso !== linha.sigiloso)) {
+      await repo.editar(
+        f.id,
+        linha.sigiloso
+          ? { sigiloso: true, especificacao: undefined, sigiloAConfirmar: undefined }
+          : { sigiloso: undefined, sigiloAConfirmar: undefined },
+      );
+    }
     const anterior = atuais.get(f.id);
     let novo: Instantaneo;
     if (linha) {
@@ -110,10 +119,24 @@ export async function capturarDaArvore(
   } catch {
     return 0;
   }
-  if (!arv.idProcedimento || arv.nivel === "sigiloso") return 0;
+  if (!arv.idProcedimento) return 0;
   const donos: RepositorioFavoritos[] = [];
   for (const r of repos) if (await r.contem(arv.idProcedimento)) donos.push(r);
   if (!donos.length) return 0;
+  // A árvore diz o nível de acesso: confirma (ou marca) o sigilo antes de qualquer outra leitura.
+  const sigiloso = arv.nivel === "sigiloso";
+  for (const r of donos) {
+    const f = await r.obter(arv.idProcedimento);
+    if (f && (f.sigiloAConfirmar || !!f.sigiloso !== sigiloso)) {
+      await r.editar(
+        arv.idProcedimento,
+        sigiloso
+          ? { sigiloso: true, especificacao: undefined, sigiloAConfirmar: undefined }
+          : { sigiloso: undefined, sigiloAConfirmar: undefined },
+      );
+    }
+  }
+  if (sigiloso) return 0;
   const linkHistorico =
     linkDaAcao(arv.links, "procedimento_consultar_historico") ??
     /consultarAndamento\('([^']+)'/

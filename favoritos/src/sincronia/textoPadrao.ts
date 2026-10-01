@@ -12,7 +12,7 @@
 import { codificar, decodificar, deParagrafos, paraParagrafos } from "@comum/sincronia/codec";
 import { hashCurto } from "@comum/texto";
 import { type Envelope, lerEnvelope } from "../arquivo";
-import type { Carimbo, Escopo } from "../modelo/tipos";
+import type { Carimbo, Escopo, Favorito } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
 
 /** Teto do conteúdo: o CKEditor 5 baixa o conteúdo de todos os textos da unidade (P1). */
@@ -29,12 +29,49 @@ export function nomeDoTexto(login: string): string {
 
 export const DESCRICAO_TEXTO = "Dados internos do SEI Pro (favoritos). Não use em documentos nem edite.";
 
-export async function envelopeDaUnidade(repo: RepositorioFavoritos, escopo: Escopo, c: Carimbo): Promise<Envelope> {
+/** O mínimo para levar uma remoção ou um sigilo: sem número, título, nota, prazo nem documentos. */
+function resumir(f: Favorito, extra: Partial<Favorito>): Favorito {
+  return {
+    id: f.id,
+    protocolo: "",
+    etiquetas: [],
+    ordem: "a0",
+    criadoEm: f.criadoEm,
+    atualizadoEm: f.atualizadoEm,
+    dispositivo: f.dispositivo,
+    resumido: true,
+    ...extra,
+  };
+}
+
+/**
+ * `idsRemotos`: os favoritos que o texto JÁ tem. Um sigiloso só vai (como aviso, sem número) se o texto
+ * tiver uma cópia dele de antes do sigilo: é o que faz os outros computadores marcarem o sigilo.
+ */
+export async function envelopeDaUnidade(
+  repo: RepositorioFavoritos,
+  escopo: Escopo,
+  c: Carimbo,
+  idsRemotos: ReadonlySet<string> = new Set(),
+): Promise<Envelope> {
   const { todos, pastas, etiquetas } = await repo.instantaneoCompleto();
+  const favoritos: Favorito[] = [];
+  for (const f of todos) {
+    if (f.sigiloAConfirmar && !f.removidoEm) continue;
+    if (f.sigiloso) {
+      if (idsRemotos.has(f.id))
+        favoritos.push(resumir(f, { sigiloso: true, ...(f.removidoEm !== undefined ? { removidoEm: f.removidoEm } : {}) }));
+      continue;
+    }
+    // Lápide: o Texto Padrão é visível para a unidade, e o item pode ter sido removido (ou levado à Pessoal) justamente por isso.
+    favoritos.push(
+      f.removidoEm !== undefined || f.resumido ? resumir(f, f.removidoEm !== undefined ? { removidoEm: f.removidoEm } : {}) : f,
+    );
+  }
   return {
     formato: "seipro-favoritos",
     versao: 1,
-    escopos: [{ escopo, favoritos: todos.filter((f) => !f.sigiloso), pastas, etiquetas }],
+    escopos: [{ escopo, favoritos, pastas, etiquetas }],
     gravadoEm: c.agora,
     dispositivo: c.dispositivo,
     revisao: 0,

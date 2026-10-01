@@ -24,6 +24,7 @@ export function novoFavorito(d: DadosProcesso, ordem: string, c: Carimbo): Favor
     tipo: d.tipo || undefined,
     especificacao: d.sigiloso ? undefined : d.especificacao || undefined,
     sigiloso: d.sigiloso ? (true as const) : undefined,
+    sigiloAConfirmar: d.sigiloAConfirmar && d.sigiloso === undefined ? (true as const) : undefined,
     etiquetas: [],
     ordem,
     criadoEm: c.agora,
@@ -64,6 +65,8 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
     .filter(Boolean);
   return lista.filter((fav) => {
     if (fav.removidoEm !== undefined) return false;
+    // Registro mínimo sem a cópia local (veio do Texto Padrão de outro computador): não há o que mostrar.
+    if (fav.resumido && !fav.protocolo) return false;
     if (f.pasta === SEM_PASTA) {
       if (fav.pasta) return false;
     } else if (f.pasta && fav.pasta !== f.pasta) return false;

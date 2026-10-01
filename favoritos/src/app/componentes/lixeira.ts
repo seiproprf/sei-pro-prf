@@ -5,9 +5,12 @@ import type { Favorito } from "../../modelo/tipos";
 
 export function naLixeira(itens: Favorito[], agora: number): Favorito[] {
   const limite = agora - DIAS_LIXEIRA * 86_400_000;
-  return itens
-    .filter((f) => f.removidoEm !== undefined && f.removidoEm >= limite)
-    .sort((a, b) => (b.removidoEm ?? 0) - (a.removidoEm ?? 0));
+  return (
+    itens
+      // Registro mínimo sem cópia local (veio do Texto Padrão): não há número nem dados para restaurar.
+      .filter((f) => f.removidoEm !== undefined && f.removidoEm >= limite && !(f.resumido && !f.protocolo))
+      .sort((a, b) => (b.removidoEm ?? 0) - (a.removidoEm ?? 0))
+  );
 }
 
 export function montarLixeira(itens: Favorito[], agora: number, d: { restaurar(id: string): Promise<void>; voltar(): void }): HTMLElement {
