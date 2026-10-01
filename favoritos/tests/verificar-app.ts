@@ -421,4 +421,23 @@ export async function verificarApp(): Promise<void> {
   await pg.area.gravar({ [chaveProgresso(CTX.host, CTX.login)]: { feitos: 5, total: 5, fim: true, quando: Date.now() } });
   await tique(40);
   checar("no fim a faixa some", !faixaP());
+
+  secao("app: documentos favoritos no item");
+  const df = montar();
+  await df.repos.unidade.adicionar({ id: "71", protocolo: "50300.000071/2026-71" });
+  await df.repos.unidade.editar("71", { documentos: [{ id: "9", numero: "0104019", titulo: "Despacho 12", criadoEm: 1 }] });
+  await df.app.iniciar();
+  const docs = df.raiz.querySelector('li[data-id="71"] .fav-docs');
+  checar("lista os documentos do favorito", !!docs && /0104019/.test(docs.textContent ?? "") && /Despacho 12/.test(docs.textContent ?? ""));
+  botao(docs!, "0104019 — Despacho 12")!.click();
+  await tique(20);
+  checar(
+    "abrir o documento vai pela pesquisa rapida com o numero SEI",
+    df.chamadas.some(
+      ([op, a]) => op === "abrirProcesso" && (a as { protocolo: string }).protocolo === "0104019" && (a as { id: string }).id === "",
+    ),
+  );
+  botao(docs!, "Tirar 0104019 dos documentos favoritos")!.click();
+  await tique(60);
+  checar("tirar o documento", !(await df.repos.unidade.obter("71"))?.documentos?.length);
 }

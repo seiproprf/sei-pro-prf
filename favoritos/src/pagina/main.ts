@@ -12,7 +12,7 @@ import { hojeISO } from "@comum/datas/dias";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { criarRpc, ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
-import { acaoNaArvore } from "@nucleo/dominio/arvore";
+import { acaoNaArvore, lerArvore } from "@nucleo/dominio/arvore";
 import { listarCaixa } from "@nucleo/dominio/caixa";
 import { lerHistorico } from "@nucleo/dominio/historico";
 import { criarArmazemTextoPadrao } from "@nucleo/dominio/textoPadrao";
@@ -30,7 +30,9 @@ import { ControleAtualizar, chaveProgresso } from "./atualizar";
 import { abrirBalao } from "./balao";
 import { contarPendencias, instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral, pintarContador } from "./botao";
 import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
+import { alternarDocumento, instalarEstrelasDocumentos } from "./documentosArvore";
 import { instalarManterNoEnvio } from "./enviar";
+import { instalarEstilo } from "./estilo";
 import { instalarEstrelaArvore } from "./estrelaArvore";
 import { instalarEstrelasCaixa } from "./estrelasCaixa";
 import { instalarEstrelasListas } from "./estrelasListas";
@@ -132,6 +134,7 @@ async function principal(): Promise<void> {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
     }
+    instalarDocumentosFavoritos(repos);
     // O usuário abriu o processo: lê o que a árvore já trouxe (e o histórico pelo link dela) e marca como visto.
     const http = criarHttp(location.href);
     void capturarDaArvore(
@@ -371,4 +374,36 @@ function ligarContador(botao: HTMLElement, repos: RepositorioFavoritos[]): void 
     r.aoMudarAtuais(pintar);
   }
   pintar();
+}
+
+/** Estrela em cada documento da árvore (documentos favoritos). */
+function instalarDocumentosFavoritos(repos: Repos): void {
+  let arv: ReturnType<typeof lerArvore>;
+  try {
+    arv = lerArvore(paginaDe(document, location.href));
+  } catch {
+    return;
+  }
+  if (!arv.idProcedimento || !arv.documentos.length) return;
+  const processo = { id: arv.idProcedimento, protocolo: arv.protocolo, tipo: arv.tipo || undefined, sigiloso: arv.nivel === "sigiloso" };
+  let marcados = new Set<string>();
+  const ler = async () => {
+    const f = (await repos.unidade?.obter(processo.id)) ?? (await repos.pessoal.obter(processo.id));
+    marcados = new Set(f && f.removidoEm === undefined ? (f.documentos ?? []).map((d) => d.id) : []);
+  };
+  void ler().then(() => {
+    instalarEstilo(document);
+    const estrelas = instalarEstrelasDocumentos(
+      document,
+      arv.documentos.map((d) => ({ id: d.id, numero: d.numero, titulo: d.titulo })),
+      {
+        marcado: (id) => marcados.has(id),
+        alternar: async (d) => {
+          await alternarDocumento(repos, processo, d);
+          await ler();
+        },
+      },
+    );
+    for (const r of [repos.unidade, repos.pessoal]) r?.aoMudar(() => void ler().then(() => estrelas.repintar()));
+  });
 }

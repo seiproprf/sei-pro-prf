@@ -1,6 +1,6 @@
 import { h, icone } from "@comum/ui/dom";
 import { corDoTexto } from "../../modelo/cores";
-import type { Etiqueta, Favorito, Pasta, ResumoPrazo } from "../../modelo/tipos";
+import type { DocumentoFavorito, Etiqueta, Favorito, Pasta, ResumoPrazo } from "../../modelo/tipos";
 
 export interface ApoioItem {
   pastas: ReadonlyMap<string, Pasta>;
@@ -27,6 +27,8 @@ export interface AcoesItem {
   mapa?(f: Favorito): void;
   marcarVisto?(f: Favorito): void;
   lembrete?(f: Favorito): void;
+  abrirDocumento?(f: Favorito, d: DocumentoFavorito, novaAba: boolean): void;
+  removerDocumento?(f: Favorito, d: DocumentoFavorito): void;
 }
 
 const itemMenu = (rotulo: string, fazer: () => void, classe?: string) =>
@@ -81,6 +83,49 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         ? h("span", { class: "fav-novidade", title: `O que mudou desde a última vez que você viu: ${a.novidade}` }, a.novidade)
         : null,
       h("button", { type: "button", class: "fav-titulo", title: "Editar favorito", onclick: () => acoes.editar(f) }, titulo),
+      f.documentos?.length
+        ? h(
+            "details",
+            { class: "fav-docs" },
+            h("summary", {}, icone("documento", 13), ` ${f.documentos.length} ${f.documentos.length === 1 ? "documento" : "documentos"}`),
+            h(
+              "ul",
+              {},
+              ...f.documentos.map((d) =>
+                h(
+                  "li",
+                  {},
+                  h(
+                    "button",
+                    {
+                      type: "button",
+                      class: "fav-doc-abrir",
+                      title: "Abrir o documento (Ctrl+clique abre em outra aba)",
+                      onclick: (ev) => {
+                        const m = ev as MouseEvent;
+                        acoes.abrirDocumento?.(f, d, !!(m.ctrlKey || m.metaKey));
+                      },
+                    },
+                    `${d.numero} — ${d.titulo}`,
+                  ),
+                  acoes.removerDocumento
+                    ? h(
+                        "button",
+                        {
+                          type: "button",
+                          class: "spro-botao-icone",
+                          "aria-label": `Tirar ${d.numero} dos documentos favoritos`,
+                          title: "Tirar dos documentos favoritos",
+                          onclick: () => acoes.removerDocumento?.(f, d),
+                        },
+                        icone("fechar", 12),
+                      )
+                    : null,
+                ),
+              ),
+            ),
+          )
+        : null,
     ),
     h(
       "div",

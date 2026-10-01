@@ -551,6 +551,10 @@ export class AppFavoritos {
       },
       remover: (f) => void this.remover([f.id]),
       marcarVisto: (f) => void this.repo.marcarVisto([f.id]),
+      // Documento pela pesquisa rápida com o número SEI: o SEI abre o processo já nele. Sem id, não usa a linha da caixa.
+      abrirDocumento: (_f, d, novaAba) =>
+        void this.d.rpc.chamar("abrirProcesso", { id: "", protocolo: d.numero, novaAba }).catch((e: Error) => avisar(e.message)),
+      removerDocumento: (f, d) => void this.repo.editar(f.id, { documentos: (f.documentos ?? []).filter((x) => x.id !== d.id) }),
       lembrete: (f) => this.abrirLembrete(f),
       moverLista: (f) => void this.moverParaOutra([f.id]),
       mapa: this.d.carregarMapa ? (f) => void this.abrirMapa(f) : undefined,
