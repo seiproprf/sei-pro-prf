@@ -26,7 +26,7 @@
     "service_worker": "background.js"
   },
   "side_panel": {
-    "default_path": "html/agente.html"
+    "default_path": "html/painel.html"
   },
   "content_scripts": [
     {
@@ -536,6 +536,7 @@
         "html/favoritos.html",
         "js/favoritos/app.js",
         "css/favoritos.css",
+        "icons/menu/favoritos.svg",
         "js/estudio/estudio.js",
         "icons/menu/fluxos.svg",
         "vendor/ferramentas-pdf/tesseract/worker.min.js",

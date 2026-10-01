@@ -30,6 +30,7 @@ function carregar(rotinas: unknown[]) {
   const notificadas: Array<{ id: string; titulo: string; corpo: string }> = [];
   const abas: string[] = [];
   const paineisAbertos: number[] = [];
+  const sessao: Array<Record<string, unknown>> = [];
   const chrome = {
     runtime: {
       onInstalled: { addListener: (f: (d: unknown) => void) => ouvintes.instalado.push(f) },
@@ -38,7 +39,10 @@ function carregar(rotinas: unknown[]) {
       getURL: (p: string) => `chrome-extension://teste/${p}`,
       getManifest: () => ({ version: "2.2.5" }),
     },
-    storage: { local: { get: async () => ({ agenteIA_rotinas: rotinas }), set: async () => undefined } },
+    storage: {
+      local: { get: async () => ({ agenteIA_rotinas: rotinas }), set: async () => undefined },
+      session: { set: async (v: Record<string, unknown>) => void sessao.push(v) },
+    },
     alarms: { onAlarm: { addListener: (f: (a: { name: string }) => void) => ouvintes.alarme.push(f) } },
     notifications: {
       create: (id: string, o: { title: string; message: string }, cb?: () => void) => {
@@ -54,7 +58,7 @@ function carregar(rotinas: unknown[]) {
   // O arquivo roda como script de service worker: `self`/`chrome` globais.
   const executar = new Function("chrome", "self", `${FONTE}\nreturn typeof portasDoAgente;`);
   const tipo = executar(chrome, chrome) as string;
-  return { ouvintes, notificadas, abas, paineisAbertos, tipo };
+  return { ouvintes, notificadas, abas, paineisAbertos, sessao, tipo };
 }
 
 export async function verificarBackground(): Promise<void> {
@@ -117,8 +121,28 @@ export async function verificarBackground(): Promise<void> {
     amb.ouvintes.clique[0]("rotina-pendente:r1");
     await new Promise((r) => setTimeout(r, 10));
     checar("abre o painel lateral na aba ativa", amb.paineisAbertos.join() === "7", amb.paineisAbertos);
+    checar("ja na aba do agente", amb.sessao.some((v) => v.painelAba === "agente"), amb.sessao);
     amb.ouvintes.clique[0]("promocao-qualquer");
     await new Promise((r) => setTimeout(r, 10));
     checar("notificacao de outra origem e ignorada", amb.paineisAbertos.length === 1 && amb.abas.length === 0);
+  }
+
+  secao("background: pedidos para abrir o painel");
+  {
+    const amb = carregar([]);
+    const tab = { tab: { id: 42 } };
+    amb.ouvintes.mensagem[0]({ tipo: "abrirPainel", aba: "favoritos" }, tab);
+    await new Promise((r) => setTimeout(r, 10));
+    checar("abrirPainel abre o painel na aba que pediu", amb.paineisAbertos.join() === "42", amb.paineisAbertos);
+    checar("e grava a aba pedida", amb.sessao.at(-1)?.painelAba === "favoritos", amb.sessao);
+    amb.ouvintes.mensagem[0]({ tipo: "abrirAgente" }, tab);
+    await new Promise((r) => setTimeout(r, 10));
+    checar("abrirAgente (botoes antigos) abre na aba do agente", amb.sessao.at(-1)?.painelAba === "agente" && amb.paineisAbertos.length === 2);
+    amb.ouvintes.mensagem[0]({ tipo: "abrirPainel", aba: "qualquer" }, tab);
+    await new Promise((r) => setTimeout(r, 10));
+    checar("aba desconhecida vira favoritos", amb.sessao.at(-1)?.painelAba === "favoritos");
+    amb.ouvintes.mensagem[0]({ tipo: "abrirPainel", aba: "favoritos" }, {});
+    await new Promise((r) => setTimeout(r, 10));
+    checar("pedido sem aba de origem e ignorado", amb.paineisAbertos.length === 3);
   }
 }

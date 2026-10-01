@@ -54,17 +54,31 @@ if(!isChrome && typeof browser.runtime.getBrowserInfo === "function") {
 }
 
 /******************************************************************************
- * Agente de IA: o item "Agente de IA" no menu do SEI (js/init_agente.js) pede
- * para abrir o painel lateral. O clique do usuario e o gesto que o Chrome
- * exige para sidePanel.open; por isso a chamada e feita direto no listener.
+ * Painel lateral (html/painel.html, abas Favoritos | Agente): o botao
+ * Favoritos da barra do SEI (js/init_favoritos.js) pede {tipo: "abrirPainel",
+ * aba} e o item "Agente de IA" do menu (js/init_agente.js) pede "abrirAgente".
+ * O clique do usuario e o gesto que o Chrome exige para sidePanel.open; por
+ * isso a chamada e feita direto no listener, ANTES de qualquer await. A aba
+ * pedida vai para o storage.session: o painel le ao abrir e, se ja estiver
+ * aberto, troca de aba pelo onChanged.
  ******************************************************************************/
+function gravarAbaDoPainel(aba) {
+  if (!browser.storage || !browser.storage.session) return;
+  try {
+    var p = browser.storage.session.set({ painelAba: aba });
+    if (p && p.catch) p.catch(function () { /* sem sessao: o painel abre na aba padrao */ });
+  } catch (e) { /* idem */ }
+}
+
 browser.runtime.onMessage.addListener(function (msg, sender) {
-  if (!msg || msg.tipo !== "abrirAgente" || !sender || !sender.tab) return;
+  if (!msg || (msg.tipo !== "abrirAgente" && msg.tipo !== "abrirPainel") || !sender || !sender.tab) return;
+  var aba = msg.tipo === "abrirAgente" || msg.aba === "agente" ? "agente" : "favoritos";
   if (typeof chrome !== "undefined" && chrome.sidePanel && chrome.sidePanel.open) {
     chrome.sidePanel.open({ tabId: sender.tab.id }).catch(function (e) { console.log(e); });
   } else if (browser.sidebarAction && browser.sidebarAction.open) {
     browser.sidebarAction.open();
   }
+  gravarAbaDoPainel(aba);
 });
 
 /******************************************************************************
@@ -118,6 +132,7 @@ if (browser.notifications && browser.notifications.onClicked) {
   browser.notifications.onClicked.addListener(function (id) {
     if (id.indexOf("rotina") !== 0) return;
     browser.notifications.clear(id);
+    gravarAbaDoPainel("agente");
     function emAba() { browser.tabs.create({ url: browser.runtime.getURL("html/agente.html") }); }
     // O clique na notificacao e gesto do usuario: serve para abrir o painel.
     if (typeof chrome !== "undefined" && chrome.sidePanel && chrome.sidePanel.open) {
