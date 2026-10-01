@@ -7,6 +7,16 @@
 
 import type { Area } from "./area";
 
+/** Valores das chaves que começam com o prefixo, numa leitura. Sem `chaves()`, lê a área inteira. */
+export async function obterPorPrefixo(area: Area, prefixo: string): Promise<Record<string, unknown>> {
+  if (area.chaves) {
+    const chaves = (await area.chaves()).filter((k) => k.startsWith(prefixo));
+    return chaves.length ? area.obter(chaves) : {};
+  }
+  const tudo = await area.obter(null);
+  return Object.fromEntries(Object.entries(tudo).filter(([k]) => k.startsWith(prefixo)));
+}
+
 export class Colecao<T> {
   constructor(
     private readonly area: Area,
@@ -18,10 +28,7 @@ export class Colecao<T> {
   }
 
   async listar(): Promise<T[]> {
-    const tudo = await this.area.obter(null);
-    return Object.entries(tudo)
-      .filter(([k]) => k.startsWith(this.prefixo))
-      .map(([, v]) => v as T);
+    return Object.values(await obterPorPrefixo(this.area, this.prefixo)) as T[];
   }
 
   async obter(id: string): Promise<T | undefined> {

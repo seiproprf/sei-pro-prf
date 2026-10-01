@@ -1,5 +1,5 @@
 import { areaMemoria } from "../src/armazenamento/area";
-import { Colecao } from "../src/armazenamento/colecao";
+import { Colecao, obterPorPrefixo } from "../src/armazenamento/colecao";
 import { idDispositivo } from "../src/armazenamento/dispositivo";
 import { checar, secao } from "./util";
 
@@ -44,6 +44,27 @@ export async function verificarArmazenamento(): Promise<void> {
   checar("aviso so do proprio prefixo", avisos === 3, avisos);
   await col.gravarVarios([]);
   checar("gravarVarios vazio nao grava", avisos === 3);
+
+  secao("armazenamento: listar sem ler a area inteira");
+  // O chrome.storage.local e dividido com o Agente (fluxos, skills, memoria): listar uma colecao
+  // nao pode transferir tudo, so as chaves do proprio prefixo.
+  const base = areaMemoria({ "agente/memoria": "x".repeat(1000), "fav/u1/f/1": { id: "1", n: 1 }, "fav/u1/p/9": { id: "9", n: 9 } });
+  const pedidos: Array<string | string[] | null | undefined> = [];
+  const espiada = { ...base, obter: (c?: string | string[] | null) => (pedidos.push(c), base.obter(c)) };
+  const lista = await new Colecao<{ id: string }>(espiada, "fav/u1/f/").listar();
+  checar(
+    "chaves() lista as chaves sem os valores",
+    JSON.stringify((await base.chaves?.())?.sort()) === JSON.stringify(["agente/memoria", "fav/u1/f/1", "fav/u1/p/9"]),
+  );
+  checar(
+    "listar busca so as chaves do prefixo",
+    lista.length === 1 &&
+      pedidos.every((c) => c !== null && c !== undefined) &&
+      JSON.stringify(pedidos.at(-1)) === JSON.stringify(["fav/u1/f/1"]),
+    pedidos,
+  );
+  const varias = await obterPorPrefixo(espiada, "fav/u1/");
+  checar("obterPorPrefixo traz varias colecoes numa leitura", Object.keys(varias).sort().join() === "fav/u1/f/1,fav/u1/p/9");
 
   secao("armazenamento: dispositivo");
   const id1 = await idDispositivo(area);

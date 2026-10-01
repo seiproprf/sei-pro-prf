@@ -6,7 +6,7 @@
  */
 
 import type { Area } from "@comum/armazenamento/area";
-import { Colecao } from "@comum/armazenamento/colecao";
+import { Colecao, obterPorPrefixo } from "@comum/armazenamento/colecao";
 import { novoId } from "@comum/id";
 import { indiceEntre, indiceValido } from "@comum/ordem/indice";
 import { purgarLapides, type Versionada, vence } from "@comum/sincronia/entidade";
@@ -28,6 +28,7 @@ export class RepositorioFavoritos {
   readonly pastas: Colecao<Pasta>;
   readonly etiquetas: Colecao<Etiqueta>;
   private readonly chaveMeta: string;
+  private readonly base: string;
 
   constructor(
     private readonly area: Area,
@@ -39,11 +40,27 @@ export class RepositorioFavoritos {
     this.pastas = new Colecao<Pasta>(area, `${base}p/`);
     this.etiquetas = new Colecao<Etiqueta>(area, `${base}e/`);
     this.chaveMeta = `${base}meta`;
+    this.base = base;
   }
 
   /** Guarda o escopo por extenso (com a sigla da unidade) para a exportação montar o arquivo. */
   async registrar(): Promise<void> {
     await this.area.gravar({ [this.chaveMeta]: { escopo: this.escopo } });
+  }
+
+  /** Favoritos (com lápides), pastas e etiquetas ativas desta lista numa leitura só (para o app redesenhar). */
+  async instantaneo(): Promise<{ todos: Favorito[]; pastas: Pasta[]; etiquetas: Etiqueta[] }> {
+    const tudo = Object.entries(await obterPorPrefixo(this.area, this.base));
+    const de = <T>(sub: string) => tudo.filter(([k]) => k.startsWith(this.base + sub)).map(([, v]) => v as T);
+    return {
+      todos: de<Favorito>("f/"),
+      pastas: de<Pasta>("p/")
+        .filter((p) => p.removidoEm === undefined)
+        .sort(porOrdemPasta),
+      etiquetas: de<Etiqueta>("e/")
+        .filter((e) => e.removidoEm === undefined)
+        .sort(porNome),
+    };
   }
 
   todos(): Promise<Favorito[]> {

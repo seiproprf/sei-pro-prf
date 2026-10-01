@@ -151,17 +151,15 @@ export class AppFavoritos {
   }
 
   async recarregar(): Promise<void> {
-    const [todos, pastas, etiquetas, daUnidade, pessoais] = await Promise.all([
-      this.repo.todos(),
-      this.repo.pastasAtivas(),
-      this.repo.etiquetasAtivas(),
-      this.d.repos.unidade ? this.d.repos.unidade.ativos() : Promise.resolve([]),
-      this.d.repos.pessoal.ativos(),
-    ]);
+    // Uma leitura para a lista aberta e outra só para a contagem da outra aba.
+    const outra = this.outra?.repo;
+    const [inst, daOutra] = await Promise.all([this.repo.instantaneo(), outra ? outra.ativos() : Promise.resolve([])]);
+    const { todos, pastas, etiquetas } = inst;
     this.todos = todos;
     this.pastas = pastas;
     this.etiquetas = etiquetas;
-    this.contagem = { unidade: daUnidade.length, pessoal: pessoais.length };
+    const aqui = todos.filter((f) => f.removidoEm === undefined).length;
+    this.contagem = this.lista === "unidade" ? { unidade: aqui, pessoal: daOutra.length } : { unidade: daOutra.length, pessoal: aqui };
     for (const id of [...this.selecao]) if (!todos.some((f) => f.id === id && f.removidoEm === undefined)) this.selecao.delete(id);
     this.redesenhar();
   }

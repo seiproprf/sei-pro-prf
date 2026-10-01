@@ -119,6 +119,15 @@ export async function verificarRepositorio(): Promise<void> {
   await repo.editar("10", { titulo: "y" });
   checar("aoMudar avisa e para", avisos === 1, avisos);
 
+  secao("repositorio: instantaneo numa leitura so");
+  const inst = await repo.instantaneo();
+  const separado = { f: (await repo.todos()).length, p: (await repo.pastasAtivas()).length, e: (await repo.etiquetasAtivas()).length };
+  checar(
+    "instantaneo traz favoritos (com lapides), pastas e etiquetas ativas",
+    inst.todos.length === separado.f && inst.pastas.length === separado.p && inst.etiquetas.length === separado.e,
+    { inst: [inst.todos.length, inst.pastas.length, inst.etiquetas.length], separado },
+  );
+
   secao("preferencias");
   const sync = areaMemoria();
   checar("padrao quando nada foi gravado", (await lerPreferencias(sync)).exibir === "abaixo");

@@ -12,6 +12,8 @@ export interface Area {
   obter(chaves?: string | string[] | null): Promise<Record<string, unknown>>;
   gravar(itens: Record<string, unknown>): Promise<void>;
   remover(chaves: string | string[]): Promise<void>;
+  /** Só os nomes das chaves (sem os valores). Ausente onde o navegador não oferece `getKeys`. */
+  chaves?(): Promise<string[]>;
   /** Avisa mudanças feitas por QUALQUER contexto (outra aba, o app, o content script). */
   aoMudar(cb: (m: Mudancas) => void): () => void;
 }
@@ -21,6 +23,12 @@ export function areaChrome(area: chrome.storage.StorageArea, nome: "local" | "sy
     obter: (chaves = null) => area.get(chaves) as Promise<Record<string, unknown>>,
     gravar: (itens) => area.set(itens),
     remover: (chaves) => area.remove(chaves),
+    // getKeys (Chrome 130+, Firefox 143+) evita transferir os valores de todo o storage, que o
+    // Agente também usa, só para descobrir quais chaves são de uma coleção.
+    chaves:
+      typeof (area as { getKeys?: unknown }).getKeys === "function"
+        ? () => (area as unknown as { getKeys(): Promise<string[]> }).getKeys()
+        : undefined,
     aoMudar(cb) {
       const ouvinte = (m: Record<string, chrome.storage.StorageChange>, n: string) => {
         if (n === nome) cb(m as Mudancas);
@@ -60,6 +68,9 @@ export function areaMemoria(inicial: Record<string, unknown> = {}): Area {
         dados.delete(k);
       }
       avisar(m);
+    },
+    async chaves() {
+      return [...dados.keys()];
     },
     aoMudar(cb) {
       ouvintes.add(cb);
