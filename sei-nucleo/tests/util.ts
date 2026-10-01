@@ -57,6 +57,20 @@ export function fixture(nome: string): Pagina {
   };
 }
 
+/** Tela montada à mão, para casos que nenhuma fixture cobre (SEI 3, linha com sinal raro). */
+export function paginaSintetica(corpo: string, url = "https://sei.exemplo.gov.br/sei/controlador.php"): Pagina {
+  const html = `<html><body>${corpo}</body></html>`;
+  let doc: Document | null = null;
+  return {
+    url,
+    status: 200,
+    html,
+    get doc() {
+      return (doc ??= parser.parseFromString(html, "text/html") as unknown as Document);
+    },
+  };
+}
+
 export function resumo(): void {
   console.log(`\n${passou} ok, ${falhou} falha(s)\n`);
   if (falhou > 0) process.exit(1);

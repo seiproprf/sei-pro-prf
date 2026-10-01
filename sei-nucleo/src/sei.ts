@@ -21,7 +21,8 @@ export interface ContextoSei {
   /** "4.1.5", "5.0.4"... ou "" quando a tela não informa. */
   versao: string;
   maior: number;
-  unidade: { sigla: string; nome: string };
+  /** `id` é o `infra_unidade_atual` (vazio se a tela não o mostra). */
+  unidade: { id: string; sigla: string; nome: string };
   usuario: { nome: string; login: string; orgao?: string };
 }
 
@@ -30,6 +31,20 @@ export function lerVersao(html: string): string {
   const titulo = /Sistema Eletr(?:\u00F4|&ocirc;|\\u00F4)nico de Informa[^"]*?Vers(?:\u00E3|&atilde;)o\s*([\d.]+)/i.exec(html);
   if (titulo) return titulo[1];
   return /\.(?:js|svg|css)\?(\d+\.\d+\.\d+)-/.exec(html)?.[1] ?? "";
+}
+
+/**
+ * id da unidade atual. SEI 4/5: o link de troca de unidade (`#lnkInfraUnidade`)
+ * traz `infra_unidade_atual` no onclick. Sem cabeçalho, vale a URL da tela. No
+ * SEI 3 a unidade é o `#selInfraUnidades`.
+ */
+export function lerIdUnidade(pagina: Pagina): string {
+  const onclick = pagina.doc.querySelector("#lnkInfraUnidade")?.getAttribute("onclick") ?? "";
+  const doLink = /infra_unidade_atual=(\d+)/.exec(onclick)?.[1];
+  if (doLink) return doLink;
+  const daUrl = /[?&]infra_unidade_atual=(\d+)/.exec(pagina.url)?.[1];
+  if (daUrl) return daUrl;
+  return pagina.doc.querySelector("#selInfraUnidades option[selected]")?.getAttribute("value") ?? "";
 }
 
 /** Lê unidade e usuário do cabeçalho de qualquer tela completa do SEI. */
@@ -43,7 +58,11 @@ export function lerContexto(pagina: Pagina): ContextoSei {
     host: new URL(pagina.url).host,
     versao,
     maior: Number(versao.split(".")[0]) || 0,
-    unidade: { sigla: textoDe(unidade), nome: unidade?.getAttribute("title") ?? "" },
+    unidade: {
+      id: lerIdUnidade(pagina),
+      sigla: textoDe(unidade) || textoDe(d.querySelector("#selInfraUnidades option[selected]")),
+      nome: unidade?.getAttribute("title") ?? "",
+    },
     usuario: { nome: nome.trim(), login: login.trim(), orgao: orgao.trim() },
   };
 }

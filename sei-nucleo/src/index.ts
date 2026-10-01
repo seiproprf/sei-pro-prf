@@ -5,7 +5,7 @@
  * usar sai daqui. O bundle IIFE expõe o mesmo conteúdo em `window.SeiNucleo`.
  */
 
-export { Sei, lerContexto, lerVersao, type ContextoSei, type Localizado } from "./sei";
+export { Sei, lerContexto, lerIdUnidade, lerVersao, type ContextoSei, type Localizado } from "./sei";
 export { ErroSei, comoErroSei, ehErroSei, type CodigoErro } from "./sessao/erros";
 export { criarHttp, verificarPagina, type Http, type Pagina, type Arquivo, type OpcoesHttp } from "./sessao/http";
 export { codificarLatin1, decodificarLatin1, paraLatin1Seguro } from "./sessao/codificacao";
@@ -24,7 +24,7 @@ export {
   type MarcadorProcesso,
 } from "./dominio/acoesProcesso";
 export { andamentos, type Andamento, type TipoHistorico } from "./dominio/historico";
-export { listarCaixa, type ProcessoNaCaixa } from "./dominio/caixa";
+export { lerCaixaDaPagina, lerLinhaCaixa, listarCaixa, type ProcessoNaCaixa } from "./dominio/caixa";
 export {
   localizarDocumento,
   lerConteudo,

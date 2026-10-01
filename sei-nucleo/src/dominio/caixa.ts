@@ -29,6 +29,36 @@ export interface ProcessoNaCaixa {
   atribuido: string;
   /** Anotação, marcadores, prazos, retorno programado... como o SEI descreve. */
   sinais: string[];
+  /** Ícone de exclamação: documento incluído ou assinado desde a última visita da unidade. */
+  documentoNovo: boolean;
+}
+
+/**
+ * Uma linha da caixa (`tr#P<id>`). É exportada porque o content script do
+ * favoritos lê a MESMA tela que o usuário vê, sem requisição nenhuma, e põe
+ * a estrela na linha.
+ */
+export function lerLinhaCaixa(tr: Element, grupo: "recebidos" | "gerados"): ProcessoNaCaixa | null {
+  const chk = tr.querySelector("input[type=checkbox]");
+  const link = tr.querySelector("a[href*='procedimento_trabalhar']");
+  if (!chk || !link) return null;
+  const rotulo = chk.getAttribute("aria-label") ?? "";
+  const sigiloso = /^Sigiloso\b/.test(rotulo) || /Sigiloso/.test(link.getAttribute("class") ?? "");
+  const tds = [...tr.querySelectorAll("td")];
+  const sinais = sigiloso ? [] : [...(tds[1]?.querySelectorAll("a[aria-label]") ?? [])].map((a) => a.getAttribute("aria-label") ?? "");
+  return {
+    idProcedimento: chk.getAttribute("value") ?? parametros(link.getAttribute("href") ?? "").get("id_procedimento") ?? "",
+    protocolo: chk.getAttribute("title") ?? textoDe(link),
+    grupo,
+    tipo: /Tipo (.*?)(?: \/ Especifica|$)/.exec(rotulo)?.[1]?.trim() ?? "",
+    // Especificação de processo sigiloso não sai daqui (regra do agente).
+    especificacao: sigiloso ? "" : (/Especifica\S* (.*)$/.exec(rotulo)?.[1]?.trim() ?? ""),
+    sigiloso,
+    novo: /NaoVisualizado/.test(link.getAttribute("class") ?? ""),
+    atribuido: textoDe(tds[tds.length - 1]).replace(/^\(|\)$/g, ""),
+    sinais,
+    documentoNovo: !!tds[1]?.querySelector("img[src*='exclamacao']") || sinais.some((s) => /documento foi inclu/i.test(s)),
+  };
 }
 
 function lerTabela(p: Pagina, grupo: "recebidos" | "gerados"): { itens: ProcessoNaCaixa[]; total: number } {
@@ -37,26 +67,15 @@ function lerTabela(p: Pagina, grupo: "recebidos" | "gerados"): { itens: Processo
   const total = Number(/\((\d+)\s+registro/.exec(textoDe(tabela?.querySelector("caption")))?.[1] ?? 0);
   const itens: ProcessoNaCaixa[] = [];
   for (const tr of tabela?.querySelectorAll("tr[id^='P']") ?? []) {
-    const chk = tr.querySelector("input[type=checkbox]");
-    const link = tr.querySelector("a[href*='procedimento_trabalhar']");
-    if (!chk || !link) continue;
-    const rotulo = chk.getAttribute("aria-label") ?? "";
-    const sigiloso = /^Sigiloso\b/.test(rotulo) || /Sigiloso/.test(link.getAttribute("class") ?? "");
-    const tds = [...tr.querySelectorAll("td")];
-    itens.push({
-      idProcedimento: chk.getAttribute("value") ?? parametros(link.getAttribute("href") ?? "").get("id_procedimento") ?? "",
-      protocolo: chk.getAttribute("title") ?? textoDe(link),
-      grupo,
-      tipo: /Tipo (.*?)(?: \/ Especifica|$)/.exec(rotulo)?.[1]?.trim() ?? "",
-      // Especificação de processo sigiloso não sai daqui (regra do agente).
-      especificacao: sigiloso ? "" : (/Especifica\S* (.*)$/.exec(rotulo)?.[1]?.trim() ?? ""),
-      sigiloso,
-      novo: /NaoVisualizado/.test(link.getAttribute("class") ?? ""),
-      atribuido: textoDe(tds[tds.length - 1]).replace(/^\(|\)$/g, ""),
-      sinais: sigiloso ? [] : [...(tds[1]?.querySelectorAll("a[aria-label]") ?? [])].map((a) => a.getAttribute("aria-label") ?? ""),
-    });
+    const item = lerLinhaCaixa(tr, grupo);
+    if (item) itens.push(item);
   }
   return { itens, total };
+}
+
+/** Processos da caixa na tela JÁ CARREGADA (só a página visível de cada grupo), sem requisição. */
+export function lerCaixaDaPagina(p: Pagina): ProcessoNaCaixa[] {
+  return [...lerTabela(p, "recebidos").itens, ...lerTabela(p, "gerados").itens];
 }
 
 /** Todos os processos da caixa (até `limite`), dos dois grupos. */
