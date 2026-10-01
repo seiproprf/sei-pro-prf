@@ -103,7 +103,10 @@ export async function verificarPagina(): Promise<void> {
   secao("pagina: falha ao gravar nao passa em silencio");
   const areaQuebrada = { ...areaMemoria(), gravar: async () => Promise.reject(new Error("cota excedida")) };
   const repoQuebrado = new RepositorioFavoritos(areaQuebrada, esc.unidade!, carimbo);
-  const servicoQuebrado = new ServicoFavoritosPagina({ unidade: repoQuebrado, pessoal: new RepositorioFavoritos(areaQuebrada, esc.pessoal, carimbo) });
+  const servicoQuebrado = new ServicoFavoritosPagina({
+    unidade: repoQuebrado,
+    pessoal: new RepositorioFavoritos(areaQuebrada, esc.pessoal, carimbo),
+  });
   await servicoQuebrado.carregar();
   const docErro = instalarDom(
     '<html><body><form id="frmRelBlocoProtocoloLista"><table class="infraTable"><tr><td></td><td></td><td><a href="controlador.php?acao=procedimento_trabalhar&id_procedimento=55&infra_hash=0">55/2026</a></td></tr></table></form></body></html>',
@@ -112,7 +115,11 @@ export async function verificarPagina(): Promise<void> {
   const estrelaErro = docErro.querySelector(".spro-fav-estrela") as HTMLButtonElement;
   estrelaErro.click();
   await tique(20);
-  checar("estrela avisa que nao gravou", estrelaErro.hasAttribute("data-erro") && (estrelaErro.getAttribute("title") ?? "").includes("Não foi possível"), estrelaErro.getAttribute("title"));
+  checar(
+    "estrela avisa que nao gravou",
+    estrelaErro.hasAttribute("data-erro") && (estrelaErro.getAttribute("title") ?? "").includes("Não foi possível"),
+    estrelaErro.getAttribute("title"),
+  );
 
   secao("pagina: estrelas em blocos, acompanhamento e sobrestados");
   const docLista = instalarDom(

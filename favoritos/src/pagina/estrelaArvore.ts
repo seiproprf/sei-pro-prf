@@ -6,10 +6,10 @@
 
 import { lerArvore } from "@nucleo/dominio/arvore";
 import type { DadosProcesso } from "../modelo/tipos";
+import { delegarEstrelas } from "./cliques";
 import { paginaDe } from "./contexto";
 import { esperar } from "./esperar";
 import { instalarEstilo } from "./estilo";
-import { delegarEstrelas } from "./cliques";
 import { atualizarEstrela, criarEstrela } from "./estrela";
 import type { ServicoFavoritosPagina } from "./servico";
 

@@ -7,8 +7,8 @@
 
 import { lerLinhaCaixa } from "@nucleo/dominio/caixa";
 import type { DadosProcesso } from "../modelo/tipos";
-import { instalarEstilo } from "./estilo";
 import { delegarEstrelas } from "./cliques";
+import { instalarEstilo } from "./estilo";
 import { atualizarEstrela, criarEstrela } from "./estrela";
 import type { ServicoFavoritosPagina } from "./servico";
 
