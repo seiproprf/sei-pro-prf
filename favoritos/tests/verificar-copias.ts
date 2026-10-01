@@ -138,7 +138,12 @@ export async function verificarControleArquivo(): Promise<void> {
   const sD = new SincroniaArquivo({
     area: areaD,
     dono,
-    arquivo: { ler: async () => conteudo2, gravar: async (x: string) => void (conteudo2 = x) },
+    arquivo: {
+      ler: async () => conteudo2,
+      gravar: async (x: string) => {
+        conteudo2 = x;
+      },
+    },
     carimbo: () => ({ agora: ++t, dispositivo: "D" }),
   });
   const rD = await sD.sincronizar();
