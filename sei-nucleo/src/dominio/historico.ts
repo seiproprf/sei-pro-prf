@@ -42,6 +42,11 @@ function lerAndamentos(p: Pagina): { itens: Andamento[]; total: number } {
   return { itens, total };
 }
 
+/** Andamentos da tela de histórico JÁ obtida (do mais recente para o mais antigo), sem requisição. */
+export function lerHistorico(p: Pagina): Andamento[] {
+  return lerAndamentos(p).itens;
+}
+
 /** Andamentos do processo, do mais recente para o mais antigo. */
 export async function andamentos(
   sei: Sei,

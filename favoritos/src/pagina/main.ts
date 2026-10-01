@@ -14,6 +14,7 @@ import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
 import { criarArmazemTextoPadrao } from "@nucleo/dominio/textoPadrao";
 import { Sei } from "@nucleo/sei";
+import { criarHttp } from "@nucleo/sessao/http";
 import { lerArquivoAntigo } from "../migracao/fontes";
 import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_PREFERENCIAS } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
@@ -32,6 +33,7 @@ import { instalarEstrelasListas } from "./estrelasListas";
 import { tratadoresDaAba } from "./executor";
 import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
+import { capturarDaArvore, capturarDaCaixa } from "./novidades";
 import { montarPainel, ordemLegada } from "./painel";
 import { ServicoFavoritosPagina } from "./servico";
 import { ControleSincronia, ocultarTextosInternos } from "./sincronia";
@@ -111,11 +113,21 @@ async function principal(): Promise<void> {
   await servico.carregar();
   if (tela === "caixa") {
     instalarEstrelasCaixa(document, servico);
+    // "O que mudou": os sinais que a caixa já mostra, sem requisição.
+    if (repos.unidade) void capturarDaCaixa(document, repos.unidade).catch((e) => console.warn("[SEI Pro] favoritos: captura da caixa", e));
     if (noTopo) await controlarPainelEmbutido(ctx, sync, lateral, abrirLateral, controle);
   } else if (tela === "arvore") {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
     }
+    // O usuário abriu o processo: lê o que a árvore já trouxe (e o histórico pelo link dela) e marca como visto.
+    const http = criarHttp(location.href);
+    void capturarDaArvore(
+      document,
+      location.href,
+      [repos.unidade, repos.pessoal].filter((r): r is RepositorioFavoritos => !!r),
+      (u) => http.obter(u),
+    ).catch((e) => console.warn("[SEI Pro] favoritos: captura da árvore", e));
   } else if (tela === "enviar") {
     // No envio, a lista é a da unidade (ou a Pessoal, se o processo já estiver lá).
     const ondeEsta = async (id: string) =>
