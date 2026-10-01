@@ -20,6 +20,8 @@ import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import { temPainelLateral } from "../modelo/exibicao";
 import type { Carimbo, ContextoAba } from "../modelo/tipos";
 import { RepositorioFavoritos } from "../repositorio";
+import { ControleArquivo, type HandleArquivo, handlesNoIndexedDB, temSeletorDeArquivo } from "../sincronia/arquivoSync";
+import { copiasNoIndexedDB } from "../sincronia/copias";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
 import { PonteLateral } from "./lateral";
@@ -37,6 +39,11 @@ const mostrarErro = (e: unknown) =>
   raiz.replaceChildren(h("p", { class: "fav-erro" }, `Não foi possível abrir os favoritos: ${e instanceof Error ? e.message : String(e)}`));
 
 void (lateral ? iniciarLateral() : iniciarEmbutido()).catch(mostrarErro);
+
+// O arquivo da nuvem pode ter mudado em outro computador enquanto o app estava escondido.
+let appAtual: AppFavoritos | null = null;
+addEventListener("focus", () => appAtual?.aoGanharFoco());
+document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && appAtual?.aoGanharFoco());
 
 interface Base {
   area: Area;
@@ -61,6 +68,7 @@ async function iniciarEmbutido(): Promise<void> {
     aoFecharModal: () => altura.minimo(0),
     aoRedesenhar: () => altura.medir(),
   });
+  appAtual = app;
   await app.iniciar();
 }
 
@@ -117,6 +125,7 @@ async function iniciarLateral(): Promise<void> {
         if (chaveDoContexto(ctx) !== chave) return;
         const app = criarApp(b, ctx, rpc, {});
         montado = { chave, app };
+        appAtual = app;
         await app.iniciar();
       })
       .catch(mostrarErro);
@@ -230,5 +239,31 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
     aoRedesenhar: g.aoRedesenhar,
     lateralDisponivel: temPainelLateral(chrome.runtime.getManifest()),
     carregarMapa: () => carregarLeaflet(document, (c) => `../${c}`),
+    copias: copiasNoIndexedDB(),
+    arquivo: temSeletorDeArquivo(window)
+      ? new ControleArquivo({
+          area: b.area,
+          dono: { host: ctx.host, login: ctx.login.toLowerCase() },
+          handles: handlesNoIndexedDB(),
+          carimbo: b.carimbo,
+          escolher: (modo) => escolherArquivoSync(modo),
+        })
+      : null,
   });
+}
+
+/** Seletor de arquivo do navegador (File System Access). Cancelar devolve null. */
+async function escolherArquivoSync(modo: "novo" | "existente"): Promise<HandleArquivo | null> {
+  const tipos = [{ description: "Favoritos do SEI Pro", accept: { "application/json": [".json"] } }];
+  const w = window as unknown as {
+    showSaveFilePicker(o: unknown): Promise<HandleArquivo>;
+    showOpenFilePicker(o: unknown): Promise<HandleArquivo[]>;
+  };
+  try {
+    if (modo === "novo") return await w.showSaveFilePicker({ suggestedName: "favoritos-seipro.json", types: tipos });
+    return (await w.showOpenFilePicker({ types: tipos, multiple: false }))[0] ?? null;
+  } catch (e) {
+    if ((e as { name?: string }).name === "AbortError") return null;
+    throw e;
+  }
 }

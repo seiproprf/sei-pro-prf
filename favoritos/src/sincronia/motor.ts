@@ -15,10 +15,9 @@
  */
 
 import type { Area } from "@comum/armazenamento/area";
-import { hashCurto } from "@comum/texto";
-import type { Envelope } from "../arquivo";
 import type { Carimbo, Escopo } from "../modelo/tipos";
 import type { RepositorioFavoritos } from "../repositorio";
+import { assinaturaEnvelope } from "./assinatura";
 import { AVISO_TEXTO, conteudoDoTexto, envelopeDaUnidade, lerConteudoDoTexto, TETO_TEXTO } from "./textoPadrao";
 
 export interface StatusSync {
@@ -57,27 +56,6 @@ export interface DepsMotor {
 
 const CINCO_MIN = 5 * 60_000;
 const UM_DIA = 86_400_000;
-
-/** JSON com chaves em ordem: o mesmo dado escrito por máquinas diferentes dá o mesmo texto. */
-function estavel(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(estavel).join(",")}]`;
-  if (v && typeof v === "object") {
-    return `{${Object.keys(v)
-      .sort()
-      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
-      .map((k) => `${JSON.stringify(k)}:${estavel((v as Record<string, unknown>)[k])}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(v);
-}
-
-const porId = <T extends { id: string }>(l: T[]) => [...l].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-
-function assinatura(env: Envelope): string {
-  const e = env.escopos[0];
-  if (!e) return "";
-  return hashCurto(estavel({ f: porId(e.favoritos), p: porId(e.pastas), e: porId(e.etiquetas) }));
-}
 
 export function textoDoErro(e: unknown): { estado: StatusSync["estado"]; mensagem: string } {
   const codigo = (e as { codigo?: string } | null)?.codigo;
@@ -144,13 +122,13 @@ export class MotorSincronia {
         const r = await lerConteudoDoTexto(remoto, this.d.escopo);
         if ("envelope" in r) {
           await this.d.repo.importar(r.envelope.escopos[0]!);
-          assinaturaRemota = assinatura(r.envelope);
+          assinaturaRemota = assinaturaEnvelope(r.envelope);
         } else {
           invalido = r.invalido;
         }
       }
       const env = await envelopeDaUnidade(this.d.repo, this.d.escopo, this.d.carimbo());
-      if (remoto !== null && !invalido && assinatura(env) === assinaturaRemota) {
+      if (remoto !== null && !invalido && assinaturaEnvelope(env) === assinaturaRemota) {
         return this.gravarStatus({
           estado: "ok",
           quando: agora,

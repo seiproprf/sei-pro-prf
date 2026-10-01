@@ -4,6 +4,7 @@ import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../src/mo
 import { escoposDoContexto } from "../src/modelo/escopo";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { RepositorioFavoritos } from "../src/repositorio";
+import { copiasEmMemoria } from "../src/sincronia/copias";
 import { botao, checar, disparar, instalarDom, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
@@ -300,4 +301,29 @@ export async function verificarApp(): Promise<void> {
     !naoAgora.raiz.querySelector(".fav-convite-sync") &&
       ((await naoAgora.sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { textoPadrao?: string }).textoPadrao === "desligado",
   );
+
+  secao("app: copias diarias no dialogo de sincronizacao");
+  const cp = copiasEmMemoria();
+  const ap = montar({ copias: cp });
+  await ap.repos.unidade.adicionar({ id: "31", protocolo: "50300.000031/2026-31" });
+  await ap.app.iniciar();
+  await tique(40);
+  const lista = await cp.listar({ host: CTX.host, login: CTX.login });
+  checar(
+    "abrir o app faz a copia do dia",
+    lista.length === 1 && lista[0]!.dia === "2026-10-01",
+    lista.map((c) => c.dia),
+  );
+  botao(ap.raiz, "Sincronização…")!.click();
+  await tique(40);
+  const dlgCp = ap.modais.at(-1)!;
+  checar(
+    "o dialogo lista a copia com Restaurar",
+    /01\/10\/2026/.test(dlgCp.conteudo.textContent ?? "") && !!botao(dlgCp.conteudo, "Restaurar"),
+  );
+  checar("sem arquivo disponivel, explica a alternativa", /Exportar/.test(dlgCp.conteudo.textContent ?? ""));
+  await ap.repos.unidade.remover(["31"]);
+  botao(dlgCp.conteudo, "Restaurar")!.click();
+  await tique(60);
+  checar("restaurar devolve o favorito removido", await ap.repos.unidade.contem("31"));
 }

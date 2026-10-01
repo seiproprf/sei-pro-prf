@@ -32,6 +32,8 @@ import type { DocumentoAssinado } from "../pagina/documentos";
 import { chaveStatusTexto } from "../pagina/sincronia";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, type RepositorioFavoritos } from "../repositorio";
+import type { ControleArquivo } from "../sincronia/arquivoSync";
+import { type ArmazemCopias, fazerCopiaDoDia, restaurarCopia } from "../sincronia/copias";
 import type { StatusSync } from "../sincronia/motor";
 import { nomeDoTexto } from "../sincronia/textoPadrao";
 import { avisar } from "./aviso";
@@ -42,6 +44,7 @@ import type { AcoesItem } from "./componentes/item";
 import { renderLista, vizinhosAoMover } from "./componentes/lista";
 import { montarLixeira } from "./componentes/lixeira";
 import { montarMigracao } from "./componentes/migracao";
+import { montarSincronizacao } from "./componentes/sincronizacao";
 import { gerarCsv, linhasCsv } from "./csv";
 import { type LeafletMinimo, montarMapaFavorito, montarMapaGeral, pontosDoMapa } from "./mapa";
 
@@ -69,6 +72,10 @@ export interface DepsApp {
   lateralDisponivel?: boolean;
   /** Carrega o Leaflet sob demanda; ausente, o app não oferece mapa. */
   carregarMapa?: () => Promise<LeafletMinimo>;
+  /** Cópias diárias (IndexedDB da extensão). */
+  copias?: ArmazemCopias;
+  /** Arquivo numa pasta da nuvem (File System Access); null onde não há como. */
+  arquivo?: ControleArquivo | null;
 }
 
 export class AppFavoritos {
@@ -150,7 +157,14 @@ export class AppFavoritos {
     this.prefs = await lerPreferencias(this.d.sync);
     await Promise.all([this.d.repos.unidade?.registrar(), this.d.repos.pessoal.registrar()]);
     await this.recarregar();
-    for (const r of [this.d.repos.unidade, this.d.repos.pessoal]) if (r) this.parar.push(r.aoMudar(() => this.agendarRecarga()));
+    for (const r of [this.d.repos.unidade, this.d.repos.pessoal])
+      if (r)
+        this.parar.push(
+          r.aoMudar(() => {
+            this.agendarRecarga();
+            this.d.arquivo?.agendar();
+          }),
+        );
     this.parar.push(
       this.d.sync.aoMudar((m) => {
         if (CHAVE_PREFERENCIAS in m) {
@@ -164,13 +178,25 @@ export class AppFavoritos {
     await this.verificarFaixaUnidade();
     this.convidarSincronia();
     this.ligarStatusSync();
+    void this.copiaDoDia();
+    void this.d.arquivo?.sincronizar().catch(() => undefined);
     await this.oferecerMigracao(false);
     void this.repo.limpar().catch(() => undefined);
+  }
+
+  private async copiaDoDia(): Promise<void> {
+    if (!this.d.copias) return;
+    try {
+      await fazerCopiaDoDia(this.d.area, { host: this.d.ctx.host, login: this.login }, this.d.copias, this.d.hoje(), this.d.carimbo());
+    } catch (e) {
+      console.warn("[SEI Pro] favoritos: cópia do dia não foi feita", e);
+    }
   }
 
   /** O painel lateral troca de app quando a aba da frente é de outra unidade ou outro SEI. */
   destruir(): void {
     this.destruido = true;
+    this.d.arquivo?.parar();
     for (const p of this.parar.splice(0)) p();
   }
 
@@ -462,7 +488,7 @@ export class AppFavoritos {
         item("Exportar arquivo (.json)", () => void this.exportar()),
         item("Importar arquivo", () => void this.importar()),
         item("Trazer favoritos da versão anterior", () => void this.oferecerMigracao(true)),
-        this.escopoUnidade ? item("Sincronização…", () => this.abrirSincronizacao()) : null,
+        item("Sincronização…", () => void this.abrirSincronizacao()),
         item("Preferências…", () => void this.abrirPreferencias()),
       ),
     );
@@ -633,85 +659,80 @@ export class AppFavoritos {
     this.parar.push(() => clearInterval(relogio));
   }
 
-  private abrirSincronizacao(): void {
+  private async abrirSincronizacao(): Promise<void> {
     const esc = this.escopoUnidade;
-    if (!esc) return;
     let modal: { fechar(): void } | null = null;
-    const situacao = h("p", { class: "fav-dica" });
-    const pintar = async () => {
-      const st = (await this.d.area.obter(chaveStatusTexto(esc)))[chaveStatusTexto(esc)] as StatusSync | undefined;
-      situacao.textContent =
-        this.prefs.textoPadrao === "ligado"
-          ? textoDoStatus(st, Date.now()) || "Ligada. A primeira sincronia acontece numa tela do SEI desta unidade."
-          : "Desligada: estes favoritos ficam só neste navegador.";
-    };
-    void pintar();
-    const ligado = this.prefs.textoPadrao === "ligado";
-    const acao = (op: string, aviso: string) => async () => {
+    const dono = { host: this.d.ctx.host, login: this.login };
+    const chamar = async (op: string, aviso: string) => {
       try {
         await this.d.rpc.chamar(op, undefined, 120_000);
         avisar(aviso);
       } catch (e) {
         avisar(e instanceof Error ? e.message : String(e));
       }
-      void pintar();
     };
-    const conteudo = h(
-      "div",
-      { class: "fav-form" },
-      h("h3", {}, `Texto Padrão da ${this.sigla}`),
-      situacao,
-      ligado
-        ? h(
-            "div",
-            { class: "linha" },
-            h("button", { type: "button", class: "spro-botao", onclick: acao("sincronizarAgora", "Sincronizado.") }, "Sincronizar agora"),
-            h(
-              "button",
-              {
-                type: "button",
-                class: "spro-botao",
-                onclick: () => {
-                  void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
-                  modal?.fechar();
-                  avisar("Sincronização desligada. O texto continua no SEI até você apagá-lo.");
-                },
-              },
-              "Desligar",
-            ),
-            h(
-              "button",
-              {
-                type: "button",
-                class: "spro-botao perigo",
-                onclick: async () => {
-                  if (
-                    !(await this.d.confirmar(
-                      `Apagar do SEI o texto “${nomeDoTexto(this.d.ctx.login)}” e desligar? Os favoritos continuam neste navegador.`,
-                    ))
-                  )
-                    return;
-                  await acao("apagarDoSei", "Texto apagado do SEI e sincronização desligada.")();
-                  modal?.fechar();
-                },
-              },
-              "Desligar e apagar do SEI",
-            ),
-          )
-        : h(
-            "button",
-            {
-              type: "button",
-              class: "spro-botao primario",
-              onclick: () => {
-                modal?.fechar();
-                this.pedirConsentimento();
-              },
+    const arquivo = this.d.arquivo ?? null;
+    const conteudo = await montarSincronizacao({
+      textoPadrao: esc
+        ? {
+            sigla: this.sigla,
+            nomeTexto: nomeDoTexto(this.d.ctx.login),
+            ligado: this.prefs.textoPadrao === "ligado",
+            situacao: async () => {
+              const st = (await this.d.area.obter(chaveStatusTexto(esc)))[chaveStatusTexto(esc)] as StatusSync | undefined;
+              return this.prefs.textoPadrao === "ligado" ? textoDoStatus(st, Date.now()) : "Desligada: esta lista fica só neste navegador.";
             },
-            "Ligar…",
-          ),
-    );
+            ligar: () => {
+              modal?.fechar();
+              this.pedirConsentimento();
+            },
+            agora: () => chamar("sincronizarAgora", "Sincronizado."),
+            desligar: () => {
+              void gravarPreferencias(this.d.sync, { textoPadrao: "desligado" });
+              modal?.fechar();
+              avisar("Sincronização desligada. O texto continua no SEI até você apagá-lo.");
+            },
+            apagar: async () => {
+              await chamar("apagarDoSei", "Texto apagado do SEI e sincronização desligada.");
+              modal?.fechar();
+            },
+          }
+        : null,
+      arquivo: arquivo
+        ? {
+            status: () => arquivo.status(),
+            configurado: () => arquivo.configurado(),
+            escolher: async (modo) => {
+              try {
+                await arquivo.escolher(modo);
+              } catch (e) {
+                // Seletor cancelado não é erro; o resto (iframe sem permissão de seletor) vira aviso.
+                if ((e as { name?: string }).name !== "AbortError") avisar(e instanceof Error ? e.message : String(e));
+              }
+            },
+            reconectar: async () => void (await arquivo.reconectar()),
+            agora: async () => void (await arquivo.sincronizar()),
+            esquecer: () => arquivo.esquecer(),
+          }
+        : null,
+      copias: this.d.copias
+        ? {
+            listar: () => this.d.copias!.listar(dono),
+            restaurar: async (c) => {
+              const r = await restaurarCopia(this.d.area, c, this.d.carimbo, dono);
+              modal?.fechar();
+              avisar(`${r.restaurados} ${r.restaurados === 1 ? "item restaurado" : "itens restaurados"}.`);
+            },
+          }
+        : null,
+      confirmar: (t) => this.d.confirmar(t),
+    });
     modal = this.d.abrirModal({ titulo: "Sincronização", conteudo });
+  }
+
+  /** O app voltou a ficar visível: o arquivo pode ter sido mudado por outro computador. */
+  aoGanharFoco(): void {
+    void this.d.arquivo?.sincronizar().catch(() => undefined);
   }
 
   private async abrirPreferencias(): Promise<void> {

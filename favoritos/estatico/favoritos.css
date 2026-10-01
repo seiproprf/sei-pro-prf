@@ -94,3 +94,8 @@ html, body { margin: 0; padding: 0; background: var(--spro-fundo); color: var(--
 .fav-status-botao:hover, .fav-status-botao:focus-visible { text-decoration: underline; }
 .fav-form ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 .fav-form h3 { margin: 0; font-size: 13px; }
+.fav-sync { min-width: min(520px, 86vw); }
+.fav-sync-secao { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--spro-borda); }
+.fav-sync-secao:last-child { border-bottom: 0; }
+.fav-copias { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+.fav-copias li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
