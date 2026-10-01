@@ -25,6 +25,7 @@ import {
   type ResumoPrazo,
   type TipoLista,
 } from "../modelo/tipos";
+import { montarOpcoesExibicao } from "../opcoes/exibicao";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, type RepositorioFavoritos } from "../repositorio";
 import { avisar } from "./aviso";
@@ -57,6 +58,8 @@ export interface DepsApp {
    * iframe de outra origem (prova P2): quem embute o app mede a altura aqui.
    */
   aoRedesenhar?: () => void;
+  /** O pacote tem painel lateral (decide as opções de "onde mostrar"). */
+  lateralDisponivel?: boolean;
 }
 
 export class AppFavoritos {
@@ -420,13 +423,6 @@ export class AppFavoritos {
         },
         rotulo,
       );
-    const perguntar = h("input", {
-      type: "checkbox",
-      onchange: (ev) => void gravarPreferencias(this.d.sync, { perguntarAoFavoritar: (ev.target as HTMLInputElement).checked }),
-    });
-    void lerPreferencias(this.d.sync).then((p) => {
-      perguntar.checked = p.perguntarAoFavoritar;
-    });
     detalhes.append(
       h("summary", { title: "Opções", "aria-label": "Opções dos favoritos" }, icone("ajustes", 18)),
       h(
@@ -440,10 +436,15 @@ export class AppFavoritos {
         item("Exportar arquivo (.json)", () => void this.exportar()),
         item("Importar arquivo", () => void this.importar()),
         item("Trazer favoritos da versão anterior", () => void this.oferecerMigracao(true)),
-        h("label", { class: "fav-menu-opcao" }, perguntar, "Perguntar pasta e etiquetas ao favoritar"),
+        item("Preferências…", () => void this.abrirPreferencias()),
       ),
     );
     return detalhes;
+  }
+
+  private async abrirPreferencias(): Promise<void> {
+    const conteudo = await montarOpcoesExibicao({ sync: this.d.sync, lateralDisponivel: this.d.lateralDisponivel === true });
+    this.d.abrirModal({ titulo: "Preferências dos favoritos", conteudo });
   }
 
   private async exportar(): Promise<void> {

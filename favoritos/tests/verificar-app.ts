@@ -186,4 +186,13 @@ export async function verificarApp(): Promise<void> {
   await d.repos.unidade.adicionar({ id: "88", protocolo: "50300.000088/2026-88" });
   await tique(80);
   checar("app destruido nao reage mais ao storage", d.raiz.querySelectorAll("li.fav-item").length === 0);
+
+  secao("app: preferencias pelo menu");
+  const pr = montar({ lateralDisponivel: true });
+  await pr.app.iniciar();
+  botao(pr.raiz, "Preferências…")!.click();
+  await tique(20);
+  const dlgPref = pr.modais.at(-1);
+  checar("abre o dialogo de preferencias", dlgPref?.titulo === "Preferências dos favoritos");
+  checar("com 'onde mostrar' (painel lateral disponivel)", !!dlgPref?.conteudo.querySelector('input[value="lateral"]'));
 }

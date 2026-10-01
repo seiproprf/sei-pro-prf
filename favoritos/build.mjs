@@ -5,6 +5,7 @@
  *   dist/js/init_favoritos.js  content script (IIFE, mundo isolado, todos os frames)
  *   dist/js/favoritos/app.js   app de html/favoritos.html (ESM), embutido ou no painel lateral
  *   dist/js/favoritos/painel.js shell do painel lateral (html/painel.html: abas Favoritos | Agente)
+ *   dist/js/favoritos/opcoes.js secao "onde mostrar" na pagina de opcoes (html/options.html)
  *   dist/html/{favoritos,painel}.html  copias de estatico/
  *   dist/css/{favoritos,painel}.css    sei-comum/src/ui/base.css + estatico/<nome>.css
  *
@@ -35,6 +36,7 @@ await mkdir(join(DIST, "js", "favoritos"), { recursive: true });
 
 await build({ ...comum, entryPoints: [resolve(AQUI, "src/app/main.ts")], outfile: join(DIST, "js", "favoritos", "app.js"), format: "esm" });
 await build({ ...comum, entryPoints: [resolve(AQUI, "src/shell/main.ts")], outfile: join(DIST, "js", "favoritos", "painel.js"), format: "esm" });
+await build({ ...comum, entryPoints: [resolve(AQUI, "src/opcoes/main.ts")], outfile: join(DIST, "js", "favoritos", "opcoes.js"), format: "esm" });
 await build({ ...comum, entryPoints: [resolve(AQUI, "src/pagina/main.ts")], outfile: join(DIST, "js", "init_favoritos.js"), format: "iife" });
 
 await copyFile(resolve(AQUI, "estatico/favoritos.html"), join(DIST, "html", "favoritos.html"));
@@ -48,7 +50,7 @@ for (const nome of ["favoritos", "painel"]) {
 // Regra do projeto: JS da extensao so com ASCII. O charset "ascii" do esbuild NAO escapa
 // caractere cru dentro de regex literal, e o grep BSD nao enxerga isso (memoria
 // feedback_sei_unicode_escape): a conferencia e feita aqui, byte a byte.
-for (const f of ["js/init_favoritos.js", "js/favoritos/app.js", "js/favoritos/painel.js"]) {
+for (const f of ["js/init_favoritos.js", "js/favoritos/app.js", "js/favoritos/painel.js", "js/favoritos/opcoes.js"]) {
   const bytes = await readFile(join(DIST, f));
   const i = bytes.findIndex((b) => b > 0x7f);
   if (i >= 0) {

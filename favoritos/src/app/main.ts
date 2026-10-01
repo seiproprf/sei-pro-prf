@@ -17,6 +17,7 @@ import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { h, icone } from "@comum/ui/dom";
 import { CANAL_LATERAL } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
+import { temPainelLateral } from "../modelo/exibicao";
 import type { Carimbo, ContextoAba } from "../modelo/tipos";
 import { RepositorioFavoritos } from "../repositorio";
 import { observarAltura } from "./altura";
@@ -226,5 +227,6 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
     escolherArquivo,
     hoje: () => hojeISO(),
     aoRedesenhar: g.aoRedesenhar,
+    lateralDisponivel: temPainelLateral(chrome.runtime.getManifest()),
   });
 }
