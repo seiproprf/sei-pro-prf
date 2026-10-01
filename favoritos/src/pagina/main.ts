@@ -8,6 +8,7 @@
 
 import { type Area, areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
+import { hojeISO } from "@comum/datas/dias";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
@@ -21,6 +22,7 @@ import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { abrirBalao } from "./balao";
 import { instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral } from "./botao";
 import { contextoDe, documentoTopo, temaEscuroLegado } from "./contexto";
+import { instalarManterNoEnvio } from "./enviar";
 import { instalarEstrelaArvore } from "./estrelaArvore";
 import { instalarEstrelasCaixa } from "./estrelasCaixa";
 import { instalarEstrelasListas } from "./estrelasListas";
@@ -42,8 +44,9 @@ if (!global.__seiProFavoritos) {
 
 type Repos = { unidade: RepositorioFavoritos | null; pessoal: RepositorioFavoritos };
 
-function qualTela(doc: Document): "caixa" | "arvore" | "listas" | null {
+function qualTela(doc: Document): "caixa" | "arvore" | "listas" | "enviar" | null {
   if (doc.querySelector("#frmProcedimentoControlar")) return "caixa";
+  if (doc.querySelector('#frmAtividadeListar[action*="acao=procedimento_enviar"]')) return "enviar";
   if (doc.querySelector("#topmenu") && doc.querySelector("#divArvore")) return "arvore";
   if (doc.querySelector("#frmRelBlocoProtocoloLista, #frmAcompanhamentoLista, #frmProcedimentoSobrestar")) return "listas";
   return null;
@@ -88,6 +91,20 @@ async function principal(): Promise<void> {
     if ((await instalarEstrelaArvore(document, servico, location.href)) && lateral) {
       instalarBotaoArvore(document, { url: (c) => chrome.runtime.getURL(c), abrirLateral });
     }
+  } else if (tela === "enviar") {
+    // No envio, a lista é a da unidade (ou a Pessoal, se o processo já estiver lá).
+    const ondeEsta = async (id: string) =>
+      (await repos.unidade?.contem(id)) ? repos.unidade : (await repos.pessoal.contem(id)) ? repos.pessoal : null;
+    const principalRepo = repos.unidade ?? repos.pessoal;
+    await instalarManterNoEnvio(document, {
+      ativo: (id) => servico.ativo(id),
+      adicionar: (p) => principalRepo.adicionar(p),
+      remover: (ids) => Promise.all([repos.unidade?.remover(ids), repos.pessoal.remover(ids)]),
+      editar: async (id, m) => (await ondeEsta(id))?.editar(id, m),
+      obter: async (id) => (await ondeEsta(id))?.obter(id),
+      pastas: () => principalRepo.pastasAtivas(),
+      hoje: () => hojeISO(),
+    });
   } else {
     instalarEstrelasListas(document, servico);
   }
