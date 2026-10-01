@@ -1,4 +1,5 @@
 import { resumo } from "./util";
+import { verificarBalao } from "./verificar-balao";
 import { verificarMigracao } from "./verificar-migracao";
 import { verificarModelo } from "./verificar-modelo";
 import { verificarPagina } from "./verificar-pagina";
@@ -10,4 +11,5 @@ verificarPrazo();
 await verificarRepositorio();
 verificarMigracao();
 await verificarPagina();
+await verificarBalao();
 resumo();
