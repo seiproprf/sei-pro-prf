@@ -35,7 +35,7 @@ O SEI Pro **não tem servidor de coleta de dados**. Não há banco de dados remo
 
 O projeto mantém a **busca de normas** (`seipro.io`), usada pelas funções Legística e Link Legis. Ela recebe apenas o tipo e o número da norma, ou os termos pesquisados, e responde com os dados da legislação correspondente. **As consultas não são guardadas.** O site de documentação (`seipro.app`) é um site comum e não usa ferramentas de estatística.
 
-O site também oferece a **lista de novidades por e-mail**, opcional e independente da extensão (seção 2.5). É o único lugar em que o projeto guarda um dado pessoal: o endereço de quem se inscreve.
+O site também oferece a **lista de novidades por e-mail**, opcional e independente da extensão (seção 2.5). Para quem se inscreve, o projeto guarda o endereço de e-mail.
 
 ### 2.4. Fundamentação legal
 
@@ -59,9 +59,10 @@ A inscrição é opcional e acontece no site (`seipro.app` e `novidades.seipro.a
 | **Dados guardados** | Endereço de e-mail, data da inscrição e a página em que ela foi feita |
 | **Finalidade** | Enviar um aviso a cada versão nova do SEI Pro, com dicas de uso, e comunicados sobre o projeto. A lista não é vendida nem compartilhada, e não recebe publicidade de terceiros |
 | **Base legal** | Consentimento (art. 7º, I, da LGPD). O endereço só entra na lista depois que a pessoa clica em "Confirmar inscrição" no e-mail de confirmação, e um pedido não confirmado em 7 dias perde o efeito |
-| **Proteção contra abuso** | O formulário usa o Cloudflare Turnstile para barrar robôs. O serviço conta os pedidos por endereço IP e por e-mail apenas na memória, por até 24 horas, sem gravar |
+| **Proteção contra abuso** | As páginas que exibem o formulário carregam o Cloudflare Turnstile, que verifica se quem envia é uma pessoa. O serviço conta os pedidos por endereço IP e por e-mail apenas na memória, por até 24 horas, sem gravar |
+| **Medição** | Os e-mails não levam rastreamento de abertura nem de cliques |
 | **Operador** | O Resend (Resend, Inc., Estados Unidos) guarda a lista e envia as mensagens, nos termos da [política de privacidade do Resend](https://resend.com/legal/privacy-policy) |
-| **Saída** | O link "Cancelar inscrição", no rodapé de qualquer e-mail, tira o endereço da lista na hora. Também é possível pedir pelos canais da seção 10.2. Depois do cancelamento, o endereço fica marcado como descadastrado, para não voltar a receber mensagens |
+| **Saída** | O link "Cancelar inscrição", no rodapé de qualquer e-mail, tira o endereço da lista na hora. Também é possível pedir pelos canais da seção 10.2. Depois do cancelamento, o endereço fica marcado como descadastrado e não recebe mais mensagens, a menos que a pessoa se inscreva e confirme de novo |
 
 ---
 
