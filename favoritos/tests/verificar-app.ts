@@ -178,4 +178,12 @@ export async function verificarApp(): Promise<void> {
   const m4 = montar({ rpc: legadoRpc }, { [chaveMigracao(CTX.host, "pedro.soares")]: { em: 1, quantidade: 1, destino: "unidade" } });
   await m4.app.iniciar();
   checar("depois de trazidos, nunca mais pergunta", m4.modais.length === 0);
+
+  secao("app: destruir (painel lateral remonta ao trocar de unidade)");
+  const d = montar();
+  await d.app.iniciar();
+  d.app.destruir();
+  await d.repos.unidade.adicionar({ id: "88", protocolo: "50300.000088/2026-88" });
+  await tique(80);
+  checar("app destruido nao reage mais ao storage", d.raiz.querySelectorAll("li.fav-item").length === 0);
 }

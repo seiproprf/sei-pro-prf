@@ -2,9 +2,11 @@ import { areaMemoria } from "@comum/armazenamento/area";
 import { parDePortas } from "@comum/ponte/parDePortas";
 import type { PortaRpc } from "@comum/ponte/rpc";
 import { criarRpc } from "@comum/ponte/rpc";
+import { chaveDoContexto, PonteLateral, type Remetente } from "../src/app/lateral";
 import { CHAVE_LATERAL } from "../src/modelo/constantes";
 import { ligarLadoAba } from "../src/pagina/lateral";
 import { checar, secao, tique } from "./util";
+import { CTX } from "./verificar-modelo";
 
 /** O lado do app, em memória: cada conexão da aba vira um par de portas. */
 function appFalso() {
@@ -66,4 +68,51 @@ export async function verificarLateralAba(): Promise<void> {
   await area.gravar({ [CHAVE_LATERAL]: { id: "p3", quando: 4 } });
   await tique(10);
   checar("parado, ignora anuncios", app.conexoes.length === 3);
+}
+
+export async function verificarLateralApp(): Promise<void> {
+  secao("lateral, lado do app: aceita as abas desta janela");
+  const area = areaMemoria();
+  let conectar: ((p: PortaRpc, r: Remetente) => void) | null = null;
+  const ponte = new PonteLateral({
+    area,
+    janela: 10,
+    novoId: () => "inst-1",
+    ouvirConexoes: (cb) => {
+      conectar = cb;
+    },
+  });
+  await ponte.iniciar();
+  checar("anuncia que abriu", (await area.obter(CHAVE_LATERAL))[CHAVE_LATERAL] !== undefined);
+  let avisos = 0;
+  ponte.aoMudar(() => avisos++);
+  const abrirAba = (id: number, janela: number, frameId = 0) => {
+    const [daAba, doApp] = parDePortas();
+    const rpcAba = criarRpc(daAba, { contexto: () => ({ id }) });
+    conectar!(doApp, { tab: { id, windowId: janela }, frameId });
+    return { rpcAba, daAba };
+  };
+  const outra = abrirAba(2, 99);
+  await tique(5);
+  checar("aba de outra janela e recusada", !outra.rpcAba.aberta && ponte.atual() === null);
+  const frame = abrirAba(3, 10, 4);
+  await tique(5);
+  checar("frame interno e recusado", !frame.rpcAba.aberta);
+  const a = abrirAba(5, 10);
+  const b = abrirAba(6, 10);
+  await tique(5);
+  checar("sem apresentacao ainda nao ha aba atual", ponte.atual() === null);
+  await a.rpcAba.chamar("ola", { visivel: false, foco: 50, chave: "h|ana|1" });
+  await b.rpcAba.chamar("ola", { visivel: true, foco: 10, chave: "h|ana|2" });
+  checar("a visivel vence", ponte.atual()?.id === 6 && ponte.atual()?.chave === "h|ana|2");
+  checar("avisa as mudancas", avisos >= 2);
+  await b.rpcAba.chamar("ola", { visivel: false, foco: 10, chave: "h|ana|2" });
+  checar("aba escondida: a de foco mais recente assume", ponte.atual()?.id === 5);
+  checar("o rpc da aba atual alcanca a aba", (await ponte.atual()!.rpc.chamar<{ id: number }>("contexto")).id === 5);
+  a.rpcAba.fechar();
+  await tique(5);
+  checar("aba que caiu sai da lista", ponte.atual()?.id === 6);
+  await ponte.encerrar();
+  checar("encerrar retira o anuncio", (await area.obter(CHAVE_LATERAL))[CHAVE_LATERAL] === undefined);
+  checar("chave do contexto", chaveDoContexto(CTX) === `${CTX.host}|pedro.soares|${CTX.unidade!.id}`);
 }

@@ -69,3 +69,16 @@ html, body { margin: 0; padding: 0; background: var(--spro-fundo); color: var(--
   .fav-alca { display: none; }
   .fav-meta { grid-column: 2 / 3; justify-content: flex-start; }
 }
+/* Painel lateral: estreito, então cartões em vez de linha larga. */
+[data-modo="lateral"] #app { padding: 8px; }
+[data-modo="lateral"] .fav-item { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 2px; border-color: var(--spro-borda); }
+[data-modo="lateral"] .fav-item > :nth-child(1) { grid-column: 1; grid-row: 1; }
+[data-modo="lateral"] .fav-item > :nth-child(2) { grid-column: 1; grid-row: 2; }
+[data-modo="lateral"] .fav-item > .fav-principal { grid-column: 2; grid-row: 1; }
+[data-modo="lateral"] .fav-item > .fav-meta { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; }
+[data-modo="lateral"] .fav-item > .fav-menu { grid-column: 3; grid-row: 1; }
+[data-modo="lateral"] .fav-lista { gap: 4px; }
+[data-modo="lateral"] .fav-busca { flex-basis: 100%; }
+.fav-sem-aba { display: grid; justify-items: center; gap: 4px; padding: 32px 12px; text-align: center; color: var(--spro-suave); }
+.fav-sem-aba p { margin: 0; }
+.fav-dica { color: var(--spro-suave); font-size: 12px; }

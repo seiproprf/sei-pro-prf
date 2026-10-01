@@ -70,6 +70,8 @@ export class AppFavoritos {
   private readonly selecao = new Set<string>();
   private prefs: Preferencias = { ...PREFERENCIAS_PADRAO };
   private recargaAgendada = false;
+  private destruido = false;
+  private readonly parar: Array<() => void> = [];
   private readonly el: { faixas: HTMLElement; abas: HTMLElement; filtros: HTMLElement; lote: HTMLElement; corpo: HTMLElement };
 
   constructor(
@@ -127,22 +129,30 @@ export class AppFavoritos {
     this.prefs = await lerPreferencias(this.d.sync);
     await Promise.all([this.d.repos.unidade?.registrar(), this.d.repos.pessoal.registrar()]);
     await this.recarregar();
-    for (const r of [this.d.repos.unidade, this.d.repos.pessoal]) r?.aoMudar(() => this.agendarRecarga());
-    this.d.sync.aoMudar((m) => {
-      if (CHAVE_PREFERENCIAS in m) {
-        void lerPreferencias(this.d.sync).then((p) => {
-          this.prefs = p;
-          this.redesenhar();
-        });
-      }
-    });
+    for (const r of [this.d.repos.unidade, this.d.repos.pessoal]) if (r) this.parar.push(r.aoMudar(() => this.agendarRecarga()));
+    this.parar.push(
+      this.d.sync.aoMudar((m) => {
+        if (CHAVE_PREFERENCIAS in m) {
+          void lerPreferencias(this.d.sync).then((p) => {
+            this.prefs = p;
+            this.redesenhar();
+          });
+        }
+      }),
+    );
     await this.verificarFaixaUnidade();
     await this.oferecerMigracao(false);
     void this.repo.limpar().catch(() => undefined);
   }
 
+  /** O painel lateral troca de app quando a aba da frente é de outra unidade ou outro SEI. */
+  destruir(): void {
+    this.destruido = true;
+    for (const p of this.parar.splice(0)) p();
+  }
+
   private agendarRecarga(): void {
-    if (this.recargaAgendada) return;
+    if (this.recargaAgendada || this.destruido) return;
     this.recargaAgendada = true;
     setTimeout(() => {
       this.recargaAgendada = false;
@@ -177,6 +187,7 @@ export class AppFavoritos {
   }
 
   private redesenhar(): void {
+    if (this.destruido) return;
     this.desenhar();
     this.d.aoRedesenhar?.();
   }

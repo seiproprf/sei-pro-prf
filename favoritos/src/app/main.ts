@@ -1,42 +1,145 @@
 /**
  * Entrada de html/favoritos.html. Liga o app ao navegador: <dialog>, download,
- * área de transferência, seletor de arquivo e a porta com a aba do SEI.
+ * área de transferência, seletor de arquivo e a ponte com o SEI.
+ *
+ * Dois modos, pelo hash da URL:
+ * - embutido (padrão): iframe abaixo da lista, ligado à PRÓPRIA aba;
+ * - lateral (`#modo=lateral`): dentro do painel lateral, ligado à aba do SEI
+ *   que está na frente nesta janela, e remontado quando ela é de outra unidade.
  */
 
+import type { Area } from "@comum/armazenamento/area";
 import { areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { hojeISO } from "@comum/datas/dias";
+import { novoId } from "@comum/id";
+import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { h, icone } from "@comum/ui/dom";
+import { CANAL_LATERAL } from "../modelo/constantes";
 import { escoposDoContexto } from "../modelo/escopo";
-import type { ContextoAba } from "../modelo/tipos";
+import type { Carimbo, ContextoAba } from "../modelo/tipos";
 import { RepositorioFavoritos } from "../repositorio";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
+import { chaveDoContexto, PonteLateral } from "./lateral";
 import { esperarConexaoDaAba } from "./ponte";
 
-// O ouvinte da porta é registrado já, antes do `load` do iframe, que é quando o content script conecta.
-const conexao = esperarConexaoDaAba();
+const lateral = new URLSearchParams(location.hash.slice(1)).get("modo") === "lateral";
+document.documentElement.dataset.modo = lateral ? "lateral" : "embutido";
+const raiz = document.getElementById("app")!;
 
-void iniciar().catch((e) => {
-  document
-    .getElementById("app")
-    ?.replaceChildren(h("p", { class: "fav-erro" }, `Não foi possível abrir os favoritos: ${e instanceof Error ? e.message : String(e)}`));
-});
+// Embutido: o ouvinte da porta é registrado já, antes do `load` do iframe, que é quando o content script conecta.
+const conexao = lateral ? null : esperarConexaoDaAba();
 
-async function iniciar(): Promise<void> {
-  const rpc = await conexao;
-  const ctx = await rpc.chamar<ContextoAba>("contexto");
-  document.documentElement.dataset.tema = ctx.temaEscuro ? "escuro" : "claro";
+const mostrarErro = (e: unknown) =>
+  raiz.replaceChildren(h("p", { class: "fav-erro" }, `Não foi possível abrir os favoritos: ${e instanceof Error ? e.message : String(e)}`));
+
+void (lateral ? iniciarLateral() : iniciarEmbutido()).catch(mostrarErro);
+
+interface Base {
+  area: Area;
+  sync: Area;
+  carimbo: () => Carimbo;
+}
+
+async function base(): Promise<Base> {
   const area = areaChrome(chrome.storage.local, "local");
   const sync = areaChrome(chrome.storage.sync, "sync");
   const dispositivo = await idDispositivo(area);
-  const carimbo = () => ({ agora: Date.now(), dispositivo });
+  return { area, sync, carimbo: () => ({ agora: Date.now(), dispositivo }) };
+}
+
+async function iniciarEmbutido(): Promise<void> {
+  const rpc = await conexao!;
+  const ctx = await rpc.chamar<ContextoAba>("contexto");
+  const b = await base();
+  const altura = observarAltura(rpc);
+  const app = criarApp(b, ctx, rpc, {
+    aoAbrirModal: () => altura.minimo(640),
+    aoFecharModal: () => altura.minimo(0),
+    aoRedesenhar: () => altura.medir(),
+  });
+  await app.iniciar();
+}
+
+async function iniciarLateral(): Promise<void> {
+  const b = await base();
+  let janela = -1;
+  try {
+    janela = (await chrome.windows.getCurrent()).id ?? -1;
+  } catch {
+    /* sidebar do Firefox: sem API de janelas, aceita qualquer aba */
+  }
+  const ponte = new PonteLateral({
+    area: b.area,
+    janela,
+    novoId: () => novoId(),
+    ouvirConexoes: (cb) =>
+      chrome.runtime.onConnect.addListener((porta) => {
+        // Portas de outros canais (o app embutido, o agente) não são deste painel: não se mexe nelas.
+        if (porta.name === CANAL_LATERAL) cb(porta as unknown as PortaRpc, porta.sender ?? {});
+      }),
+  });
+  // O rpc do app fala sempre com a aba da frente: trocar de aba na mesma unidade não remonta nada.
+  const rpc: Pick<Rpc, "chamar"> = {
+    chamar: <T>(op: string, args?: unknown, prazo?: number) => {
+      const a = ponte.atual();
+      return a
+        ? a.rpc.chamar<T>(op, args, prazo)
+        : Promise.reject(new ErroRpc("SEM_ABA", "Nenhuma aba do SEI aberta nesta janela. Abra o SEI e tente de novo."));
+    },
+  };
+  let montado: { chave: string; app: AppFavoritos } | null = null;
+  let fila = Promise.resolve();
+  const esperando = h(
+    "div",
+    { class: "fav-sem-aba" },
+    icone("estrela", 28),
+    h("p", {}, "Abra o SEI nesta janela para ver seus favoritos."),
+    h("p", { class: "fav-dica" }, "Se o SEI já está aberto e nada aparece, recarregue a página dele (F5)."),
+  );
+  const reagir = () => {
+    fila = fila
+      .then(async () => {
+        const a = ponte.atual();
+        const chave = a?.chave ?? "";
+        if (montado && montado.chave === chave) return;
+        montado?.app.destruir();
+        montado = null;
+        if (!a) {
+          raiz.replaceChildren(esperando);
+          return;
+        }
+        const ctx = await a.rpc.chamar<ContextoAba>("contexto");
+        // A aba pode ter mudado enquanto o contexto chegava: a próxima volta da fila corrige.
+        if (chaveDoContexto(ctx) !== chave) return;
+        const app = criarApp(b, ctx, rpc, {});
+        montado = { chave, app };
+        await app.iniciar();
+      })
+      .catch(mostrarErro);
+  };
+  raiz.replaceChildren(h("p", { class: "fav-dica" }, "Procurando o SEI nesta janela…"));
+  ponte.aoMudar(reagir);
+  await ponte.iniciar();
+  addEventListener("pagehide", () => void ponte.encerrar());
+  // As abas que já estão abertas conectam ao ver o anúncio; se nenhuma vier, avisa.
+  setTimeout(reagir, 1500);
+}
+
+interface Ganchos {
+  aoAbrirModal?: () => void;
+  aoFecharModal?: () => void;
+  aoRedesenhar?: () => void;
+}
+
+function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Ganchos): AppFavoritos {
+  document.documentElement.dataset.tema = ctx.temaEscuro ? "escuro" : "claro";
   const esc = escoposDoContexto(ctx);
   const repos = {
-    unidade: esc.unidade ? new RepositorioFavoritos(area, esc.unidade, carimbo) : null,
-    pessoal: new RepositorioFavoritos(area, esc.pessoal, carimbo),
+    unidade: esc.unidade ? new RepositorioFavoritos(b.area, esc.unidade, b.carimbo) : null,
+    pessoal: new RepositorioFavoritos(b.area, esc.pessoal, b.carimbo),
   };
-  const altura = observarAltura(rpc);
 
   const abrirModal: AbrirModal = ({ titulo, conteudo, aoFechar }) => {
     const dlg = h("dialog", { class: "spro-dialogo", "aria-label": titulo });
@@ -54,11 +157,11 @@ async function iniciar(): Promise<void> {
     );
     dlg.addEventListener("close", () => {
       dlg.remove();
-      altura.minimo(0);
+      g.aoFecharModal?.();
       aoFechar?.();
     });
     document.body.append(dlg);
-    altura.minimo(640);
+    g.aoAbrirModal?.();
     dlg.showModal();
     return { fechar };
   };
@@ -109,20 +212,19 @@ async function iniciar(): Promise<void> {
       i.click();
     });
 
-  const app = new AppFavoritos(document.getElementById("app")!, {
+  return new AppFavoritos(raiz, {
     rpc,
     ctx,
-    area,
-    sync,
+    area: b.area,
+    sync: b.sync,
     repos,
-    carimbo,
+    carimbo: b.carimbo,
     abrirModal,
     confirmar,
     baixar,
     copiar: (texto) => navigator.clipboard.writeText(texto),
     escolherArquivo,
     hoje: () => hojeISO(),
-    aoRedesenhar: () => altura.medir(),
+    aoRedesenhar: g.aoRedesenhar,
   });
-  await app.iniciar();
 }
