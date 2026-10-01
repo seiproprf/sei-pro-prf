@@ -121,5 +121,5 @@ O texto de prova foi criado e **excluído** (id 22966).
   e isso confirma a escolha do spec. O parágrafo legível pode trazer entidades, o que não importa.
 - A lista da unidade tinha 12 textos, sem paginação.
 - As fixtures do SEI 5 **não foram versionadas**: são páginas do ambiente de homologação de um
-  ministério, e o repositório é público. Elas ficaram no rascunho da sessão
-  (`scratchpad/harness/fixtures-p1/sei5/`), e cabe ao autor decidir se e como publicar.
+  ministério, e o repositório é público. Elas ficaram fora de qualquer repositório,
+  em `SEI Pro/provas-locais-favoritos/sei5/` (junto dos roteiros das provas), e cabe ao autor decidir se e como publicar.
