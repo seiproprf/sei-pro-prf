@@ -5,12 +5,13 @@
  * sem efeito prático.
  */
 
+import { novoId } from "../id";
 import type { Area } from "./area";
 
 export async function idDispositivo(area: Area, chave = "seipro/dispositivo"): Promise<string> {
   const atual = (await area.obter(chave))[chave];
   if (typeof atual === "string" && atual) return atual;
-  const novo = crypto.randomUUID();
+  const novo = novoId();
   await area.gravar({ [chave]: novo });
   return novo;
 }

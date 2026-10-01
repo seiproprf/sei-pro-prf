@@ -7,6 +7,7 @@
 
 import type { Area } from "@comum/armazenamento/area";
 import { Colecao } from "@comum/armazenamento/colecao";
+import { novoId } from "@comum/id";
 import { indiceEntre } from "@comum/ordem/indice";
 import { purgarLapides, type Versionada, vence } from "@comum/sincronia/entidade";
 import { normalizarTexto } from "@comum/texto";
@@ -138,7 +139,7 @@ export class RepositorioFavoritos {
     if (igual) return igual;
     const c = this.carimbo();
     const p: Pasta = {
-      id: crypto.randomUUID(),
+      id: novoId(),
       nome: limpo,
       ordem: indiceEntre(maiorOrdem(todas), null),
       atualizadoEm: c.agora,
@@ -176,7 +177,7 @@ export class RepositorioFavoritos {
     if (igual) return igual;
     const c = this.carimbo();
     const e: Etiqueta = {
-      id: crypto.randomUUID(),
+      id: novoId(),
       nome: limpo,
       cor: cor ?? corPadrao(limpo),
       atualizadoEm: c.agora,
