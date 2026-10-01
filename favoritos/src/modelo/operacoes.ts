@@ -3,9 +3,12 @@
  * Toda edição recebe o carimbo (quando, de onde), que é o que a mesclagem usa.
  */
 
+import type { DataISO } from "@comum/datas/dias";
 import type { Versionada } from "@comum/sincronia/entidade";
 import { normalizarTexto } from "@comum/texto";
 import { SEM_PASTA } from "./constantes";
+import { lembreteVencido } from "./lembrete";
+import type { Mudanca } from "./novidades";
 import type { Carimbo, DadosProcesso, Etiqueta, Favorito, Filtro, ModoOrdem, ResumoPrazo } from "./tipos";
 
 /** Chaves com `undefined` saem do objeto: o storage guarda menos e o "apagar campo" fica explícito. */
@@ -50,6 +53,9 @@ export function porOrdem(a: { ordem: string; id: string }, b: { ordem: string; i
 export interface ApoioFiltro {
   etiquetas: ReadonlyMap<string, Etiqueta>;
   resumo: (f: Favorito) => ResumoPrazo | undefined;
+  /** Para os filtros "com novidade" e "lembrete para hoje". */
+  novidades?: (f: Favorito) => Mudanca[];
+  hoje?: DataISO;
 }
 
 export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favorito[] {
@@ -66,6 +72,8 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
       const r = apoio.resumo(fav);
       if (f.prazo === "semPrazo" ? !!r : r?.situacao !== f.prazo) return false;
     }
+    if (f.novidade && !apoio.novidades?.(fav).length) return false;
+    if (f.lembrete && !(apoio.hoje && lembreteVencido(fav, apoio.hoje))) return false;
     if (!termos.length) return true;
     const alvo = normalizarTexto(
       [
@@ -75,7 +83,9 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
         fav.tipo,
         fav.especificacao,
         fav.nota,
+        fav.lembrete?.texto,
         ...fav.etiquetas.map((id) => apoio.etiquetas.get(id)?.nome),
+        ...(fav.documentos ?? []).flatMap((d) => [d.numero, d.titulo]),
       ]
         .filter(Boolean)
         .join(" "),
@@ -84,9 +94,18 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
   });
 }
 
-export function ordenar(lista: Favorito[], modo: ModoOrdem, resumo: (f: Favorito) => ResumoPrazo | undefined): Favorito[] {
+export function ordenar(
+  lista: Favorito[],
+  modo: ModoOrdem,
+  resumo: (f: Favorito) => ResumoPrazo | undefined,
+  novidades?: (f: Favorito) => Mudanca[],
+): Favorito[] {
   const copia = [...lista];
   if (modo === "manual") return copia.sort(porOrdem);
+  if (modo === "novidade") {
+    const tem = (f: Favorito) => (novidades?.(f).length ? 0 : 1);
+    return copia.sort((a, b) => tem(a) - tem(b) || porOrdem(a, b));
+  }
   if (modo === "inclusao") return copia.sort((a, b) => b.criadoEm - a.criadoEm || porOrdem(a, b));
   if (modo === "protocolo")
     return copia.sort((a, b) => a.protocolo.localeCompare(b.protocolo, "pt-BR", { numeric: true }) || porOrdem(a, b));

@@ -56,6 +56,41 @@ export interface ResumoPrazo {
   ordem: number;
 }
 
+/**
+ * O que se sabe de um processo num momento: da caixa (sem custo), da árvore que
+ * o próprio usuário abriu, ou do "Atualizar" pedido por ele. O `visto` fica no
+ * favorito (sincroniza); o `atual` fica numa chave local, porque muda a cada
+ * carga da caixa e não pode virar conflito entre computadores.
+ */
+export interface Instantaneo {
+  quando: number;
+  fonte: "caixa" | "arvore" | "atualizar";
+  abertoNaUnidade?: boolean;
+  naoVisualizado?: boolean;
+  documentoNovo?: boolean;
+  atribuido?: string;
+  marcadores?: string[];
+  concluido?: boolean;
+  qtdDocumentos?: number;
+  ultimoAndamento?: { data: string; unidade: string; descricao: string };
+  /** O "Atualizar" pegou o processo recém-chegado à unidade: o SEI registrou o recebimento. */
+  recebidoNaLeitura?: boolean;
+}
+
+export interface DocumentoFavorito {
+  id: string;
+  /** Número SEI. */
+  numero: string;
+  titulo: string;
+  nota?: string;
+  criadoEm: number;
+}
+
+export interface Lembrete {
+  em: DataISO;
+  texto?: string;
+}
+
 export interface Favorito extends Versionada {
   /** id_procedimento. */
   id: string;
@@ -71,6 +106,10 @@ export interface Favorito extends Versionada {
   prazo?: Prazo;
   /** Mapa (ganha tela na F4); preservado na migração. */
   local?: { lat: number; lng: number };
+  lembrete?: Lembrete;
+  documentos?: DocumentoFavorito[];
+  /** O que o usuário viu por último (base do "o que mudou"). */
+  visto?: Instantaneo;
   /** Índice fracionário (comparar com < e >). */
   ordem: string;
   sigiloso?: true;
@@ -92,13 +131,17 @@ export interface Etiqueta extends Versionada {
   icone?: string;
 }
 
-export type ModoOrdem = "manual" | "prazo" | "protocolo" | "inclusao";
+export type ModoOrdem = "manual" | "prazo" | "protocolo" | "inclusao" | "novidade";
 
 export interface Filtro {
   busca?: string;
   pasta?: string;
   etiqueta?: string;
   prazo?: SituacaoPrazo | "semPrazo";
+  /** Só os que têm novidade. */
+  novidade?: boolean;
+  /** Só os com lembrete para hoje (ou vencido). */
+  lembrete?: boolean;
 }
 
 export interface Preferencias {

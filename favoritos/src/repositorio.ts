@@ -15,7 +15,7 @@ import { DIAS_LAPIDE, MAX_ETIQUETAS, MAX_NOTA } from "./modelo/constantes";
 import { corPadrao } from "./modelo/cores";
 import { chaveEscopo } from "./modelo/escopo";
 import { editar, novoFavorito, remover, restaurar } from "./modelo/operacoes";
-import type { Carimbo, DadosProcesso, Escopo, Etiqueta, Favorito, MudancasFavorito, Pasta } from "./modelo/tipos";
+import type { Carimbo, DadosProcesso, Escopo, Etiqueta, Favorito, Instantaneo, MudancasFavorito, Pasta } from "./modelo/tipos";
 
 // Chave inválida (dado antigo ou editado à mão) não entra na conta: senão nenhum favorito novo grava.
 const maiorOrdem = (itens: Array<{ ordem: string }>): string | null =>
@@ -27,6 +27,8 @@ export class RepositorioFavoritos {
   readonly favoritos: Colecao<Favorito>;
   readonly pastas: Colecao<Pasta>;
   readonly etiquetas: Colecao<Etiqueta>;
+  /** Últimas leituras (local; ver `gravarAtual`). */
+  readonly atuaisCol: Colecao<Instantaneo & { id: string }>;
   private readonly chaveMeta: string;
   private readonly base: string;
 
@@ -39,6 +41,7 @@ export class RepositorioFavoritos {
     this.favoritos = new Colecao<Favorito>(area, `${base}f/`);
     this.pastas = new Colecao<Pasta>(area, `${base}p/`);
     this.etiquetas = new Colecao<Etiqueta>(area, `${base}e/`);
+    this.atuaisCol = new Colecao<Instantaneo & { id: string }>(area, `${base}a/`);
     this.chaveMeta = `${base}meta`;
     this.base = base;
   }
@@ -61,6 +64,33 @@ export class RepositorioFavoritos {
         .filter((e) => e.removidoEm === undefined)
         .sort(porNome),
     };
+  }
+
+  /** Última leitura de cada favorito: chave LOCAL (`a/`), fora do envelope e da mesclagem. */
+  async gravarAtual(id: string, inst: Instantaneo): Promise<void> {
+    await this.atuaisCol.gravar(id, { ...inst, id });
+  }
+
+  async gravarAtuais(itens: Array<[string, Instantaneo]>): Promise<void> {
+    await this.atuaisCol.gravarVarios(itens.map(([id, i]) => [id, { ...i, id }]));
+  }
+
+  async atuais(): Promise<Map<string, Instantaneo>> {
+    return new Map((await this.atuaisCol.listar()).map(({ id, ...i }) => [id, i as Instantaneo]));
+  }
+
+  /** "Marcar como visto": o visto passa a ser a última leitura. */
+  async marcarVisto(ids: string[]): Promise<number> {
+    const atuais = await this.atuais();
+    let n = 0;
+    for (const id of ids) {
+      const a = atuais.get(id);
+      const f = await this.obter(id);
+      if (!a || !f || f.removidoEm !== undefined) continue;
+      await this.editar(id, { visto: { ...a, recebidoNaLeitura: undefined } });
+      n++;
+    }
+    return n;
   }
 
   /** Tudo desta lista, com as lápides de favoritos, pastas e etiquetas (para sincronizar). */
@@ -260,6 +290,11 @@ export class RepositorioFavoritos {
       const manter = new Set(purgarLapides(todos, agora, DIAS_LAPIDE).map((i) => i.id));
       await col.apagar(todos.filter((i) => !manter.has(i.id)).map((i) => i.id));
     }
+  }
+
+  /** Mudanças nas últimas leituras (não disparam a sincronia, que só olha `aoMudar`). */
+  aoMudarAtuais(cb: () => void): () => void {
+    return this.atuaisCol.aoMudar(cb);
   }
 
   aoMudar(cb: () => void): () => void {
