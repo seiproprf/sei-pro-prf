@@ -23,6 +23,8 @@ export async function verificarAtualizar(): Promise<void> {
   const deps = {
     repos: [unidade, pessoal],
     listarCaixa: async () => new Set(["1"]),
+    // A pesquisa rápida pelo número devolve o id do processo achado.
+    localizar: async (protocolo: string) => ({ P2: "2", P4: "4", P3: "3", P1: "1" })[protocolo] ?? "x",
     lerProcesso: async (protocolo: string) => {
       lidos.push(protocolo);
       return {
@@ -67,4 +69,22 @@ export async function verificarAtualizar(): Promise<void> {
     ctl.signal,
   );
   checar("cancelado no meio: para de ler", lidos2.length === 1);
+
+  secao("atualizar: o numero precisa levar ao mesmo processo da trava");
+  await unidade.adicionar({ id: "8", protocolo: "P8" });
+  const lidos3: string[] = [];
+  const r3 = await atualizarForaDaUnidade(
+    {
+      ...deps,
+      repos: [unidade],
+      // P8 leva a OUTRO processo (id 1), que esta na caixa: abrir a arvore dele furaria a trava.
+      localizar: async (p: string) => (p === "P8" ? "1" : ({ P2: "2" } as Record<string, string>)[p] ?? "x"),
+      lerProcesso: async (p: string) => {
+        lidos3.push(p);
+        return { qtdDocumentos: 1, abertoNaUnidade: false };
+      },
+    },
+    new AbortController().signal,
+  );
+  checar("numero que leva a outro processo nao e lido", !lidos3.includes("P8") && r3.erros >= 1, { lidos3, r3 });
 }

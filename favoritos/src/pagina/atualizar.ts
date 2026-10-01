@@ -32,6 +32,8 @@ export interface DepsAtualizar {
   repos: RepositorioFavoritos[];
   /** Ids de TODOS os processos abertos na unidade (todas as páginas da caixa). */
   listarCaixa(sinal: AbortSignal): Promise<Set<string>>;
+  /** Pesquisa rápida pelo número: o id do processo achado (não abre a árvore). */
+  localizar(protocolo: string, sinal: AbortSignal): Promise<string>;
   lerProcesso(protocolo: string, sinal: AbortSignal): Promise<LeituraProcesso>;
   progresso(p: ProgressoAtualizacao): Promise<void>;
   esperar(ms: number, sinal: AbortSignal): Promise<void>;
@@ -61,6 +63,10 @@ export async function atualizarForaDaUnidade(
     if (sinal.aborted) break;
     await d.progresso({ feitos, total, atual: alvo.protocolo });
     try {
+      // A trava confere pelo id; a leitura vai pelo número. Se o número levar a OUTRO processo (dado
+      // antigo, envelope mexido), ele pode estar na caixa: não abre a árvore.
+      const achado = await d.localizar(alvo.protocolo, sinal);
+      if (achado !== id || naCaixa.has(achado)) throw new Error("O número não leva a este processo.");
       const l = await d.lerProcesso(alvo.protocolo, sinal);
       if (l.abertoNaUnidade) chegaram++;
       for (const r of alvo.repos) {

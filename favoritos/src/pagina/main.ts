@@ -337,6 +337,7 @@ function controleAtualizar(ctx: ContextoAba, area: Area, repos: Repos): Controle
             throw new ErroRpc("CAIXA_INCOMPLETA", "Não foi possível ler a caixa inteira; nada foi atualizado.");
           return new Set(r.processos.map((p) => p.idProcedimento));
         },
+        localizar: async (protocolo, sinal) => (await sei.localizar(protocolo, { sinal })).idProcedimento,
         lerProcesso: async (protocolo, sinal) => {
           const arv = await sei.arvore(protocolo, { sinal, forcar: true });
           const link = acaoNaArvore(arv, "procedimento_consultar_historico");
