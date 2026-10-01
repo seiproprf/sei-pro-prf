@@ -58,6 +58,9 @@ export async function verificarEnviar(): Promise<void> {
   await tique(20);
   const f = await repo.obter("148265");
   checar("prazo ate a data", f?.prazo?.vencimento?.em === "data" && f.prazo.vencimento.data === "2026-10-20", f?.prazo);
+  escolher(opcoes.querySelector('select[aria-label="Lembrete"]') as HTMLSelectElement, "30");
+  await tique(20);
+  checar("lembrete rapido no envio", (await repo.obter("148265"))?.lembrete?.em === "2026-10-31");
   caixa.checked = false;
   disparar(caixa, "change");
   await tique(20);

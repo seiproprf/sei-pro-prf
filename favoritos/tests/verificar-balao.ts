@@ -81,4 +81,9 @@ export async function verificarBalao(): Promise<void> {
   botao(el, "Pronto")!.click();
   checar("Pronto fecha", fechou === 1);
   checar("sem unidade nao oferece a troca de lista", !botao(montarBalao({ ...deps, siglaUnidade: null }), "Pessoal"));
+  const comLembrete = montarBalao({ ...deps, hoje: "2026-10-01" });
+  escolher(comLembrete.querySelector('select[aria-label="Lembrete"]') as HTMLSelectElement, "7");
+  await tique();
+  const ultimoL = chamadas.at(-1)?.[1] as { lembrete?: { em: string } } | undefined;
+  checar("lembrete rapido no balao (em 1 semana)", ultimoL?.lembrete?.em === "2026-10-08", chamadas.at(-1));
 }

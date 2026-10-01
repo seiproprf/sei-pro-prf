@@ -15,6 +15,7 @@ import type { DataISO } from "@comum/datas/dias";
 import { h } from "@comum/ui/dom";
 import { prazoDosValores } from "../app/prazoForm";
 import type { DadosProcesso, Favorito, MudancasFavorito, Pasta } from "../modelo/tipos";
+import { seletorLembrete } from "./lembreteRapido";
 
 export interface DepsEnvio {
   ativo(id: string): boolean;
@@ -60,6 +61,7 @@ export async function instalarManterNoEnvio(doc: Document, d: DepsEnvio): Promis
     { class: "spro-fav-envio-opcoes", style: "display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:6px 0 0 22px" },
     h("label", { style: "display:inline-flex;gap:6px;align-items:center" }, "Pasta:", pasta),
     h("label", { style: "display:inline-flex;gap:6px;align-items:center" }, "Prazo até:", data),
+    seletorLembrete(d.hoje(), undefined, (l) => emTodos({ lembrete: l }), "infraSelect"),
   );
   opcoes.hidden = !caixa.checked;
 

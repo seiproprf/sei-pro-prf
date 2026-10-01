@@ -213,6 +213,7 @@ async function perguntar(
       pastas,
       etiquetas,
       temaEscuro: ctx.temaEscuro,
+      hoje: hojeISO(),
       editar: (m) => repo.editar(f.id, m),
       criarPasta: (nome) => repo.criarPasta(nome),
       criarEtiqueta: (nome) => repo.criarEtiqueta(nome),

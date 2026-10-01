@@ -4,9 +4,11 @@
  * Shadow DOM: o CSS do SEI (e o do legado) não alcança o balão.
  */
 
+import type { DataISO } from "@comum/datas/dias";
 import { h, icone } from "@comum/ui/dom";
 import { MAX_NOTA } from "../modelo/constantes";
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta, TipoLista } from "../modelo/tipos";
+import { seletorLembrete } from "./lembreteRapido";
 
 export interface DepsBalao {
   favorito: Favorito;
@@ -16,6 +18,8 @@ export interface DepsBalao {
   pastas: Pasta[];
   etiquetas: Etiqueta[];
   temaEscuro: boolean;
+  /** Para o lembrete rápido; ausente, o balão não oferece lembrete. */
+  hoje?: DataISO;
   editar(m: MudancasFavorito): Promise<Favorito>;
   criarPasta(nome: string): Promise<Pasta>;
   criarEtiqueta(nome: string): Promise<Etiqueta>;
@@ -158,6 +162,13 @@ export function montarBalao(d: DepsBalao): HTMLElement {
     h("div", { class: "fav-balao-linha" }, novaEtiqueta, criarEtiqueta),
     h("label", {}, "Nota"),
     nota,
+    d.hoje
+      ? h(
+          "div",
+          { class: "fav-balao-linha" },
+          seletorLembrete(d.hoje, fav.lembrete, (l) => void salvar({ lembrete: l })),
+        )
+      : null,
     h(
       "div",
       { class: "fav-balao-rodape" },
