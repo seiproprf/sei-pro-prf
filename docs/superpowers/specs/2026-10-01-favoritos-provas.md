@@ -123,3 +123,29 @@ O texto de prova foi criado e **excluído** (id 22966).
 - As fixtures do SEI 5 **não foram versionadas**: são páginas do ambiente de homologação de um
   ministério, e o repositório é público. Elas ficaram fora de qualquer repositório,
   em `SEI Pro/provas-locais-favoritos/sei5/` (junto dos roteiros das provas), e cabe ao autor decidir se e como publicar.
+
+## Rodada ao vivo das fases F2 a F4 (SEI SP de Treinamento 4.1.5, 01/10/2026)
+
+Chrome for Testing 151 (headless), extensão Lab da branch, unidade TESTE. O painel lateral foi
+aberto como página (`html/painel.html`), que é o que o Chrome carrega no `side_panel`.
+
+| Verificação | Resultado |
+|---|---|
+| Botão Favoritos na barra do Controle de Processos | ok |
+| Painel com abas Favoritos \| Agente | ok; o favoritos lateral se ligou à aba do SEI e mostrou a lista TESTE |
+| **P3 — Agente dentro do iframe do painel** | ok: conectou à aba (mostrou "treinamento.sei.sp.gov.br — Controle de Processos") |
+| Tiles do OSM a partir de página da extensão | ok (imagem 256×256 carregada) |
+| Captura da caixa ("o que mudou") | ok: leituras gravadas em `favoritos/<escopo>/a/<id>` com aberto na unidade, atribuição e sinais |
+| Convite para sincronizar (unidade sem consentimento) | ok |
+| **Texto Padrão: ligar → sincronizar → apagar** | ok: com o consentimento, o texto `[_SEIPRO_FAV_pedro.soares]` foi criado (1.062 bytes), a linha de status mostrou "Sincronizado agora há pouco"; "Desligar e apagar do SEI" excluiu o texto. Nenhum texto ficou no SEI. |
+
+**Defeitos achados nesta rodada e corrigidos (com teste antes):**
+1. O app lateral mandava os pedidos para a aba "da frente", mesmo de outro SEI: com uma aba do SEI
+   MJ de homologação aberta no mesmo perfil, o "apagar do SEI" da lista do SP foi para a aba do MJ (lá
+   não havia texto, e nada foi gravado no MJ; a lista de textos do MJ foi conferida depois, só leitura).
+   Agora o pedido vai para uma aba da MESMA unidade da lista aberta.
+2. O consentimento do Texto Padrão era um só para o navegador inteiro: ligar numa unidade ligaria em
+   qualquer SEI e unidade em que o usuário estivesse. Agora é por unidade (`host|idUnidade`).
+
+**P4 (arquivo pela File System Access) e o higiene do seletor "Texto Padrão" ao gerar documento não
+foram exercitados ao vivo** (o seletor de arquivo pede gesto humano). Ficam para a checklist do autor.
