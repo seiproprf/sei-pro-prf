@@ -1,6 +1,11 @@
 /** Sem acento, sem caixa, espaços únicos: para busca e para comparar nomes. */
 export function normalizarTexto(s: string): string {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
