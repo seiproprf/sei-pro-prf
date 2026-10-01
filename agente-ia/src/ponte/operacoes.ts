@@ -291,6 +291,12 @@ function bytesParaBase64(b: Uint8Array): string {
 const LIMITE_ARQUIVO = 25 * 1024 * 1024;
 
 export const OPERACOES: Record<string, Op> = {
+  // Só o escopo dos favoritos (quem e onde): a lista em si o painel lê do storage da extensão.
+  "favoritos.escopo": async (sei) => {
+    const c = sei.contexto();
+    return { host: c.host, login: c.usuario.login.trim().toLowerCase(), unidade: c.unidade.id ? { id: c.unidade.id, sigla: c.unidade.sigla } : null };
+  },
+
   "caixa.listar": async (sei, a, sinal) => {
     const r = await listarCaixa(sei, { limite: Number(a.limite ?? 2000), sinal });
     return {

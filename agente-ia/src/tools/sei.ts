@@ -17,6 +17,7 @@ import type { PreviaItem } from "../motor/tipos";
 import { extrairTextoPdf } from "../painel/pdf";
 import { envelopar } from "../seguranca/envelope";
 import { resumoDosAchados, varrer, varrerCamposLivres } from "../seguranca/injecao";
+import { TOOL_FAVORITOS } from "./favoritos";
 
 type Args = Record<string, unknown>;
 
@@ -96,6 +97,8 @@ async function editorAlvo(a: Args, ctx: ContextoTool): Promise<{ numero: string;
 }
 
 export const TOOLS_SEI: DefTool[] = [
+  TOOL_FAVORITOS,
+
   definirTool({
     nome: "contexto_tela",
     descricao:

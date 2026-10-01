@@ -127,6 +127,13 @@ export const SUGESTOES: Sugestao[] = [
 
   // --------------------------------------------------------- caixa da unidade
   {
+    rotulo: "O que mudou nos meus favoritos",
+    descricao: "novidades e lembretes de hoje",
+    cabe: naCaixa,
+    prompt: () =>
+      "O que mudou nos meus favoritos? Liste os que t\u00EAm novidade ou lembrete para hoje e, de cada um, diga o que mudou e o que parece pedir a\u00E7\u00E3o.",
+  },
+  {
     rotulo: "Panorama da caixa",
     descricao: "quantos, de que tipo, o que chegou",
     cabe: naCaixa,

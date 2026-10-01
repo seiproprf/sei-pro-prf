@@ -15,6 +15,8 @@ export function verificarSugestoes(): void {
   const caixa = sugestoesPara({ acao: "procedimento_controlar", unidade: "TESTE" });
   checar("na caixa nao sugere explicar documento", !caixa.some((s) => /documento na tela|linguagem simples/i.test(s.rotulo + s.descricao)), caixa.map((s) => s.rotulo));
   checar("na caixa fala da unidade", caixa.some((s) => /caixa|unidade|comigo|dono/i.test(s.rotulo)), caixa.map((s) => s.rotulo));
+  const fav = caixa.find((s) => /favoritos/i.test(s.rotulo));
+  checar("na caixa sugere o que mudou nos favoritos (pela ferramenta favoritos_listar)", !!fav && /favoritos/i.test(String(fav.prompt)), caixa.map((s) => s.rotulo));
 
   const processo = sugestoesPara({ acao: "procedimento_trabalhar", processo: { protocolo: "1234.5678/2026-90" } });
   checar("no processo sugere resumir", processo.some((s) => /resumir este processo/i.test(s.rotulo)));
