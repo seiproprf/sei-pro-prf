@@ -149,3 +149,27 @@ aberto como página (`html/painel.html`), que é o que o Chrome carrega no `side
 
 **P4 (arquivo pela File System Access) e o higiene do seletor "Texto Padrão" ao gerar documento não
 foram exercitados ao vivo** (o seletor de arquivo pede gesto humano). Ficam para a checklist do autor.
+
+## Depois da revisão final (SEI SP 4.1.5, 01/10/2026)
+
+A revisão final de contexto novo apontou 3 problemas críticos e 4 importantes. Mais 5 apontamentos
+menores foram reclassificados como importantes, porque afetam consentimento, privacidade ou perda de
+dados. Todos foram corrigidos, cada um com um teste que falhava antes da correção. O resumo está no
+ledger, fora do repositório.
+
+**Rodada ao vivo com o build corrigido:**
+* Um texto que tinha ficado de uma rodada anterior foi apagado pelo próprio app.
+* Ligar a sincronia criou o texto em 7 s.
+* "Desligar e apagar do SEI" o removeu, e ele continuava ausente 20 s depois.
+
+O defeito que essa rodada pegou antes da correção era uma rodada lenta que recriava o texto depois do
+"apagar". Agora o "apagar" espera a mesma trava e confere o resultado, e a rodada não grava se o
+usuário desligou no meio.
+
+**Fica para a checklist do autor:**
+* o teste crítico do "Atualizar fora da unidade": o histórico de um processo da unidade, antes e
+  depois, não pode ganhar "Processo recebido". Para isso é preciso ter favorito fora da unidade e
+  favorito na unidade, e no ambiente de treinamento todos estão na caixa;
+* a P4 (arquivo pela File System Access);
+* o seletor "Texto Padrão" ao gerar documento;
+* o sidebar do Firefox.
