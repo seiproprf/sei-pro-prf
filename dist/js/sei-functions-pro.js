@@ -6559,12 +6559,13 @@ function checkEtiquetaPriority(this_) {
         tr.removeClass('urgenteBoxDisplay').removeClass('importanteBoxDisplay');
     }
 }
+// Favoritos novos (pacote Lab) nao carregam sei-pro-favoritos.js: sem getStoreFavoritePro, etiquetas dos Projetos usam a lista vazia.
 function getColorTags(mode) {
     var colorTags = (mode == 'ativ') 
             ? (typeof arrayConfigAtivUnidade !== 'undefined' && arrayConfigAtivUnidade !== null && typeof arrayConfigAtivUnidade.config !== 'undefined' && arrayConfigAtivUnidade.config !== null && typeof arrayConfigAtivUnidade.config.etiquetas !== 'undefined' && arrayConfigAtivUnidade.config.etiquetas !== null) 
                 ? arrayConfigAtivUnidade.config.etiquetas.config.colortags
                 : []
-            : getStoreFavoritePro().config.colortags;
+            : (typeof getStoreFavoritePro === 'function' ? getStoreFavoritePro() : {favorites: [], config: {colortags: []}}).config.colortags;
         colorTags = (typeof colorTags !== 'undefined') ? colorTags : [];
     return colorTags;
 }
@@ -6632,7 +6633,7 @@ function saveConfigEtiqueta(name, value, icon, mode) {
     var storeEtiqueta = (mode == 'ativ') 
             ? (typeof arrayConfigAtivUnidade.config !== 'undefined' && typeof arrayConfigAtivUnidade.config.etiquetas !== 'undefined') 
                 ? arrayConfigAtivUnidade.config.etiquetas : {config: {colortags: []}}
-            : getStoreFavoritePro();
+            : (typeof getStoreFavoritePro === 'function' ? getStoreFavoritePro() : {favorites: [], config: {colortags: []}});
             // console.log(storeEtiqueta);
     var colorTags = (Object.keys(storeEtiqueta).length > 0 && typeof storeEtiqueta.config.colortags !== 'undefined') 
                         ? storeEtiqueta.config.colortags : [];
@@ -6718,7 +6719,7 @@ function normalizeNameTag(tag) {
 function sugestEtiquetaPro(mode) {
     return (mode == 'ativ') 
         ? (typeof arrayConfigAtividades.etiquetas !== 'undefined' ? arrayConfigAtividades['etiquetas']['list'] : [])
-        : uniqPro($.map(getStoreFavoritePro()['favorites'], function (value) { return value.etiquetas; }));
+        : uniqPro($.map((typeof getStoreFavoritePro === 'function' ? getStoreFavoritePro() : {favorites: [], config: {colortags: []}})['favorites'], function (value) { return value.etiquetas; }));
 }
 function getHtmlEtiqueta(name, mode) {
     var colorTags = getColorTags(mode);
