@@ -173,3 +173,28 @@ usuário desligou no meio.
 * a P4 (arquivo pela File System Access);
 * o seletor "Texto Padrão" ao gerar documento;
 * o sidebar do Firefox.
+
+## Repaginação visual (SEI SP 4.1.5, 02/10/2026)
+
+Pedido do autor depois de testar no SEI da ANTAQ. O plano está em
+`docs/superpowers/plans/2026-10-02-favoritos-repaginacao.md`. Rodada ao vivo com o build novo:
+
+* **Diálogo do painel embutido no meio da tela.** A página foi rolada até o fim e o editor aberto no
+  último item. O iframe passou a cobrir a tela visível (1400 × 900), a rolagem da página travou e o
+  diálogo ficou centralizado (x 410–990, y 201–698). Ao fechar, o iframe voltou ao lugar com a altura
+  pedida nesse meio-tempo, e a rolagem destravou.
+* **Escuro:** com o modo noturno do SEI Pro, o diálogo sobreposto ficou com fundo transparente, e a
+  página do SEI aparece desfocada atrás. O iframe e o app usam o mesmo `color-scheme`.
+* **Tema:** o painel lateral seguiu o sistema, claro e escuro (`prefers-color-scheme` emulado). O
+  painel embutido seguiu o SEI e pegou a cor da barra do SP (`#0494c7`) como destaque.
+* **Seletores:**
+  * a busca "aguardando" achou "Aguardando resposta", com o trecho destacado;
+  * a escolha múltipla dentro do diálogo funcionou, com a lista anexada ao próprio diálogo;
+  * no balão (Shadow DOM), o primeiro Esc fecha só a lista e o segundo fecha o balão.
+* **Defeitos achados na rodada e corrigidos:**
+  * o número longo do SP (`99906.713-630.000032/2025-82`) invadia o título. Agora as colunas são
+    alinhadas entre os itens (subgrid), com o espaçamento na lista-mãe;
+  * favorito sem a lista `etiquetas` derrubava o desenho. Isso só acontecia nos dados de
+    demonstração, porque o repositório sempre grava `[]`, mas a contagem agora tolera a falta;
+  * no filtro "Situação", nenhuma opção aparecia quando nada tinha contagem. Agora as opções comuns
+    aparecem sempre e as raras só quando existem.
