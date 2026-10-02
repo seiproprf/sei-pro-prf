@@ -1,10 +1,11 @@
 /**
  * SEI Pro - Editor / Feature: converter em lote os numeros SEI do documento em links
  *
- * Varre o corpo do documento, acha os numeros de documento do SEI escritos como
- * texto e converte cada um no link do SEI (a mesma coisa que a ferramenta nativa
- * "Inserir um Link para processo ou documento do SEI!" faz com um numero de cada
- * vez). Pedido de usuario: listas de despachos costumam citar dezenas deles.
+ * Varre o corpo do documento, acha os numeros de documento e de processo do SEI
+ * escritos como texto e converte cada um no link do SEI (a mesma coisa que a
+ * ferramenta nativa "Inserir um Link para processo ou documento do SEI!" faz com
+ * um numero de cada vez). Pedido de usuario: listas de despachos costumam citar
+ * dezenas deles.
  *
  * COMO O PADRAO E DESCOBERTO
  * --------------------------
@@ -14,11 +15,23 @@
  * ainda nao tem documento nenhum, ficam valendo 7 e 8, e a conferencia da previa
  * resolve o resto.
  *
+ * O numero de processo tambem muda de formato, e ate dentro da MESMA instancia: o
+ * SEI SP atende varios orgaos e mistura 99906.713-630.000032/2025-82,
+ * 018.00002137/2023-41 e 3533908.4438.00000132/2025-57. Valem dois moldes:
+ *   - o do PROPRIO processo (cada bloco de digitos vira \d{n}, a pontuacao fica
+ *     literal), que cobre formatos fora do comum, como os com letras;
+ *   - digitos e pontuacao terminando em /ano-DV, o fim do NUP federal e da maioria
+ *     dos formatos estaduais.
+ * O endpoint do SEI (ProtocoloINT::pesquisarLinkEditor) tira a formatacao e
+ * resolve processo e documento do mesmo jeito, entao a conversao e a mesma.
+ *
  * POR QUE A PREVIA E OBRIGATORIA
  * ------------------------------
  * "8 digitos isolados" tambem casa CEP, numero de processo antigo e afins. A
  * janela mostra cada numero com o trecho de texto em volta, todos marcados, para
- * o usuario desmarcar o que nao for documento antes de disparar.
+ * o usuario desmarcar o que nao for documento antes de disparar. A excecao e o
+ * numero do proprio processo: quase todo despacho o repete no texto, e raramente
+ * alguem quer link para o processo em que ja esta -- ele vem DESMARCADO.
  *
  * CK5 x CK4
  * ---------
@@ -52,15 +65,36 @@
     var LOTE_TETO = 300;
     // Pausa entre conversoes, para nao enfileirar requisicoes no SEI.
     var LOTE_PAUSA = 500;
+    // Digitos e pontuacao terminando em /ano-DV: 50300.018905/2018-67, 018.00002137/2023-41,
+    // 3533908.4438.00000132/2025-57.
+    var PROCESSO_ANO_DV = '\\d[\\d.\\-]{3,}\\d\\/(?:19|20)\\d{2}-\\d{2}';
+    // Exemplo para as mensagens quando o numero do processo atual nao esta a mao.
+    var EXEMPLO_NUP = '00000.000000/0000-00';
 
     // ----------------------------------------------------------------
     // Deteccao do padrao
     // ----------------------------------------------------------------
 
+    // Dados do processo em que o documento esta. Na janela do editor o dadosProcessoPro pode
+    // ainda estar vazio (medido no SEI 5, na primeira abertura logo depois de criar o
+    // documento); nesse caso vale a copia da sessao, achada pelo id_procedimento da URL.
+    function dadosDoProcessoPro() {
+        var local = (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro) ? dadosProcessoPro : {};
+        if (local.propProcesso) return local;
+        try {
+            var id = new URLSearchParams(location.search).get('id_procedimento');
+            var sessao = (typeof sessionStorageRestorePro === 'function') ? sessionStorageRestorePro('dadosSessionProcessoPro') : null;
+            for (var i = 0; id && sessao && i < sessao.length; i++) {
+                var p = sessao[i] && sessao[i].propProcesso;
+                if (p && String(p.hdnIdProcedimento) === id) return sessao[i];
+            }
+        } catch (e) {}
+        return local;
+    }
+
     function comprimentosNumeroSeiPro() {
         var tamanhos = [];
-        var lista = (typeof dadosProcessoPro !== 'undefined' && dadosProcessoPro && dadosProcessoPro.listDocumentos)
-            ? dadosProcessoPro.listDocumentos : [];
+        var lista = dadosDoProcessoPro().listDocumentos || [];
         for (var i = 0; i < lista.length; i++) {
             var n = String((lista[i] && lista[i].nr_sei) || '').replace(/\D/g, '');
             if (n.length >= 5 && n.length <= 12 && tamanhos.indexOf(n.length) === -1) tamanhos.push(n.length);
@@ -72,6 +106,70 @@
     function regexNumeroSeiPro(tamanhos) {
         // \b entre dois digitos nao existe, entao \d{8} nao casa dentro de 123456789.
         return new RegExp('\\b(' + tamanhos.map(function (t) { return '\\d{' + t + '}'; }).join('|') + ')\\b', 'g');
+    }
+
+    function processoAtualPro() {
+        var prop = dadosDoProcessoPro().propProcesso;
+        return prop ? String(prop.txtProtocoloExibir || prop.hdnProtocoloFormatado || '').trim() : '';
+    }
+
+    // 50300.018905/2018-67 => \d{5}\.\d{6}/\d{4}-\d{2}
+    function moldeProcessoPro(numero) {
+        return String(numero).replace(/\d+|\D/g, function (t) {
+            return /\d/.test(t) ? '\\d{' + t.length + '}' : t.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+        });
+    }
+
+    function regexProcessoSeiPro(moldes) {
+        // Sem \b: o molde pode comecar ou terminar em letra ou pontuacao. As bordas impedem
+        // casar o pedaco final de um numero maior (x108000.012345/2024-11 nao vira 012345/2024-11).
+        return new RegExp('(?<![\\w./]|\\d-)(?:' + moldes.join('|') + ')(?![\\w]|[./-]\\d)', 'g');
+    }
+
+    function padroesLinkSeiPro() {
+        var processoAtual = processoAtualPro();
+        var moldes = [PROCESSO_ANO_DV];
+        if (processoAtual.replace(/\D/g, '').length >= 8) moldes.unshift(moldeProcessoPro(processoAtual));
+        var tamanhos = comprimentosNumeroSeiPro();
+        return {
+            tamanhos: tamanhos,
+            processoAtual: processoAtual,
+            exemploProcesso: processoAtual || EXEMPLO_NUP,
+            documento: regexNumeroSeiPro(tamanhos),
+            processo: regexProcessoSeiPro(moldes)
+        };
+    }
+
+    // Numeros de documento e de processo de um trecho de texto, na ordem em que aparecem.
+    // Numero de documento que cai DENTRO de um numero de processo fica de fora (formato de
+    // processo com bloco de 7 ou 8 digitos).
+    function acharNumerosPro(texto, padroes) {
+        var achados = [];
+        var m;
+        padroes.processo.lastIndex = 0;
+        while ((m = padroes.processo.exec(texto)) !== null) {
+            achados.push({
+                numero: m[0],
+                tipo: 'processo',
+                proprio: m[0] === padroes.processoAtual,
+                inicio: m.index,
+                fim: m.index + m[0].length
+            });
+        }
+        var processos = achados.slice();
+        padroes.documento.lastIndex = 0;
+        while ((m = padroes.documento.exec(texto)) !== null) {
+            var ini = m.index, fim = m.index + m[0].length;
+            var dentro = processos.some(function (p) { return ini < p.fim && fim > p.inicio; });
+            if (!dentro) achados.push({ numero: m[0], tipo: 'documento', proprio: false, inicio: ini, fim: fim });
+        }
+        return achados.sort(function (a, b) { return a.inicio - b.inicio; });
+    }
+
+    function contarPorNumero(lista) {
+        var conta = {};
+        lista.forEach(function (oc) { conta[oc.numero] = (conta[oc.numero] || 0) + 1; });
+        return conta;
     }
 
     function trechoEmVolta(texto, inicio, fim) {
@@ -99,7 +197,7 @@
         });
     }
 
-    function coletarCK5(editor, regex) {
+    function coletarCK5(editor, padroes) {
         var achados = [];
         rootsEditaveisCK5(editor).forEach(function (nome) {
             var raiz = editor.model.document.getRoot(nome);
@@ -111,46 +209,68 @@
                 var pai = item.textNode.parent;
                 var base = item.startOffset;
                 var texto = item.data;
-                var m;
-                regex.lastIndex = 0;
-                while ((m = regex.exec(texto)) !== null) {
+                acharNumerosPro(texto, padroes).forEach(function (a) {
                     achados.push({
-                        numero: m[0],
-                        trecho: trechoEmVolta(texto, m.index, m.index + m[0].length),
+                        numero: a.numero,
+                        tipo: a.tipo,
+                        proprio: a.proprio,
+                        trecho: trechoEmVolta(texto, a.inicio, a.fim),
                         pai: pai,
-                        inicio: base + m.index,
-                        fim: base + m.index + m[0].length
+                        inicio: base + a.inicio,
+                        fim: base + a.fim
                     });
-                }
+                });
             }
         });
         return achados;
     }
 
-    function coletarCK4(editor, regex) {
+    // No CK4 cada secao do documento e uma instancia propria do editor. O despacho do SEI SP,
+    // por exemplo, tem uma secao editavel "Processo n. / Interessado" antes da do texto, e
+    // olhar so a instancia do clique deixava o texto inteiro de fora. Como no CK5, varre
+    // todas as secoes editaveis.
+    function instanciasEditaveisCK4(editor) {
+        var lista = [];
+        try {
+            Object.keys(CKEDITOR.instances).forEach(function (nome) {
+                var inst = CKEDITOR.instances[nome];
+                if (inst && !inst.readOnly && inst.document) lista.push(inst);
+            });
+        } catch (e) {}
+        return lista.length ? lista : (editor ? [editor] : []);
+    }
+
+    function coletarCK4(editor, padroes) {
         var achados = [];
-        var corpo = SeiProEditorAdapter.getBodyContainer(editor);
-        if (!corpo || !corpo.ownerDocument) return achados;
-        var doc = corpo.ownerDocument;
-        var caminhador = doc.createTreeWalker(corpo, doc.defaultView.NodeFilter.SHOW_TEXT, null, false);
-        var no;
-        while ((no = caminhador.nextNode())) {
-            // Numero que ja e link (ancora do SEI ou qualquer <a>) fica de fora.
-            if (no.parentElement && no.parentElement.closest('a')) continue;
-            var texto = no.nodeValue || '';
-            var m;
-            regex.lastIndex = 0;
-            while ((m = regex.exec(texto)) !== null) {
-                achados.push({
-                    numero: m[0],
-                    trecho: trechoEmVolta(texto, m.index, m.index + m[0].length),
-                    no: no,
-                    inicio: m.index,
-                    fim: m.index + m[0].length
+        instanciasEditaveisCK4(editor).forEach(function (inst) {
+            var corpo = SeiProEditorAdapter.getBodyContainer(inst);
+            if (!corpo || !corpo.ownerDocument) return;
+            var doc = corpo.ownerDocument;
+            var caminhador = doc.createTreeWalker(corpo, doc.defaultView.NodeFilter.SHOW_TEXT, null, false);
+            var no;
+            while ((no = caminhador.nextNode())) {
+                // Numero que ja e link (ancora do SEI ou qualquer <a>) fica de fora.
+                if (no.parentElement && no.parentElement.closest('a')) continue;
+                var texto = no.nodeValue || '';
+                acharNumerosPro(texto, padroes).forEach(function (a) {
+                    achados.push({
+                        numero: a.numero,
+                        tipo: a.tipo,
+                        proprio: a.proprio,
+                        trecho: trechoEmVolta(texto, a.inicio, a.fim),
+                        inst: inst,
+                        no: no,
+                        inicio: a.inicio,
+                        fim: a.fim
+                    });
                 });
             }
-        }
+        });
         return achados;
+    }
+
+    function coletarPro(editor, padroes) {
+        return (SeiProEditorAdapter.version === 5) ? coletarCK5(editor, padroes) : coletarCK4(editor, padroes);
     }
 
     // ----------------------------------------------------------------
@@ -221,14 +341,17 @@
     }
 
     function converterCK4(editor, oc) {
-        var range = new CKEDITOR.dom.range(editor.document);
+        // A secao em que o numero esta: o dialogo insere o link na instancia que o abriu.
+        var ed = oc.inst || editor;
+        ed.focus();
+        var range = new CKEDITOR.dom.range(ed.document);
         var no = new CKEDITOR.dom.text(oc.no);
         range.setStart(no, oc.inicio);
         range.setEnd(no, oc.fim);
-        editor.getSelection().selectRanges([range]);
+        ed.getSelection().selectRanges([range]);
         // insertProtocoloOnBox (chamado no onShow do dialogo) le a selecao, preenche
         // o campo Protocolo e confirma sozinho.
-        editor.execCommand('linkseiDialog');
+        ed.execCommand('linkseiDialog');
     }
 
     // Espera o dialogo do CK4 fechar (o SEI consulta o protocolo no servidor).
@@ -283,7 +406,9 @@
         return fila;
     }
 
-    function executarLote(editor, escolhidas, aoTerminar) {
+    // ignoradas: quantas ocorrencias de cada numero ficaram de fora (desmarcadas na previa
+    // ou alem do teto) -- continuam como texto e nao contam como falha.
+    function executarLote(editor, escolhidas, ignoradas, aoTerminar) {
         var ck5 = SeiProEditorAdapter.version === 5;
         var fila = ordenarFilaPro(escolhidas);
         var falhas = [];
@@ -313,19 +438,19 @@
 
         comAlertaRecolhido(proximo).then(function (saida) {
             // Folga para a ultima conversao assentar antes da conferencia.
-            setTimeout(function () { aoTerminar(montarResumo(editor, fila, falhas, saida.avisos)); }, 900);
+            setTimeout(function () { aoTerminar(montarResumo(editor, fila, falhas, saida.avisos, ignoradas)); }, 900);
         }).catch(function (e) {
-            aoTerminar(montarResumo(editor, fila, falhas.concat([{ numero: '-', motivo: String(e).slice(0, 90) }]), []));
+            aoTerminar(montarResumo(editor, fila, falhas.concat([{ numero: '-', motivo: String(e).slice(0, 90) }]), [], ignoradas));
         });
     }
 
     // Quem ainda esta como TEXTO no documento nao virou link. Vale para os dois editores e
     // pega tambem o que falhou sem avisar.
-    function montarResumo(editor, fila, falhas, avisos) {
-        var regex = regexNumeroSeiPro(comprimentosNumeroSeiPro());
-        var achados = (SeiProEditorAdapter.version === 5) ? coletarCK5(editor, regex) : coletarCK4(editor, regex);
-        var sobra = {};
-        achados.forEach(function (a) { sobra[a.numero] = (sobra[a.numero] || 0) + 1; });
+    function montarResumo(editor, fila, falhas, avisos, ignoradas) {
+        var sobra = contarPorNumero(coletarPro(editor, padroesLinkSeiPro()));
+        Object.keys(ignoradas || {}).forEach(function (n) {
+            if (sobra[n]) sobra[n] = Math.max(0, sobra[n] - ignoradas[n]);
+        });
 
         var jaListado = {};
         falhas.forEach(function (f) { jaListado[f.numero] = true; });
@@ -347,11 +472,26 @@
     // Previa
     // ----------------------------------------------------------------
 
-    function abrirPreviaLinkSeiLote(editor, achados, tamanhos) {
+    // "3 de documento (8 digitos, ...) e 2 de processo"
+    function descreverAchadosPro(achados, padroes) {
+        var docs = 0, procs = 0;
+        achados.forEach(function (oc) { if (oc.tipo === 'processo') procs++; else docs++; });
+        var partes = [];
+        if (docs) partes.push('<strong>' + docs + '</strong> de documento (' + padroes.tamanhos.join(' ou ') + ' d\u00EDgitos, como os documentos deste processo)');
+        if (procs) partes.push('<strong>' + procs + '</strong> de processo');
+        return partes.join(' e ');
+    }
+
+    function abrirPreviaLinkSeiLote(editor, achados, padroes, contagem) {
+        var temProprio = achados.some(function (oc) { return oc.proprio; });
         var linhas = achados.map(function (oc, i) {
+            var rotulo = oc.proprio
+                ? '<span style="color:#d9822b;">este processo</span>'
+                : oc.tipo;
             return '<tr>' +
-                '  <td style="width:26px; vertical-align:top; padding:4px 2px;"><input type="checkbox" class="linkSeiLoteItem" data-i="' + i + '" checked></td>' +
-                '  <td style="padding:4px 2px; white-space:nowrap; vertical-align:top;"><strong>' + oc.numero + '</strong></td>' +
+                '  <td style="width:26px; vertical-align:top; padding:4px 2px;"><input type="checkbox" class="linkSeiLoteItem" data-i="' + i + '"' + (oc.proprio ? '' : ' checked') + '></td>' +
+                '  <td style="padding:4px 2px; white-space:nowrap; vertical-align:top;"><strong>' + sanitizeHTML(oc.numero) + '</strong>' +
+                '    <div style="font-size:8pt; color:#888;">' + rotulo + '</div></td>' +
                 '  <td style="padding:4px 6px; font-size:9pt; color:#555;">' + sanitizeHTML(oc.trecho) + '</td>' +
                 '</tr>';
         }).join('');
@@ -361,9 +501,11 @@
             '  <p style="font-size:10pt; margin:0 0 8px 0;">' +
             '    <i class="fas fa-link azulColor" style="margin-right:6px;"></i>' +
             '    Encontrei <strong>' + achados.length + '</strong> ' + (achados.length === 1 ? 'n\u00FAmero' : 'n\u00FAmeros') +
-            '    de documento neste texto (' + tamanhos.join(' ou ') + ' d\u00EDgitos, como os documentos deste processo).' +
+            '    neste texto: ' + descreverAchadosPro(achados, padroes) + '.' +
             '  </p>' +
-            '  <p style="font-size:9pt; color:#777; margin:0 0 8px 0;">Desmarque o que n\u00E3o for documento do SEI. Cada n\u00FAmero marcado \u00E9 uma consulta ao servidor.</p>' +
+            '  <p style="font-size:9pt; color:#777; margin:0 0 8px 0;">Desmarque o que n\u00E3o for documento ou processo do SEI.' +
+            (temProprio ? ' O n\u00FAmero deste pr\u00F3prio processo vem desmarcado.' : '') +
+            ' Cada n\u00FAmero marcado \u00E9 uma consulta ao servidor.</p>' +
             '  <p style="font-size:9pt; margin:0 0 6px 0;"><a href="javascript:void(0)" id="linkSeiLoteTodos">marcar todos</a> &middot; <a href="javascript:void(0)" id="linkSeiLoteNenhum">desmarcar todos</a></p>' +
             '  <div style="max-height:280px; overflow:auto; border:1px solid #ddd; border-radius:4px;">' +
             '    <table style="width:100%; border-collapse:collapse;">' + linhas + '</table>' +
@@ -390,8 +532,11 @@
                         });
                         resetDialogBoxPro('dialogBoxPro');
                         if (!escolhidas.length) return;
+                        var porEscolha = contarPorNumero(escolhidas);
+                        var ignoradas = {};
+                        Object.keys(contagem).forEach(function (n) { ignoradas[n] = contagem[n] - (porEscolha[n] || 0); });
                         alertaBoxPro('Sucess', 'spinner fa-spin', 'Convertendo ' + escolhidas.length + ' ' + (escolhidas.length === 1 ? 'n\u00FAmero' : 'n\u00FAmeros') + '...');
-                        executarLote(editor, escolhidas, function (resumo) {
+                        executarLote(editor, escolhidas, ignoradas, function (resumo) {
                             resetDialogBoxPro('alertBoxPro');
                             mostrarResumo(resumo);
                         });
@@ -426,19 +571,20 @@
         var editor = SeiProEditorAdapter.getInstance(this_);
         if (!editor) return;
 
-        var tamanhos = comprimentosNumeroSeiPro();
-        var regex = regexNumeroSeiPro(tamanhos);
-        var achados = (SeiProEditorAdapter.version === 5) ? coletarCK5(editor, regex) : coletarCK4(editor, regex);
+        var padroes = padroesLinkSeiPro();
+        var achados = coletarPro(editor, padroes);
 
         if (!achados.length) {
             alertaBoxPro('Error', 'exclamation-triangle',
-                'Nenhum n\u00FAmero de documento (' + tamanhos.join(' ou ') + ' d\u00EDgitos) foi encontrado no texto. ' +
+                'Nenhum n\u00FAmero de documento (' + padroes.tamanhos.join(' ou ') + ' d\u00EDgitos) ' +
+                'ou de processo (como ' + sanitizeHTML(padroes.exemploProcesso) + ') foi encontrado no texto. ' +
                 'Os que j\u00E1 s\u00E3o link n\u00E3o entram na conta.');
             return;
         }
+        var contagem = contarPorNumero(achados);
         if (achados.length > LOTE_TETO) achados = achados.slice(0, LOTE_TETO);
 
-        abrirPreviaLinkSeiLote(editor, achados, tamanhos);
+        abrirPreviaLinkSeiLote(editor, achados, padroes, contagem);
     };
 
     if (window.SeiProEditorAdapter && SeiProEditorAdapter.registerFeature) {
