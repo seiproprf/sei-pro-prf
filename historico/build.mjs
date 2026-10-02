@@ -2,10 +2,11 @@
 /**
  * Build do Historico.
  *
- * Esqueleto: as entradas (content script, app, pagina, painel) entram nas Tasks 9, 12 e 13.
- * Saidas previstas em dist/js/ e dist/html/, todas ASCII (portao de bytes abaixo).
+ *   dist/js/init_historico.js  content script (IIFE, mundo isolado, todos os frames)
+ * As demais entradas (app, painel) entram nas Tasks 12 e 13. Saidas todas ASCII (portao de bytes abaixo).
  */
-import { readFile, stat } from "node:fs/promises";
+import { build } from "esbuild";
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,7 +14,6 @@ const AQUI = dirname(fileURLToPath(import.meta.url));
 const DIST = resolve(AQUI, "..", "dist");
 
 // Opcoes comuns do esbuild, usadas por cada `build({ ...comum, ... })` das entradas.
-// biome-ignore lint/correctness/noUnusedVariables: usado pelas entradas, que entram nas proximas tarefas.
 const comum = {
   bundle: true,
   minify: true,
@@ -26,7 +26,12 @@ const comum = {
   banner: { js: "/* GERADO por historico/build.mjs. NAO EDITE ESTE ARQUIVO. Rode: npm run build */" },
 };
 
-const SAIDAS = [];
+await rm(join(DIST, "js", "historico"), { recursive: true, force: true });
+await mkdir(join(DIST, "js", "historico"), { recursive: true });
+
+await build({ ...comum, entryPoints: [resolve(AQUI, "src/pagina/main.ts")], outfile: join(DIST, "js", "init_historico.js"), format: "iife" });
+
+const SAIDAS = ["js/init_historico.js"];
 
 // Regra do projeto: JS da extensao so com ASCII (conferencia byte a byte, como no Favoritos).
 for (const f of SAIDAS) {
