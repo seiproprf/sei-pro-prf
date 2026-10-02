@@ -43,16 +43,17 @@ export async function verificarPainel(): Promise<void> {
   );
   checar("sem ordem guardada", ordemLegada({ getItem: () => null }) === null && ordemLegada({ getItem: () => "{x" }) === null);
   const docT = instalarDom('<html><body><div id="divInfraBarraLocalizacao">Controle de Processos</div></body></html>');
+  // Peso lido cedo demais (400) não pode vazar: o título dos favoritos é sempre 600, como o da tela.
   (docT.defaultView as unknown as { getComputedStyle: () => Partial<CSSStyleDeclaration> }).getComputedStyle = () => ({
     fontSize: "22.4px",
-    fontWeight: "600",
+    fontWeight: "400",
     fontFamily: "Roboto, Arial",
   });
   const tituloT = docT.createElement("div");
   igualarAoTituloDoSei(docT, tituloT);
   checar(
     "titulo Favoritos com a mesma letra do titulo da tela",
-    tituloT.style.fontSize === "22.4px" && tituloT.style.fontWeight === "600",
+    tituloT.style.fontSize === "22.4px" && tituloT.style.getPropertyValue("font-weight") === "600",
     tituloT.getAttribute("style"),
   );
   const docP = instalarDom('<html><body><form id="frmProcedimentoControlar"></form></body></html>');

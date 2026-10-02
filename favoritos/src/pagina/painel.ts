@@ -41,15 +41,17 @@ export function inserirNaOrdem(container: Element, painel: Element, ordem: numbe
 /**
  * O título "Favoritos" com a mesma letra do título da tela ("Controle de Processos"): o SEI 5 dá
  * o tamanho ao título da tela por regras que não alcançam um painel novo, e ele saía bem menor.
+ * O peso é sempre 600, o do título do SEI: copiado da tela, vinha 400 no SEI 5 (lido antes de
+ * o estilo da página assentar) e, inline, vencia o 600 da classe.
  */
 export function igualarAoTituloDoSei(doc: Document, titulo: HTMLElement): void {
+  titulo.style.setProperty("font-weight", "600", "important");
   const ref = doc.querySelector("#divInfraBarraLocalizacao");
   const visao = doc.defaultView as (Window & { getComputedStyle?: Window["getComputedStyle"] }) | null;
   if (!ref || !visao?.getComputedStyle) return;
   try {
     const c = visao.getComputedStyle(ref);
     if (c.fontSize) titulo.style.fontSize = c.fontSize;
-    if (c.fontWeight) titulo.style.fontWeight = c.fontWeight;
     if (c.fontFamily) titulo.style.fontFamily = c.fontFamily;
   } catch {
     /* sem estilo computado */
