@@ -83,7 +83,7 @@ if(!isChrome && typeof browser.runtime.getBrowserInfo === "function") {
 }
 
 /******************************************************************************
- * Painel lateral (html/painel.html, abas Favoritos | Agente): o botao
+ * Painel lateral (html/painel.html, abas Favoritos | Historico | Agente): o botao
  * Favoritos da barra do SEI (js/init_favoritos.js) pede {tipo: "abrirPainel",
  * aba} e o item "Agente de IA" do menu (js/init_agente.js) pede "abrirAgente".
  * O clique do usuario e o gesto que o Chrome exige para sidePanel.open; por
@@ -101,7 +101,7 @@ function gravarAbaDoPainel(aba) {
 
 browser.runtime.onMessage.addListener(function (msg, sender) {
   if (!msg || (msg.tipo !== "abrirAgente" && msg.tipo !== "abrirPainel") || !sender || !sender.tab) return;
-  var aba = msg.tipo === "abrirAgente" || msg.aba === "agente" ? "agente" : "favoritos";
+  var aba = msg.tipo === "abrirAgente" || msg.aba === "agente" ? "agente" : msg.aba === "historico" ? "historico" : "favoritos";
   if (typeof chrome !== "undefined" && chrome.sidePanel && chrome.sidePanel.open) {
     chrome.sidePanel.open({ tabId: sender.tab.id }).catch(function (e) { console.log(e); });
   } else if (browser.sidebarAction && browser.sidebarAction.open) {

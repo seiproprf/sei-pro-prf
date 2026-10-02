@@ -56,4 +56,22 @@ export async function verificarShell(): Promise<void> {
   const s2 = await montarShell(raiz2, { sessao: areaMemoria({ painelAba: "agente" }), temAgente: false, url });
   checar("sem agente, so favoritos", s2.atual() === "favoritos" && raiz2.querySelectorAll("iframe").length === 1);
   checar("e sem barra de abas", !raiz2.querySelector('[role="tablist"]'));
+
+  secao("painel lateral: tres abas na ordem Favoritos | Historico | Agente");
+  {
+    const docH = instalarDom('<html><body><div id="painel"></div></body></html>');
+    const raizH = docH.getElementById("painel")!;
+    const shellH = await montarShell(raizH, { sessao: areaMemoria({ painelAba: "historico" }), temAgente: true, temHistorico: true, url });
+    const rotulos = [...raizH.querySelectorAll('[role="tab"]')].map((b) => b.getAttribute("aria-label"));
+    checar("ordem das abas", JSON.stringify(rotulos) === JSON.stringify(["Favoritos", "Hist\u00f3rico", "Agente de IA"]), rotulos);
+    checar("abre na aba historico pedida", shellH.atual() === "historico");
+    const f = raizH.querySelector("iframe") as HTMLIFrameElement;
+    checar("iframe do historico em modo lateral", f.src.endsWith("html/historico.html#modo=lateral"));
+  }
+  {
+    const docS = instalarDom('<html><body><div id="painel"></div></body></html>');
+    const raizS = docS.getElementById("painel")!;
+    await montarShell(raizS, { sessao: areaMemoria(), temAgente: true, url });
+    checar("sem init_historico no manifest, nao ha aba Historico", !botao(raizS, "Hist\u00f3rico"));
+  }
 }

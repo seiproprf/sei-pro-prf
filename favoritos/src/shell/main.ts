@@ -6,6 +6,7 @@ import { type AbaPainel, montarShell } from "./painel";
 const manifesto = chrome.runtime.getManifest();
 const temAgente = (manifesto.content_scripts ?? []).some((c) => c.js?.includes("js/init_agente.js"));
 const temFavoritos = (manifesto.content_scripts ?? []).some((c) => c.js?.includes("js/init_favoritos.js"));
+const temHistorico = (manifesto.content_scripts ?? []).some((c) => c.js?.includes("js/init_historico.js"));
 const doEndereco = new URLSearchParams(location.hash.slice(1)).get("aba");
 
 void montarShell(document.getElementById("painel")!, {
@@ -13,7 +14,8 @@ void montarShell(document.getElementById("painel")!, {
   sessao: areaChrome(chrome.storage.session ?? chrome.storage.local, chrome.storage.session ? "session" : "local"),
   temAgente,
   temFavoritos,
+  temHistorico,
   local: areaChrome(chrome.storage.local, "local"),
   url: (c) => chrome.runtime.getURL(c),
-  abaDoEndereco: doEndereco === "agente" || doEndereco === "favoritos" ? (doEndereco as AbaPainel) : null,
+  abaDoEndereco: doEndereco === "agente" || doEndereco === "favoritos" || doEndereco === "historico" ? (doEndereco as AbaPainel) : null,
 });

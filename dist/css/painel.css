@@ -886,7 +886,7 @@ body {
   margin: 0;
   color: var(--spro-texto);
   background: var(--spro-pagina);
-  font: 13px/1.4 var(--spro-fonte);
+  font: 13px / 1.4 var(--spro-fonte);
   -webkit-font-smoothing: antialiased;
 }
 #painel {
@@ -908,7 +908,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 12px 9px;
+  min-width: 0;
+  padding: 7px 10px 9px;
   font-weight: 500;
   color: var(--spro-suave);
   border-radius: var(--spro-raio) var(--spro-raio) 0 0;
@@ -940,6 +941,17 @@ body {
 }
 .painel-abas button[aria-selected="true"] .spro-icone {
   color: var(--spro-destaque);
+}
+.painel-abas button > span:not(.painel-conta) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* O painel e a janela do iframe: abaixo disto so cabem os icones (aria-label e title seguem la). */
+@media (max-width: 340px) {
+  .painel-abas button > span:not(.painel-conta) {
+    display: none;
+  }
 }
 .painel-conta {
   min-width: 18px;
