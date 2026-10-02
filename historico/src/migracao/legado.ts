@@ -12,7 +12,11 @@ const NIVEIS: Record<string, Nivel> = { "0": "publico", "1": "restrito", "2": "s
 function data(v: unknown): number | null {
   const m = DATA.exec(String(v ?? ""));
   if (!m) return null;
-  const t = new Date(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +(m[6] ?? 0)).getTime();
+  const [ano, mes, dia, hora, min, seg] = [+m[1]!, +m[2]!, +m[3]!, +m[4]!, +m[5]!, +(m[6] ?? 0)];
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31 || hora > 23 || min > 59 || seg > 59) return null;
+  const d = new Date(ano, mes - 1, dia, hora, min, seg);
+  if (d.getFullYear() !== ano || d.getMonth() !== mes - 1 || d.getDate() !== dia) return null;
+  const t = d.getTime();
   return Number.isFinite(t) ? t : null;
 }
 

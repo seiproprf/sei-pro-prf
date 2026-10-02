@@ -37,6 +37,12 @@ export function verificarVisita(): void {
   const sig = completar(v4, { especificacao: "segredo", nivel: "sigiloso" }, 2_003 * MIN);
   checar("completar sigiloso nao guarda texto", sig.nivel === "sigiloso" && !sig.especificacao);
 
+  const viraSig = completar(completa, { nivel: "sigiloso" }, 2_004 * MIN);
+  checar(
+    "completar com nivel sigiloso apaga o texto ja guardado",
+    viraSig.nivel === "sigiloso" && !viraSig.especificacao && !viraSig.interessados && !viraSig.assuntos,
+  );
+
   secao("historico: quando completar");
   checar("sem completadoEm precisa", precisaCompletar(v4, 2_000 * MIN));
   checar("completado ha 1 h nao precisa", !precisaCompletar(completa, 2_061 * MIN));
@@ -51,6 +57,13 @@ export function verificarVisita(): void {
   checar(
     "mescla: primeira mais antiga, ultima mais recente, texto do novo",
     m.primeira === 500 * MIN && m.ultima === completa.ultima && m.especificacao === "Pregão 12" && m.origem === undefined,
+  );
+  const atualSig = { ...registrar(undefined, { ...D, nivel: "sigiloso" }, 600 * MIN) };
+  const comTexto = { ...migrada, interessados: ["ACME"], assuntos: ["Compras"] };
+  const ms = mesclarMigrada(atualSig, comTexto);
+  checar(
+    "mescla com atual sigiloso nao traz texto da migrada",
+    ms.nivel === "sigiloso" && !ms.especificacao && !ms.interessados && !ms.assuntos,
   );
   checar("mescla sem atual devolve a migrada", mesclarMigrada(undefined, migrada) === migrada);
   const lista = [1, 5, 3, 4, 2].map((n) => ({ ...v1, id: String(n), ultima: n }));

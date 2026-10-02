@@ -96,6 +96,17 @@ export async function verificarRepositorio(): Promise<void> {
   );
   checar("importar mescla: unidades da atual e sem origem", mesclada?.unidades[0]?.sigla === "GPF" && mesclada.origem === undefined);
   checar("importar cria a que nao existia", (await rp.obter("77"))?.origem === "legado");
+  const sigilosa = { ...antiga, id: "88", nivel: "sigiloso" as const, especificacao: "segredo", interessados: ["X"], assuntos: ["Y"] };
+  await rp.importar([sigilosa]);
+  const gs = await rp.obter("88");
+  checar("importar sigiloso novo nao guarda texto", gs?.nivel === "sigiloso" && !gs.especificacao && !gs.interessados && !gs.assuntos);
+  await rp.registrarVisita({ ...dados("4"), nivel: "sigiloso" }, agora);
+  await rp.importar([{ ...sigilosa, id: "4" }]);
+  const g4 = await rp.obter("4");
+  checar(
+    "importar sobre sigiloso existente nao guarda texto",
+    g4?.nivel === "sigiloso" && !g4.especificacao && !g4.interessados && !g4.assuntos,
+  );
   checar("importar lista vazia nao faz nada", (await rp.importar([])) === 0);
 
   secao("historico: meta");

@@ -67,6 +67,8 @@ export function verificarMigracao(): void {
     "texto",
   ]);
   checar("conta os ignorados e mantem o bom", ruins.ignorados === 6 && ruins.visitas.length === 1 && ruins.visitas[0]?.id === "23");
+  const foraFaixa = converterLegado([item("24", "2024-13-45 99:99"), item("25", "2024-02-31 10:00:00"), item("26", "2024-03-05 24:00:00")]);
+  checar("data fora da faixa e ignorada, sem rolar", foraFaixa.ignorados === 3 && foraFaixa.visitas.length === 0);
   checar("total e o numero de itens do array", ruins.total === 7);
   checar(
     "sem id_procedimento ignora",
@@ -86,6 +88,18 @@ export function verificarMigracao(): void {
     d?.primeira === new Date(2024, 2, 1, 9).getTime() && d.ultima === new Date(2024, 4, 1, 10).getTime(),
   );
   checar("o resto vem do item mais recente", d?.especificacao === "Pregão 12");
+  const sigTexto = { nivel_acesso: "2" };
+  for (const ordem of [
+    [0, 1],
+    [1, 0],
+  ]) {
+    const itens = [item("33", "2024-01-01 10:00:00"), item("33", "2024-05-01 10:00:00", sigTexto)];
+    const s = converterLegado(ordem.map((i) => itens[i])).visitas[0];
+    checar(
+      `duplicado com sigiloso mais recente nao guarda texto (ordem ${ordem})`,
+      s?.nivel === "sigiloso" && !s.especificacao && !s.assuntos,
+    );
+  }
   const dupInv = converterLegado([
     item("32", "2024-03-01 09:00:00", { descricao: "antigo" }),
     item("32", "2024-05-01 10:00:00", { descricao: "novo" }),

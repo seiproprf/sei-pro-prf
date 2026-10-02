@@ -21,7 +21,7 @@ export function casaBusca(v: Visita, busca: string): boolean {
   const t = normalizarTexto(busca);
   if (!t) return true;
   const d = digitos(busca);
-  if (NUMERICA.test(busca.trim()) && d.length >= 4) return digitos(v.protocolo).includes(d);
+  if (NUMERICA.test(busca.trim()) && d.length >= 4 && digitos(v.protocolo).includes(d)) return true;
   const texto = textoDeBusca(v);
   return t.split(" ").every((p) => texto.includes(p));
 }

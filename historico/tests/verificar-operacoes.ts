@@ -59,6 +59,9 @@ export function verificarOperacoes(): void {
   checar("sigla da unidade", casaBusca(V[1]!, "sead"));
   checar("todas as palavras", !casaBusca(V[0]!, "pregao cgu"));
   checar("texto com ano nao casa so pelo numero", !casaBusca(V[3]!, "licitação 2025"));
+  checar("numerica tambem acha na especificacao", casaBusca(V[0]!, "12/2024"));
+  checar("numerica acha pelos digitos do protocolo", casaBusca(V[3]!, "2025"));
+  checar("numerica que nao esta em lugar nenhum nao casa", !casaBusca(V[3]!, "99/9999"));
   checar("busca vazia casa tudo", casaBusca(V[3]!, "  "));
 
   secao("historico: filtros (OU no campo, E entre campos)");
@@ -73,7 +76,7 @@ export function verificarOperacoes(): void {
   checar("nos favoritos", ids(filtrar(V, { situacoes: ["favoritos"] }, ap)) === "2");
   checar("fora dos favoritos", ids(filtrar(V, { situacoes: ["foraFavoritos"] }, ap)) === "1,3,4");
   checar(
-    "sem favoritos ativos, foraFavoritos nao filtra nada",
+    "sem favoritos ativos, foraFavoritos nao casa nenhum",
     filtrar(V, { situacoes: ["foraFavoritos"] }, { agora, favoritos: null }).length === 0,
   );
   checar("visitados mais de uma vez", ids(filtrar(V, { situacoes: ["repetidos"] }, ap)) === "1");

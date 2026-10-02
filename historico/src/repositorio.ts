@@ -3,7 +3,7 @@ import { Colecao } from "@comum/armazenamento/colecao";
 import { chaveMeta, prefixoVisitas } from "./modelo/constantes";
 import { inicioDoDia } from "./modelo/dias";
 import type { DadosCompletos, DadosVisita, MetaHistorico, PeriodoApagar, Visita } from "./modelo/tipos";
-import { aPodar, completar, mesclarMigrada, registrar, visitaValida } from "./modelo/visita";
+import { aPodar, completar, mesclarMigrada, registrar, semDadosSensiveis, visitaValida } from "./modelo/visita";
 
 /** Início do período, no calendário local (dias por Date, não por 24 h fixas). */
 export function corteDoPeriodo(p: PeriodoApagar, agora: number): number {
@@ -72,7 +72,12 @@ export class RepositorioHistorico {
   async importar(visitas: Visita[]): Promise<number> {
     if (!visitas.length) return 0;
     const atuais = new Map((await this.listar()).map((v) => [v.id, v]));
-    await this.col.gravarVarios(visitas.map((m) => [m.id, mesclarMigrada(atuais.get(m.id), m)]));
+    await this.col.gravarVarios(
+      visitas.map((m) => {
+        const v = mesclarMigrada(atuais.get(m.id), m);
+        return [m.id, v.nivel === "sigiloso" ? semDadosSensiveis(v) : v];
+      }),
+    );
     return visitas.length;
   }
   async meta(): Promise<MetaHistorico> {
