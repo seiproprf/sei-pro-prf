@@ -16,7 +16,7 @@ import { hipotesesDoFormulario, mudanca, NIVEIS, NOME_NIVEL, type OpcoesEscrita,
 import { escolherItem, Formulario, type ItemLupa } from "../formulario/formulario";
 import { linkDaAcao, parametros } from "../links/links";
 import { ErroSei } from "../sessao/erros";
-import type { OpcoesHttp } from "../sessao/http";
+import type { Http, OpcoesHttp } from "../sessao/http";
 import type { Sei } from "../sei";
 
 export interface Processo {
@@ -40,33 +40,54 @@ function textoOpcaoSelecionada(f: Formulario, nome: string): string {
   return f.opcoes(nome).find((o) => o.valor === v && v !== "null")?.texto ?? "";
 }
 
-async function formularioProcesso(sei: Sei, arv: Arvore, op?: OpcoesHttp): Promise<{ form: Formulario; editavel: boolean }> {
+async function formularioProcesso(http: Http, arv: Arvore, op?: OpcoesHttp): Promise<{ form: Formulario; editavel: boolean }> {
   const alterar = acaoNaArvore(arv, "procedimento_alterar");
   const link = alterar ?? acaoNaArvore(arv, "procedimento_consultar");
   if (!link) throw new ErroSei("SEI_ACAO_INDISPONIVEL", `O SEI n\u00E3o oferece a consulta do processo ${arv.protocolo} para voc\u00EA.`);
-  return { form: await Formulario.abrir(sei.http, link, "#frmProcedimentoCadastro", op), editavel: Boolean(alterar) };
+  return { form: await Formulario.abrir(http, link, "#frmProcedimentoCadastro", op), editavel: Boolean(alterar) };
 }
 
 function nomes(itens: ItemLupa[]): string[] {
   return itens.map((i) => i.texto).filter(Boolean);
 }
 
-export async function consultarProcesso(sei: Sei, referencia: string, op?: OpcoesHttp): Promise<Processo> {
-  const arv = await sei.arvore(referencia, op);
-  if (arv.nivel === "sigiloso") throw new ErroSei("SEI_SIGILOSO", "Processo sigiloso: o agente n\u00E3o atua nele.");
-  const { form, editavel } = await formularioProcesso(sei, arv, op);
+export interface MetadadosProcesso {
+  tipo: string;
+  especificacao: string;
+  assuntos: string[];
+  interessados: string[];
+  observacoes: string;
+  editavel: boolean;
+}
+
+/**
+ * Metadados pelo link que a árvore já aberta oferece, sem buscar a árvore de novo
+ * (buscar a árvore de processo aberto na unidade pode marcar "recebido"). Um GET.
+ * Não checa sigilo: quem chama decide.
+ */
+export async function consultarDaArvore(http: Http, arv: Arvore, op?: OpcoesHttp): Promise<MetadadosProcesso> {
+  const { form, editavel } = await formularioProcesso(http, arv, op);
   return {
-    idProcedimento: arv.idProcedimento,
-    protocolo: arv.protocolo,
     tipo: textoOpcaoSelecionada(form, "selTipoProcedimento") || arv.tipo,
     especificacao: form.valor("txtDescricao") ?? "",
     assuntos: nomes(form.itensLupa("selAssuntos")),
     interessados: nomes(form.itensLupa("selInteressadosProcedimento")),
     observacoes: form.valor("txaObservacoes") ?? "",
+    editavel,
+  };
+}
+
+export async function consultarProcesso(sei: Sei, referencia: string, op?: OpcoesHttp): Promise<Processo> {
+  const arv = await sei.arvore(referencia, op);
+  if (arv.nivel === "sigiloso") throw new ErroSei("SEI_SIGILOSO", "Processo sigiloso: o agente n\u00E3o atua nele.");
+  const meta = await consultarDaArvore(sei.http, arv, op);
+  return {
+    idProcedimento: arv.idProcedimento,
+    protocolo: arv.protocolo,
+    ...meta,
     nivel: arv.nivel,
     hipotese: arv.hipotese,
     marcadores: arv.marcadores,
-    editavel,
     documentos: arv.documentos.length,
   };
 }
@@ -92,7 +113,7 @@ export async function alterarProcesso(
 ): Promise<ResultadoEscrita> {
   const arv = await sei.arvore(referencia, { sinal: op.sinal });
   if (arv.nivel === "sigiloso") throw new ErroSei("SEI_SIGILOSO", "Processo sigiloso: o agente n\u00E3o atua nele.");
-  const { form, editavel } = await formularioProcesso(sei, arv, { sinal: op.sinal });
+  const { form, editavel } = await formularioProcesso(sei.http, arv, { sinal: op.sinal });
   if (!editavel) throw new ErroSei("SEI_ACAO_INDISPONIVEL", `O processo ${arv.protocolo} n\u00E3o est\u00E1 aberto na sua unidade.`);
 
   const mudancas: ResultadoEscrita["mudancas"] = [];

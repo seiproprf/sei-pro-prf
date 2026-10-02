@@ -1,27 +1,6 @@
 import { lerContexto } from "@nucleo/sei";
-import type { Pagina } from "@nucleo/sessao/http";
+import { paginaDe } from "@nucleo/sessao/pagina";
 import type { ContextoAba } from "../modelo/tipos";
-
-/** A tela que o usuário já tem aberta, no formato que o núcleo lê, sem requisição. */
-export function paginaDe(doc: Document, url = doc.location?.href ?? "https://sei.invalido/sei/controlador.php"): Pagina {
-  return {
-    url,
-    status: 200,
-    get html() {
-      return doc.documentElement.outerHTML;
-    },
-    doc,
-  };
-}
-
-/** O cabeçalho (usuário, unidade) está na janela de topo; os iframes do SEI são da mesma origem. */
-export function documentoTopo(): Document {
-  try {
-    return window.top?.document ?? document;
-  } catch {
-    return document;
-  }
-}
 
 export function contextoDe(doc: Document, temaEscuro: boolean, url?: string): ContextoAba | null {
   const c = lerContexto(paginaDe(doc, url));
@@ -37,3 +16,4 @@ export function contextoDe(doc: Document, temaEscuro: boolean, url?: string): Co
 }
 
 export { corDoTemaSei, temaEscuroLegado } from "@comum/pagina/tema";
+export { documentoTopo, paginaDe } from "@nucleo/sessao/pagina";
