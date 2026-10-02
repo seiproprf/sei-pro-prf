@@ -143,15 +143,29 @@ function initInsertNewLinksMenu(TimeOut = 9000) {
         }, 500);
     }
 }
+// Icones dos itens no menu do SEI 4/5, no padrao dos nativos (SVG 24x24, desenhos do Material Design Icons).
+// A cor vem do link (currentColor), que o SEI pinta de #E7E7E7, a mesma dos SVGs nativos. O SEI 3 nao tem icones no menu.
+var iconesMenuPro = {
+    link: 'M10.59,13.41C11,13.8 11,14.44 10.59,14.83C10.2,15.22 9.56,15.22 9.17,14.83C7.22,12.88 7.22,9.71 9.17,7.76V7.76L12.71,4.22C14.66,2.27 17.83,2.27 19.78,4.22C21.73,6.17 21.73,9.34 19.78,11.29L18.29,12.78C18.3,11.96 18.17,11.14 17.89,10.36L18.36,9.88C19.54,8.71 19.54,6.81 18.36,5.64C17.19,4.46 15.29,4.46 14.12,5.64L10.59,9.17C9.41,10.34 9.41,12.24 10.59,13.41M13.41,9.17C13.8,8.78 14.44,8.78 14.83,9.17C16.78,11.12 16.78,14.29 14.83,16.24V16.24L11.29,19.78C9.34,21.73 6.17,21.73 4.22,19.78C2.27,17.83 2.27,14.66 4.22,12.71L5.71,11.22C5.7,12.04 5.83,12.86 6.11,13.65L5.64,14.12C4.46,15.29 4.46,17.19 5.64,18.36C6.81,19.54 8.71,19.54 9.88,18.36L13.41,14.83C14.59,13.66 14.59,11.76 13.41,10.59C13,10.2 13,9.56 13.41,9.17Z',
+    historico: 'M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3',
+    pdf: 'M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3M9.5 11.5C9.5 12.3 8.8 13 8 13H7V15H5.5V9H8C8.8 9 9.5 9.7 9.5 10.5V11.5M14.5 13.5C14.5 14.3 13.8 15 13 15H10.5V9H13C13.8 9 14.5 9.7 14.5 10.5V13.5M18.5 10.5H17V11.5H18.5V13H17V15H15.5V9H18.5V10.5M12 10.5H13V13.5H12V10.5M7 10.5H8V11.5H7V10.5Z',
+    lote: 'M22,4H14L12,2H6A2,2 0 0,0 4,4V16A2,2 0 0,0 6,18H22A2,2 0 0,0 24,16V6A2,2 0 0,0 22,4M2,6H0V11H0V20A2,2 0 0,0 2,22H20V20H2V6Z'
+};
+function iconeMenuPro(nome) {
+    if (!isNewSEI || !iconesMenuPro[nome]) return '';
+    // O desenho das pastas ocupa os 24px inteiros; a folga no viewBox o deixa do tamanho dos outros.
+    var viewBox = nome == 'lote' ? '-1 -1 26 26' : '0 0 24 24';
+    return '<svg class="iconMenuPro" width="24" height="24" viewBox="'+viewBox+'" aria-hidden="true"><path fill="currentColor" d="'+iconesMenuPro[nome]+'"/></svg>';
+}
 function insertNewLinksMenu() {
     // A trava olha o primeiro item desta lista, e nao a classe: o item "Agente de IA" (agente-ia/src/ponte/aba.ts)
     // usa a mesma classe newLinksMenuPro e, entrando antes, fazia estes quatro itens nunca aparecerem (desde a 2.0).
     if ($(idMenu).find('#pesquisaLinkPermanentePro').length == 0) {
-        var newLinkMenu =  '<li><a id="pesquisaLinkPermanentePro" class="newLinksMenuPro" onclick="initBoxSearchProtocoloSEI()"><span>Pesquisar Link Permanente</span></a></li>';
+        var newLinkMenu =  '<li><a id="pesquisaLinkPermanentePro" class="newLinksMenuPro" onclick="initBoxSearchProtocoloSEI()">'+iconeMenuPro('link')+'<span>Pesquisar Link Permanente</span></a></li>';
 
-        if (checkConfigValue('historicoproc')) newLinkMenu += '<li><a id="historicoProcessosPro" class="newLinksMenuPro" onclick="getHistoryProcessosPro()"><span>Hist\u00F3rico de Processos Visitados</span></a></li>';
-        if (checkConfigValue('ferramentaspdf')) newLinkMenu += '<li><a id="ferramentasPdfPro" class="newLinksMenuPro" href="'+URL_SPRO+'html/ferramentas-pdf.html" target="_blank" rel="noopener"><span>Ferramentas de PDF</span></a></li>';
-        if (checkConfigValue('proclote')) newLinkMenu += '<li><a id="processosLotePro" class="newLinksMenuPro" onclick="if(typeof initProcLoteModal===\'function\')initProcLoteModal()"><span>Processos em Lote</span></a></li>';
+        if (checkConfigValue('historicoproc')) newLinkMenu += '<li><a id="historicoProcessosPro" class="newLinksMenuPro" onclick="getHistoryProcessosPro()">'+iconeMenuPro('historico')+'<span>Hist\u00F3rico de Processos Visitados</span></a></li>';
+        if (checkConfigValue('ferramentaspdf')) newLinkMenu += '<li><a id="ferramentasPdfPro" class="newLinksMenuPro" href="'+URL_SPRO+'html/ferramentas-pdf.html" target="_blank" rel="noopener">'+iconeMenuPro('pdf')+'<span>Ferramentas de PDF</span></a></li>';
+        if (checkConfigValue('proclote')) newLinkMenu += '<li><a id="processosLotePro" class="newLinksMenuPro" onclick="if(typeof initProcLoteModal===\'function\')initProcLoteModal()">'+iconeMenuPro('lote')+'<span>Processos em Lote</span></a></li>';
         if (checkConfigValue('ordenarmenu')) initMenuSEISortable();
         $(idMenu).append(newLinkMenu);
     }
