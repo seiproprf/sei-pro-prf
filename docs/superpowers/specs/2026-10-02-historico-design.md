@@ -40,12 +40,16 @@ app numa página da extensão, mesmo visual, lista com seletores inteligentes e 
 
 ```
 sei-comum/   + ponte/lateral.ts       os dois lados da ponte do painel lateral, com canal e chave por parâmetro
+             + ponte/conexaoDaAba.ts  o app aceita a porta da própria aba (canal por parâmetro)
              + pagina/abrir.ts        abrir processo sem montar link (linha da caixa ou pesquisa rápida)
-             + pagina/contexto.ts     paginaDe, documentoTopo, temaEscuroLegado, corDoTemaSei
-             + pagina/aviso.ts        aviso no rodapé da tela do SEI
-             + painel/shell.ts        o shell da barra lateral (sai de favoritos/src/shell/painel.ts)
-             + ui/lista.css           linha, fichas, barra de filtros e busca, com classes spro-lista-*
+             + pagina/tema.ts         temaEscuroLegado, corDoTemaSei, destaqueDaCorSei
+             + ui/aviso.ts            aviso (toast) do app, com emissor trocável
+             + csv.ts                 gerarCsv (planilha brasileira)
+             + painel/shell.ts        o shell da barra lateral, genérico nas abas (sai de favoritos/src/shell/painel.ts)
+             + ui/lista.css           linha, fichas, barra de filtros, busca e diálogo, com classes spro-lista-*
 sei-nucleo/  + dominio/processo.ts: consultarDaArvore(http, arvore) (sem buscar a árvore de novo)
+             + sessao/pagina.ts: paginaDe, documentoTopo (dependem do tipo Pagina do núcleo; o sei-comum
+               não depende do núcleo)
 favoritos/   passa a importar do sei-comum o que saiu dele (sem mudar comportamento); o shell vira
              um invólucro fino que passa as três abas ao sei-comum
 historico/   (novo)
@@ -93,7 +97,7 @@ visual sem ganho para o usuário. Fica anotado como adoção futura.
 | Chave | Conteúdo |
 |---|---|
 | `historico/<host>\|<login>/v/<idProcedimento>` | `Visita` |
-| `historico/<host>\|<login>/meta` | `{ migradoEm?: number; apagarLegado?: true }` |
+| `historico/<host>\|<login>/meta` | `{ migradoEm?, migrados?, avisoMigracao?, apagarLegado? }` |
 | `historico/preferencias` | `Preferencias` |
 | `historico/lateralAberto` | anúncio do painel lateral (`Abertura` da sei-comum) |
 
@@ -117,6 +121,7 @@ interface Visita {
   ultima: number;
   vezes: number;
   completadoEm?: number;       // última leitura do Consultar/Alterar Processo
+  tentouEm?: number;           // tentativa de completar em curso ou que falhou (espera 2 min)
   origem?: "legado";
 }
 
@@ -134,7 +139,8 @@ interface Preferencias {
   `ultima` é atualizada. Recarregar a árvore depois de criar um documento não conta.
 - **Unidade:** a da tela vai para o início de `unidades`, sem repetir, e a lista guarda até 10.
 - **Limite:** depois de gravar, se o total passar do limite, saem as visitas de `ultima` mais
-  antiga. A poda roda no máximo 1 vez por minuto por aba, ou na hora em que o limite muda.
+  antiga. A poda conta só os nomes das chaves (`getKeys`) e só lê as visitas quando passou do
+  limite. Também roda na hora em que o limite muda.
 - **Sigiloso:** só `id`, `protocolo`, `tipo`, `nivel`, `unidades` e os horários. Se o processo
   **vira** sigiloso, a visita perde especificação, interessados e assuntos. Nenhum GET de
   consulta.
