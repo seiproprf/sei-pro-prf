@@ -1,0 +1,101 @@
+/*
+ * Página do histórico (html/historico.html) nos dois modos: #modo=modal, num iframe
+ * sobre a tela do SEI, e #modo=lateral, na aba da barra lateral. A lista vem de
+ * sei-comum/src/ui/lista.css e os tokens de sei-comum/src/ui/base.css.
+ *
+ * Tema: nada aqui. O escuro e a cor do SEI vêm de base.css, como no embutido do
+ * Favoritos: o app põe html[data-tema="escuro"] (modal, seguindo o SEI) ou não
+ * põe nada (lateral, seguindo o sistema), e html[data-cor-sei] com --spro-cor-sei.
+ *
+ * Largura: abaixo de 560 px de app (e, portanto, de 520 px de janela) a busca
+ * ocupa a linha inteira e os seletores quebram em duas colunas (lista.css).
+ */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--spro-texto);
+  font: 13px / 1.45 var(--spro-fonte);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * O app em coluna: cabeçalho, busca, fichas e resumo ficam no topo, e só a lista
+ * (.spro-lista-corpo) rola. Os cabeçalhos dos dias grudam no topo dela.
+ */
+#app {
+  container-type: inline-size;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#app > * {
+  flex: none;
+}
+#app > .spro-lista-corpo {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 2px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* ---------- Lateral (aba da barra lateral) ---------- */
+html[data-modo="lateral"],
+html[data-modo="lateral"] body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--spro-pagina);
+}
+html[data-modo="lateral"] #app {
+  height: 100%;
+  padding: 10px;
+  /* Painel muito baixo: a lista guarda um mínimo e o app inteiro rola. */
+  overflow-y: auto;
+}
+html[data-modo="lateral"] #app > .spro-lista-corpo {
+  min-height: 120px;
+}
+/* A barra de seleção vai para o fim, presa ao rodapé, enquanto a lista rola (como no Favoritos). */
+html[data-modo="lateral"] .spro-lista-lote-lugar {
+  order: 1;
+}
+
+/* ---------- Modal (iframe transparente sobre a tela do SEI) ---------- */
+html[data-modo="modal"],
+html[data-modo="modal"] body {
+  background: transparent;
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+dialog.hist-modal[open] {
+  width: min(1100px, calc(100vw - 32px));
+  height: min(860px, calc(100vh - 32px));
+  max-height: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* O fundo da lateral: as listas brancas sobre ele, e o cabeçalho do dia (lista.css) da mesma cor. */
+  background: var(--spro-pagina);
+}
+/* O showModal() pode focar o próprio diálogo: ele é a moldura, não um controle (o Tab segue para os botões). */
+dialog.hist-modal:focus-visible {
+  outline: none;
+}
+dialog.hist-modal::backdrop {
+  background: rgb(16 24 40 / 45%);
+}
+dialog.hist-modal #app {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 16px 16px;
+}
+/* Janela estreita: a margem da lateral, para o número do processo caber inteiro na linha. */
+@media (max-width: 520px) {
+  dialog.hist-modal #app {
+    padding: 10px;
+  }
+}

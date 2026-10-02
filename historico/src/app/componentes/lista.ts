@@ -28,7 +28,11 @@ export function renderLista(visitas: Visita[], o: OpcoesLista): HTMLElement {
     ? agrupar(visitas, o.agora).flatMap((g) => {
         const linhas = g.itens.filter((v) => desenhados.has(v.id));
         return linhas.length
-          ? [h("h3", { class: "spro-lista-grupo" }, `${ROTULO_PERIODO[g.grupo]} · ${g.itens.length}`), lista(linhas)]
+          ? [
+              // A contagem num span, mais fraca que o rótulo (lista.css).
+              h("h3", { class: "spro-lista-grupo" }, `${ROTULO_PERIODO[g.grupo]} `, h("span", {}, `· ${g.itens.length}`)),
+              lista(linhas),
+            ]
           : [];
       })
     : [lista(mostradas)];

@@ -3,10 +3,12 @@
  * Build do Historico.
  *
  *   dist/js/init_historico.js  content script (IIFE, mundo isolado, todos os frames)
- * As demais entradas (app, painel) entram nas Tasks 12 e 13. Saidas todas ASCII (portao de bytes abaixo).
+ *   dist/html/historico.html   copia de estatico/ (modal e aba da barra lateral)
+ *   dist/css/historico.css     sei-comum/src/ui/base.css + sei-comum/src/ui/lista.css + estatico/historico.css
+ * A entrada do app (dist/js/historico/app.js) entra na Task 13. JS todo ASCII (portao de bytes abaixo).
  */
 import { build } from "esbuild";
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +35,15 @@ await build({ ...comum, entryPoints: [resolve(AQUI, "src/pagina/main.ts")], outf
 
 const SAIDAS = ["js/init_historico.js"];
 
+// Pagina do app e CSS: base + lista (sei-comum, o desenho do Favoritos) + o do historico.
+await mkdir(join(DIST, "html"), { recursive: true });
+await mkdir(join(DIST, "css"), { recursive: true });
+await copyFile(resolve(AQUI, "estatico/historico.html"), join(DIST, "html", "historico.html"));
+const css = await Promise.all(
+  ["../sei-comum/src/ui/base.css", "../sei-comum/src/ui/lista.css", "estatico/historico.css"].map((f) => readFile(resolve(AQUI, f), "utf8")),
+);
+await writeFile(join(DIST, "css", "historico.css"), `/* GERADO por historico/build.mjs. NAO EDITE ESTE ARQUIVO. */\n${css.join("\n")}`);
+
 // Regra do projeto: JS da extensao so com ASCII (conferencia byte a byte, como no Favoritos).
 for (const f of SAIDAS) {
   const bytes = await readFile(join(DIST, f));
@@ -45,4 +56,4 @@ for (const f of SAIDAS) {
 
 const kb = async (f) => `${Math.round((await stat(join(DIST, f))).size / 1024)} KB`;
 console.log("\nHistorico -- build");
-for (const f of SAIDAS) console.log(`  ${f.padEnd(26)} ${await kb(f)}`);
+for (const f of [...SAIDAS, "html/historico.html", "css/historico.css"]) console.log(`  ${f.padEnd(26)} ${await kb(f)}`);
