@@ -2,6 +2,22 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.4
+02/10/2026
+
+Os favoritos foram refeitos do zero, por enquanto no SEI Pro Lab. A ferramenta de links SEI em lote passa a reconhecer números de processo, e os itens do SEI Pro no menu lateral ganham ícones.
+
+- **Novo — os favoritos foram reescritos, e chegam primeiro ao *SEI Pro Lab*, a versão dos testadores, no Chrome e no Edge.** Quem usa a versão da loja continua com os favoritos de sempre e recebe os novos depois dessa validação. Os favoritos agora ficam guardados **na própria extensão**: limpar o cache do navegador não os apaga mais. Há duas listas, a da **unidade** e a **Pessoal**, que aparece em todas as unidades. Cada favorito pode ter pasta, etiquetas coloridas, nota, prazo, lembrete, documentos favoritos e local no mapa. Na primeira vez, o SEI Pro oferece trazer os favoritos da versão anterior. Nada é apagado
+- Ainda nos favoritos: **um selo mostra o que mudou** desde a última vez que você viu o processo (*2 documentos novos*, *saiu da sua unidade*…). O SEI Pro faz isso sem abrir processo nenhum por conta própria: ele lê a sua caixa e a árvore que você abre. Lembretes vencidos sobem para **Para hoje**, e você pode **fixar no topo** os processos que quer sempre à vista. O prazo pode ir até uma data, contar N dias corridos ou úteis, começar na assinatura de um documento ou no próximo documento de um tipo
+- **A lista tem filtros que aceitam várias escolhas ao mesmo tempo e uma busca que ignora acento** (*licitacao* acha *Licitação*). Ela aparece abaixo da lista de processos, como sempre, ou **no painel lateral**, ao lado de qualquer tela do SEI. No painel lateral ela acompanha o tema claro ou escuro do sistema. As janelas de edição abrem no meio da tela visível, mesmo com a página rolada até o fim
+- **Para levar os favoritos a outro computador**, escolha entre um Texto Padrão da unidade (só com o seu consentimento: esse texto fica visível para a unidade, e a lista Pessoal e os sigilosos nunca vão para lá), um arquivo numa pasta da nuvem (Chrome e Edge) ou as cópias diárias que o SEI Pro guarda neste navegador. O Agente de IA também lê a sua lista, sem os sigilosos
+- O título **Controle de Processos** ganha o mesmo desenho do título dos favoritos: o ícone de pasta e a seta que recolhe a lista de processos
+- **[Converter os números SEI do texto em links](../pages/LINKSEILOTE.md) agora converte também os números de processo.** Até aqui a ferramenta só encontrava números de documento, e quem citava outro processo num despacho tinha de fazer o link à mão. Agora ela reconhece o formato do processo em que você está e os números que terminam em ano e dígito verificador: o padrão federal (*50300.018905/2018-67*) e a maioria dos formatos estaduais. Isso vale mesmo quando o mesmo SEI atende órgãos com formatos diferentes. Na lista de conferência, cada número diz se é documento ou processo
+- **O número do próprio processo vem desmarcado.** Quase todo despacho repete o número do processo em que está, no cabeçalho ou no texto. Ele aparece na lista com a etiqueta *este processo* e só vira link se você marcar
+- Ainda nessa ferramenta, no SEI 3 e 4: **o documento passa a ser lido inteiro.** Em modelos com mais de uma seção editável, só uma delas era percorrida, e os números do texto principal ficavam de fora. É o caso do despacho do SEI SP, que traz a seção *Processo nº / Interessado* antes do texto. E o aviso do final não aponta mais como "sem link" um número que você mesmo desmarcou
+- **Os itens do SEI Pro no menu lateral ganharam ícones (SEI 4 e 5).** *Agente de IA*, *Pesquisar Link Permanente*, *Histórico de Processos Visitados*, *Ferramentas de PDF* e *Processos em Lote* agora têm ícone próprio, no mesmo desenho e alinhamento dos itens do SEI. No modo *SEI Slim*, aparecem com os ícones do tema no lugar da seta genérica
+- Depois de uma atualização com novidades, esta página pode convidar você a **avaliar o SEI Pro na loja**. O convite aparece no máximo uma vez a cada versão de novidades, e "Agora não" o adia por 60 dias
+
 ### Versão 2.3.1
 01/10/2026
 
