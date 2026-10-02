@@ -184,25 +184,26 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -0.03em; line-height: 
 .novidades { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 80px; }
 .novidades-lado { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
 .novidades-lado > p { margin: 0; font-size: 17px; color: var(--tinta-2); }
-.caixa-escura { margin-top: 20px; width: 100%; padding: 24px; border-radius: var(--raio); background: var(--tinta); color: #fff; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
-.caixa-escura strong { font: 700 22px var(--display); }
-.caixa-escura p { margin: 0; font-size: 15px; color: var(--tinta-inv); }
+/* Cartão "Novidades por e-mail" (home e histórico): claro, no padrão das caixas da documentação. */
+.caixa-clara { margin-top: 20px; width: 100%; padding: 24px; border-radius: var(--raio); border: 1px solid var(--linha); background: #fff; color: var(--tinta); display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.caixa-clara strong { font: 700 22px var(--display); }
+.caixa-clara p { margin: 0; font-size: 15px; color: var(--tinta-2); }
 .form-novidades { width: 100%; display: flex; flex-direction: column; gap: 10px; margin: 4px 0 0; }
 .form-novidades-linha { display: flex; gap: 8px; flex-wrap: wrap; }
-.form-novidades input[type=email] { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 14px; border: 1px solid #2B3D57; border-radius: 10px; background: #1A2B44; color: #fff; font: 400 15px var(--texto); }
-.form-novidades input[type=email]::placeholder { color: #8796AA; }
-.form-novidades input[type=email]:focus { outline: 2px solid #7CC0EE; outline-offset: 1px; }
+.form-novidades input[type=email] { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 14px; border: 1px solid var(--linha-forte); border-radius: 10px; background: var(--papel); color: var(--tinta); font: 400 15px var(--texto); }
+.form-novidades input[type=email]::placeholder { color: #7A8494; }
+.form-novidades input[type=email]:focus { outline: 2px solid var(--azul); outline-offset: 1px; }
 .form-novidades .btn { flex: 0 0 auto; }
 .form-novidades .btn:disabled { opacity: 0.7; cursor: wait; }
-.caixa-escura .form-novidades-msg { min-height: 0; font-size: 14px; color: var(--tinta-inv); }
-.caixa-escura .form-novidades-msg:empty { display: none; }
-.caixa-escura .form-novidades-msg.ok { color: #B9E39A; }
-.caixa-escura .form-novidades-msg.erro { color: #F5B5AE; }
-.caixa-escura .form-novidades-nota { font-size: 13px; color: #8796AA; }
-.caixa-escura .form-novidades-nota a { color: var(--tinta-inv); }
+.caixa-clara .form-novidades-msg { font-size: 14px; color: var(--tinta-2); }
+.caixa-clara .form-novidades-msg:empty { display: none; }
+.caixa-clara .form-novidades-msg.ok { color: var(--verde-texto); }
+.caixa-clara .form-novidades-msg.erro { color: #8A1C1C; }
+.caixa-clara .form-novidades-nota { font-size: 13px; color: var(--tinta-2); }
+.caixa-clara .form-novidades-nota a { color: var(--azul); }
 .form-novidades .isca { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .prosa .novidades-email { margin: 0 0 32px; }
-.prosa .novidades-email strong { color: #fff; }
+.prosa .novidades-email strong { color: var(--tinta); }
 .prosa .novidades-email p { margin: 0; }
 .versoes { margin: 0; padding: 0; list-style: none; }
 .versoes li { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 32px; padding: 28px 0; border-top: 1px solid var(--linha); }
