@@ -82,15 +82,37 @@ export async function verificarNovidades(): Promise<void> {
   };
   checar(
     "filtro com novidade",
-    filtrar(lista, { novidade: true }, apoio)
+    filtrar(lista, { situacoes: ["novidade"] }, apoio)
       .map((x) => x.id)
       .join() === "1",
   );
   checar(
     "filtro lembrete para hoje",
-    filtrar(lista, { lembrete: true }, apoio)
+    filtrar(lista, { situacoes: ["lembrete"] }, apoio)
       .map((x) => x.id)
       .join() === "2",
+  );
+  checar(
+    "situacoes = qualquer uma (novidade OU lembrete)",
+    filtrar(lista, { situacoes: ["novidade", "lembrete"] }, apoio)
+      .map((x) => x.id)
+      .join() === "1,2",
+  );
+  checar(
+    "situacao: com documentos favoritos",
+    filtrar(lista, { situacoes: ["documentos"] }, apoio)
+      .map((x) => x.id)
+      .join() === "3",
+  );
+  checar(
+    "situacao: fora da unidade (pela ultima leitura)",
+    filtrar(
+      lista,
+      { situacoes: ["fora"] },
+      { ...apoio, atual: (x: Favorito) => (x.id === "3" ? I({ abertoNaUnidade: false }) : undefined) },
+    )
+      .map((x) => x.id)
+      .join() === "3",
   );
   checar(
     "busca pelo numero do documento favorito",

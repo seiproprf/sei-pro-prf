@@ -1,9 +1,11 @@
 import { parDePortas } from "@comum/ponte/parDePortas";
 import { criarRpc } from "@comum/ponte/rpc";
 import { abrirProcesso, localizarAbertura } from "../src/pagina/abrir";
+import { avisoNaPagina } from "../src/pagina/aviso";
 import { tratadoresDaAba } from "../src/pagina/executor";
 import { inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
-import { checar, instalarDom, lanca, secao, telaSei } from "./util";
+import { criarSobreposicao } from "../src/pagina/sobreposicao";
+import { botao, checar, instalarDom, lanca, secao, telaSei, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 export async function verificarPainel(): Promise<void> {
@@ -87,4 +89,57 @@ export async function verificarPainel(): Promise<void> {
   checar("abre pela linha", (await app.chamar("abrirProcesso", { id: "5", protocolo: "5/2026" })) === "linha");
   const legado = await app.chamar<{ local: { favorites: unknown[] }; arquivo: unknown }>("lerLegado");
   checar("le os favoritos antigos do localStorage", legado.local.favorites.length === 1 && legado.arquivo === null);
+
+  secao("dialogo do painel embutido no meio da tela (sobreposicao)");
+  const docS = instalarDom(
+    '<html><body><div id="corpo"><iframe id="f" style="width: 100%; height: 300px; border: 0;"></iframe></div></body></html>',
+  );
+  const fr = docS.getElementById("f") as HTMLIFrameElement;
+  const corpoS = docS.getElementById("corpo") as HTMLElement;
+  const [pApp, pAba] = parDePortas();
+  criarRpc(
+    pAba,
+    tratadoresDaAba({
+      doc: docS,
+      ctx: CTX,
+      iframe: fr,
+      armazenamento: { getItem: () => null },
+      sobreposicao: criarSobreposicao(docS, fr, corpoS),
+    }),
+  );
+  const appS = criarRpc(pApp);
+  checar("liga", (await appS.chamar("sobrepor", { ativo: true })) === true);
+  checar(
+    "iframe cobre a tela visivel, por cima de tudo",
+    fr.style.position === "fixed" && fr.style.height === "100vh" && fr.style.width === "100vw" && fr.style.zIndex === "2147483646",
+    fr.getAttribute("style"),
+  );
+  checar("reserva o lugar do iframe (a pagina nao pula)", corpoS.style.minHeight === "300px", corpoS.style.minHeight);
+  checar("trava a rolagem da pagina", docS.documentElement.style.overflow === "hidden");
+  await appS.chamar("altura", { px: 500 });
+  checar("altura pedida durante a sobreposicao espera", fr.style.height === "100vh");
+  await appS.chamar("sobrepor", { ativo: false });
+  checar(
+    "desliga e devolve tudo, ja com a altura pedida",
+    fr.style.position === "" && fr.style.height === "500px" && corpoS.style.minHeight === "" && docS.documentElement.style.overflow === "",
+    fr.getAttribute("style"),
+  );
+  checar("sem sobreposicao (lateral), nega", (await app.chamar("sobrepor", { ativo: true })) === false);
+
+  secao("aviso do painel embutido no rodape da tela");
+  const docA = instalarDom("<html><body></body></html>");
+  const [aApp, aAba] = parDePortas();
+  criarRpc(
+    aAba,
+    tratadoresDaAba({ doc: docA, ctx: CTX, iframe: null, armazenamento: { getItem: () => null }, avisar: avisoNaPagina(docA, false) }),
+  );
+  const appA = criarRpc(aApp);
+  const resposta = appA.chamar<boolean>("aviso", { texto: "1 favorito foi para a lixeira.", acao: "Desfazer", ms: 5000 });
+  await tique();
+  const toast = docA.querySelector(".spro-fav-aviso");
+  checar("mostra o texto na pagina do SEI", (toast?.textContent ?? "").includes("1 favorito foi para a lixeira."));
+  botao(docA.body, "Desfazer")!.click();
+  checar("a acao volta ao app", (await resposta) === true && !docA.querySelector(".spro-fav-aviso"));
+  const semAcao = appA.chamar<boolean>("aviso", { texto: "Copiado.", ms: 20 });
+  checar("some sozinho e diz que nao houve acao", (await semAcao) === false);
 }

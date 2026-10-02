@@ -1,9 +1,9 @@
-import { renderFiltros, renderLote } from "../src/app/componentes/filtros";
+import { criarFiltros, type EstadoFiltros, renderLote } from "../src/app/componentes/filtros";
 import { type AcoesItem, type ApoioItem, renderItem } from "../src/app/componentes/item";
 import { renderLista, vizinhosAoMover, vizinhosAoSoltar } from "../src/app/componentes/lista";
 import { gerarCsv, linhasCsv } from "../src/app/csv";
 import type { Etiqueta, Favorito, Pasta } from "../src/modelo/tipos";
-import { botao, checar, disparar, escolher, instalarDom, secao } from "./util";
+import { botao, checar, combo, disparar, escolherCombo, instalarDom, itemDoMenu, opcoesDoCombo, secao } from "./util";
 
 const fav = (x: Partial<Favorito> & { id: string }): Favorito => ({
   protocolo: `${x.id}/2026`,
@@ -71,9 +71,10 @@ export function verificarLista(): void {
   // No linkedom, `checked` não reflete o atributo: marca-se como o navegador faz.
   sel.checked = true;
   disparar(sel, "change");
-  botao(li, "Mover para Pessoal")!.click();
-  botao(li, "Mover para cima")!.click();
-  botao(li, "Remover")!.click();
+  const menu = "Mais ações para 50300.000001/2026-01";
+  itemDoMenu(li, menu, "Mover para Pessoal");
+  itemDoMenu(li, menu, "Mover para cima");
+  itemDoMenu(li, menu, "Remover");
   checar("acoes do item", feito.join() === "abrir:1:false,editar:1,sel:1:true,lista:1,ordem:1:-1,remover:1", feito);
   checar(
     "titulo do usuario vence e sem descricao ha aviso",
@@ -82,7 +83,19 @@ export function verificarLista(): void {
   );
   checar(
     "sem outra lista nao oferece mover",
-    !botao(renderItem(fav({ id: "4" }), apoio({ outraLista: null }), acoes), "Mover para Pessoal"),
+    !itemDoMenu(renderItem(fav({ id: "4" }), apoio({ outraLista: null }), acoes), "Mais ações para 4/2026", "Mover para Pessoal"),
+  );
+  checar("atrasado pinta a faixa do item", li.getAttribute("data-estado") === "atrasado");
+  checar(
+    "menu do item tem icone em cada acao",
+    (() => {
+      const b = li.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+      b.click();
+      const itens = [...document.querySelectorAll(".spro-menu-pop [role='menuitem']")];
+      const ok = itens.length > 4 && itens.every((i) => !!i.querySelector("svg"));
+      b.click();
+      return ok;
+    })(),
   );
   checar(
     "sigiloso sinalizado",
@@ -98,7 +111,9 @@ export function verificarLista(): void {
   const grupos = renderLista({ itens, agrupar: true, pastas: [pasta], apoio: () => apoio(), acoes, vazio: "" });
   checar(
     "agrupada: pasta primeiro, sem pasta por ultimo, com contagem",
-    [...grupos.querySelectorAll("h3")].map((x) => x.textContent).join("|") === "Contratos (2)|Sem pasta (1)",
+    [...grupos.querySelectorAll("h3")]
+      .map((x) => `${x.querySelector(".fav-grupo-nome")?.textContent} (${x.querySelector(".fav-grupo-conta")?.textContent})`)
+      .join("|") === "Contratos (2)|Sem pasta (1)",
   );
   const arrastavel = renderLista({
     itens,
@@ -119,22 +134,45 @@ export function verificarLista(): void {
 
   secao("app: filtros e lote");
   const pedidos: string[] = [];
-  const filtros = renderFiltros(
-    { filtro: {}, ordem: "manual", agrupar: false, pastas: [pasta], etiquetas: [et] },
-    {
-      filtrar: (f) => pedidos.push(`f:${JSON.stringify(f)}`),
-      ordenar: (m) => pedidos.push(`o:${m}`),
-      agrupar: (v) => pedidos.push(`g:${v}`),
-      selecionarTodos: () => pedidos.push("todos"),
-    },
+  const estado = (x: Partial<EstadoFiltros> = {}): EstadoFiltros => ({
+    filtro: {},
+    ordem: "manual",
+    agrupar: false,
+    pastas: [pasta],
+    etiquetas: [et],
+    contagens: { pastas: new Map([["p1", 2]]), etiquetas: new Map(), prazos: new Map([["atrasado", 1]]), situacoes: new Map() },
+    ...x,
+  });
+  const barraFiltros = criarFiltros(estado(), {
+    filtrar: (f) => pedidos.push(`f:${JSON.stringify(f)}`),
+    ordenar: (m) => pedidos.push(`o:${m}`),
+    agrupar: (v) => pedidos.push(`g:${v}`),
+  });
+  const filtros = barraFiltros.el;
+  document.body.append(filtros, barraFiltros.ativos);
+  escolherCombo(filtros, "Pasta", "p1");
+  escolherCombo(filtros, "Ordem", "prazo");
+  botao(filtros, "Agrupar por pasta")!.click();
+  checar("filtros pedem o que o usuario escolheu", pedidos.join() === 'f:{"pastas":["p1"]},o:prazo,g:true', pedidos);
+  checar(
+    "prazo: as comuns sempre, as raras so quando existem",
+    opcoesDoCombo(filtros, "Prazo").join() === "atrasado,hoje,noPrazo,semPrazo",
+    opcoesDoCombo(filtros, "Prazo"),
   );
-  escolher(filtros.querySelector('select[aria-label="Pasta"]') as HTMLSelectElement, "p1");
-  escolher(filtros.querySelector('select[aria-label="Ordem"]') as HTMLSelectElement, "prazo");
-  const agrupar = filtros.querySelector('input[type="checkbox"]') as HTMLInputElement;
-  agrupar.checked = true;
-  disparar(agrupar, "change");
-  botao(filtros, "Selecionar todos")!.click();
-  checar("filtros pedem o que o usuario escolheu", pedidos.join() === 'f:{"pasta":"p1"},o:prazo,g:true,todos', pedidos);
+  barraFiltros.atualizar(estado({ filtro: { pastas: ["p1"], prazos: ["aguardando"] } }));
+  checar("seletor mostra a escolha", (combo(filtros, "Pasta")?.textContent ?? "").includes("Contratos"));
+  checar(
+    "a rara escolhida aparece mesmo sem itens (para poder desmarcar)",
+    opcoesDoCombo(filtros, "Prazo").join() === "atrasado,hoje,noPrazo,aguardando,semPrazo",
+    opcoesDoCombo(filtros, "Prazo"),
+  );
+  checar("filtros ligados viram fichas", barraFiltros.ativos.querySelectorAll(".fav-ficha").length === 2 && !barraFiltros.ativos.hidden);
+  pedidos.length = 0;
+  botao(barraFiltros.ativos, "Tirar o filtro Contratos")!.click();
+  botao(barraFiltros.ativos, "Limpar filtros")!.click();
+  checar("tirar uma ficha e limpar tudo", pedidos.join() === 'f:{"prazos":["aguardando"]},f:{}', pedidos);
+  filtros.remove();
+  barraFiltros.ativos.remove();
   const lote: string[] = [];
   const barra = renderLote(2, [pasta], [et], {
     moverPasta: (id) => lote.push(`p:${id}`),
@@ -147,8 +185,9 @@ export function verificarLista(): void {
     outraLista: { rotulo: "Pessoal", mover: () => lote.push("lista") },
   });
   checar("contagem", barra.textContent?.includes("2 selecionados") === true);
-  escolher(barra.querySelector('select[aria-label="Mover para pasta"]') as HTMLSelectElement, "__sem__");
-  escolher(barra.querySelector('select[aria-label="Etiquetar"]') as HTMLSelectElement, "e1");
+  escolherCombo(barra, "Mover para pasta", "__sem__");
+  escolherCombo(barra, "Etiquetar", "e1");
+  checar("seletor de acao volta ao rotulo", (combo(barra, "Etiquetar")?.textContent ?? "").includes("Etiquetar"));
   for (const r of ["Mover para Pessoal", "Copiar números", "Baixar CSV", "Remover selecionados", "Limpar seleção"])
     botao(barra, r)!.click();
   checar("acoes em lote", lote.join() === "p:undefined,e:e1,lista,copiar,csv,remover,limpar", lote);

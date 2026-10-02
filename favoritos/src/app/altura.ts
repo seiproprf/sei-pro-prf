@@ -5,12 +5,14 @@ import type { Rpc } from "@comum/ponte/rpc";
  * iframe). Enquanto um <dialog> está aberto, pede-se uma altura mínima: o
  * diálogo vive dentro do iframe e seria cortado.
  */
-export function observarAltura(rpc: Pick<Rpc, "chamar">): { minimo(px: number): void; medir(): void } {
+export function observarAltura(rpc: Pick<Rpc, "chamar">): { minimo(px: number): void; extra(fundo: number): void; medir(): void } {
   const app = document.getElementById("app") ?? document.body;
   let minimo = 0;
+  // Até onde desce a lista de um seletor ou menu aberto (ui/flutuante.ts); 0 = nenhum aberto.
+  let fundo = 0;
   let ultima = 0;
   const enviar = () => {
-    const px = Math.max(Math.ceil(app.getBoundingClientRect().height) + 4, minimo);
+    const px = Math.max(Math.ceil(app.getBoundingClientRect().height) + 4, minimo, fundo);
     if (px === ultima) return;
     ultima = px;
     void rpc.chamar("altura", { px }).catch(() => undefined);
@@ -20,6 +22,10 @@ export function observarAltura(rpc: Pick<Rpc, "chamar">): { minimo(px: number): 
   return {
     minimo(px) {
       minimo = px;
+      enviar();
+    },
+    extra(px) {
+      fundo = px;
       enviar();
     },
     // Ler a geometria força o layout mesmo com a renderização do iframe suspensa.

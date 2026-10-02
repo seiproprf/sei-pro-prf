@@ -14,6 +14,8 @@ export interface ContextoAba {
   versao: string;
   /** Modo noturno do SEI Pro (legado) ligado na página. */
   temaEscuro: boolean;
+  /** Cor de destaque tirada da barra do SEI (tema do órgão), já ajustada para contraste. */
+  corTema?: string;
 }
 
 export interface Escopo {
@@ -142,15 +144,21 @@ export interface Etiqueta extends Versionada {
 
 export type ModoOrdem = "manual" | "prazo" | "protocolo" | "inclusao" | "novidade";
 
+/** O que o favorito tem ou em que estado está (filtro "Situação"). */
+export type SituacaoFiltro = "novidade" | "lembrete" | "nota" | "documentos" | "local" | "fora" | "sigiloso";
+
+/**
+ * Cada campo é uma lista: dentro do campo vale QUALQUER um (pasta A ou B), entre
+ * campos valem TODOS (pasta A e etiqueta X). Lista vazia = sem filtro.
+ */
 export interface Filtro {
   busca?: string;
-  pasta?: string;
-  etiqueta?: string;
-  prazo?: SituacaoPrazo | "semPrazo";
-  /** Só os que têm novidade. */
-  novidade?: boolean;
-  /** Só os com lembrete para hoje (ou vencido). */
-  lembrete?: boolean;
+  /** Ids de pasta; `SEM_PASTA` = os sem pasta. */
+  pastas?: string[];
+  etiquetas?: string[];
+  prazos?: Array<SituacaoPrazo | "semPrazo">;
+  /** novidade = algo mudou; lembrete = para hoje ou atrasado; fora = fora da unidade na última leitura. */
+  situacoes?: SituacaoFiltro[];
 }
 
 export interface Preferencias {

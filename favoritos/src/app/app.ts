@@ -7,10 +7,11 @@
 import type { Area } from "@comum/armazenamento/area";
 import type { DataISO } from "@comum/datas/dias";
 import type { Rpc } from "@comum/ponte/rpc";
-import { h, icone } from "@comum/ui/dom";
+import { h, icone, type NomeIcone } from "@comum/ui/dom";
+import { criarMenu } from "@comum/ui/menu";
 import { exportarTudo, importarEnvelope, lerEnvelope } from "../arquivo";
 import { converterLegado } from "../migracao/legado";
-import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade } from "../modelo/constantes";
+import { CHAVE_PREFERENCIAS, chaveMigracao, chaveUltimaUnidade, SEM_PASTA } from "../modelo/constantes";
 import { escoposDoContexto } from "../modelo/escopo";
 import { lembreteVencido, textoLembrete } from "../modelo/lembrete";
 import { compararInstantaneos, type Mudanca, resumoNovidade } from "../modelo/novidades";
@@ -42,18 +43,18 @@ import type { StatusSync } from "../sincronia/motor";
 import { nomeDoTexto } from "../sincronia/textoPadrao";
 import { avisar } from "./aviso";
 import { montarEditor } from "./componentes/editor";
-import { renderFiltros, renderLote } from "./componentes/filtros";
+import { type BarraFiltros, criarFiltros, type EstadoFiltros, renderLote } from "./componentes/filtros";
 import { montarGerenciar } from "./componentes/gerenciar";
 import type { AcoesItem } from "./componentes/item";
 import { montarLembrete } from "./componentes/lembrete";
 import { renderLista, vizinhosAoMover } from "./componentes/lista";
-import { montarLixeira } from "./componentes/lixeira";
+import { montarLixeira, naLixeira } from "./componentes/lixeira";
 import { montarMigracao } from "./componentes/migracao";
 import { montarSincronizacao } from "./componentes/sincronizacao";
 import { gerarCsv, linhasCsv } from "./csv";
 import { type LeafletMinimo, montarMapaFavorito, montarMapaGeral, pontosDoMapa } from "./mapa";
 
-export type AbrirModal = (o: { titulo: string; conteudo: HTMLElement; aoFechar?: () => void }) => { fechar(): void };
+export type AbrirModal = (o: { titulo: string; conteudo: HTMLElement; icone?: NomeIcone; aoFechar?: () => void }) => { fechar(): void };
 
 export interface DepsApp {
   rpc: Pick<Rpc, "chamar">;
@@ -98,12 +99,16 @@ export class AppFavoritos {
   private readonly selecao = new Set<string>();
   private prefs: Preferencias = { ...PREFERENCIAS_PADRAO };
   private recargaAgendada = false;
+  /** Pastas recolhidas na lista agrupada (só nesta tela). */
+  private readonly recolhidos = new Set<string>();
   private destruido = false;
   private readonly parar: Array<() => void> = [];
   private readonly el: {
     faixas: HTMLElement;
     abas: HTMLElement;
-    filtros: HTMLElement;
+    barra: BarraFiltros;
+    busca: HTMLInputElement;
+    resumo: HTMLElement;
     lote: HTMLElement;
     corpo: HTMLElement;
     status: HTMLElement;
@@ -117,37 +122,75 @@ export class AppFavoritos {
     this.lista = d.repos.unidade ? "unidade" : "pessoal";
     const busca = h("input", {
       type: "search",
-      class: "spro-campo fav-busca",
-      placeholder: "Buscar por número, título, tipo, etiqueta ou nota",
+      class: "fav-busca",
+      placeholder: "Buscar número, título, tipo, etiqueta ou nota",
       "aria-label": "Buscar nos favoritos",
+      "aria-keyshortcuts": "/",
     });
     let espera: ReturnType<typeof setTimeout> | undefined;
     busca.addEventListener("input", () => {
       clearTimeout(espera);
       espera = setTimeout(() => this.filtrar({ ...this.filtro, busca: busca.value || undefined }), 150);
     });
+    busca.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape" || !busca.value) return;
+      ev.preventDefault();
+      busca.value = "";
+      this.filtrar({ ...this.filtro, busca: undefined });
+    });
+    const barra = criarFiltros(this.estadoFiltros(), {
+      filtrar: (f) => this.filtrar(f),
+      ordenar: (m) => void gravarPreferencias(this.d.sync, { ordem: m }),
+      agrupar: (v) => void gravarPreferencias(this.d.sync, { agruparPorPasta: v }),
+    });
     this.el = {
       faixas: h("div", { class: "fav-faixas" }),
-      abas: h("div", { class: "fav-abas", role: "tablist", "aria-label": "Listas" }),
-      filtros: h("div"),
-      lote: h("div", { hidden: true }),
+      abas: h("div", { class: "spro-segmentado fav-abas", role: "tablist", "aria-label": "Listas" }),
+      barra,
+      busca,
+      resumo: h("div", { class: "fav-resumo", hidden: true }),
+      lote: h("div", { class: "fav-lote-lugar", hidden: true }),
       corpo: h("div", { class: "fav-corpo" }),
       status: h("p", { class: "fav-status-sync", hidden: true }),
       atualizar: h("button", {
         type: "button",
-        class: "spro-botao fav-atualizar",
+        class: "spro-botao pequeno fav-atualizar",
         hidden: true,
         onclick: () => void this.atualizarForaDaUnidade(),
       }),
     };
     raiz.replaceChildren(
       this.el.faixas,
-      h("header", { class: "fav-topo" }, this.el.abas, this.menu()),
-      h("div", { class: "fav-ferramentas" }, busca, this.el.filtros, this.el.atualizar),
+      h("header", { class: "fav-topo" }, this.el.abas, h("div", { class: "fav-topo-acoes" }, this.el.atualizar, this.menu())),
+      h(
+        "div",
+        { class: "fav-ferramentas" },
+        h(
+          "label",
+          { class: "fav-busca-caixa" },
+          icone("busca", 15),
+          busca,
+          h("kbd", { class: "fav-atalho", title: "Atalho: tecla /", "aria-hidden": "true" }, "/"),
+        ),
+        barra.el,
+      ),
+      barra.ativos,
+      this.el.resumo,
       this.el.lote,
       this.el.corpo,
       this.el.status,
     );
+    // "/" leva à busca, fora de campos de texto (como no GitHub e no Gmail).
+    const atalho = (ev: KeyboardEvent) => {
+      if (ev.key !== "/" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const alvo = ev.target as HTMLElement | null;
+      if (alvo?.closest?.("input, textarea, select, [contenteditable], dialog")) return;
+      ev.preventDefault();
+      busca.focus();
+      busca.select();
+    };
+    document.addEventListener("keydown", atalho);
+    this.parar.push(() => document.removeEventListener("keydown", atalho));
   }
 
   private get repo(): RepositorioFavoritos {
@@ -258,8 +301,47 @@ export class AppFavoritos {
       resumo: this.resumo,
       novidades: this.novidades,
       hoje: this.d.hoje(),
+      atual: (f: Favorito) => this.atuais.get(f.id),
     };
     return ordenar(filtrar(this.todos, this.filtro, apoio), this.prefs.ordem, this.resumo, this.novidades);
+  }
+
+  /** Os que aparecem na lista (sem lápide nem registro mínimo sem cópia local). */
+  private ativos(): Favorito[] {
+    return this.todos.filter((f) => f.removidoEm === undefined && !(f.resumido && !f.protocolo));
+  }
+
+  private estadoFiltros(): EstadoFiltros {
+    const ativos = this.ativos();
+    const hoje = this.d.hoje();
+    const contar = (chaves: (f: Favorito) => Iterable<string>) => {
+      const m = new Map<string, number>();
+      for (const f of ativos) for (const k of chaves(f)) m.set(k, (m.get(k) ?? 0) + 1);
+      return m;
+    };
+    return {
+      filtro: this.filtro,
+      ordem: this.prefs.ordem,
+      agrupar: this.prefs.agruparPorPasta,
+      pastas: this.pastas,
+      etiquetas: this.etiquetas,
+      contagens: {
+        pastas: contar((f) => [f.pasta && this.pastas.some((p) => p.id === f.pasta) ? f.pasta : SEM_PASTA]),
+        etiquetas: contar((f) => f.etiquetas ?? []),
+        prazos: contar((f) => [this.resumo(f)?.situacao ?? "semPrazo"]),
+        situacoes: contar((f) => {
+          const s: string[] = [];
+          if (this.novidades(f).length) s.push("novidade");
+          if (lembreteVencido(f, hoje)) s.push("lembrete");
+          if (f.nota?.trim()) s.push("nota");
+          if (f.documentos?.length) s.push("documentos");
+          if (f.local) s.push("local");
+          if (this.atuais.get(f.id)?.abertoNaUnidade === false) s.push("fora");
+          if (f.sigiloso || f.sigiloAConfirmar) s.push("sigiloso");
+          return s;
+        }),
+      },
+    };
   }
 
   /** Favoritos desta lista que pedem atenção: lembrete vencido ou novidade. */
@@ -286,28 +368,13 @@ export class AppFavoritos {
 
   private desenhar(): void {
     this.desenharAbas();
-    this.el.filtros.replaceChildren(
-      renderFiltros(
-        {
-          filtro: this.filtro,
-          ordem: this.prefs.ordem,
-          agrupar: this.prefs.agruparPorPasta,
-          pastas: this.pastas,
-          etiquetas: this.etiquetas,
-        },
-        {
-          filtrar: (f) => this.filtrar(f),
-          ordenar: (m) => void gravarPreferencias(this.d.sync, { ordem: m }),
-          agrupar: (v) => void gravarPreferencias(this.d.sync, { agruparPorPasta: v }),
-          selecionarTodos: () => {
-            for (const f of this.visiveis()) this.selecao.add(f.id);
-            this.redesenhar();
-          },
-        },
-      ),
-    );
+    this.el.barra.atualizar(this.estadoFiltros());
+    if (this.el.busca.value !== (this.filtro.busca ?? "") && document.activeElement !== this.el.busca)
+      this.el.busca.value = this.filtro.busca ?? "";
+    document.documentElement.dataset.visao = this.visao;
     if (this.visao === "lixeira") {
       this.el.lote.hidden = true;
+      this.el.resumo.hidden = true;
       this.el.corpo.replaceChildren(
         montarLixeira(this.todos, Date.now(), {
           restaurar: async (id) => {
@@ -323,11 +390,12 @@ export class AppFavoritos {
     }
     const todosVisiveis = this.visiveis();
     this.desenharLote(todosVisiveis);
+    this.desenharResumo(todosVisiveis);
     this.desenharAtualizar();
     this.d.aoContar?.(this.pendencias());
     const hoje = this.d.hoje();
     // "Para hoje" no topo (lembretes vencidos), salvo quando o próprio filtro já é esse.
-    const paraHoje = this.filtro.lembrete ? [] : todosVisiveis.filter((f) => lembreteVencido(f, hoje));
+    const paraHoje = this.filtro.situacoes?.includes("lembrete") ? [] : todosVisiveis.filter((f) => lembreteVencido(f, hoje));
     const itens = paraHoje.length ? todosVisiveis.filter((f) => !paraHoje.includes(f)) : todosVisiveis;
     const pastas = new Map(this.pastas.map((p) => [p.id, p]));
     const etiquetas = new Map(this.etiquetas.map((e) => [e.id, e]));
@@ -342,6 +410,8 @@ export class AppFavoritos {
       outraLista: this.outra?.rotulo ?? null,
       novidade: resumoNovidade(this.novidades(f)),
       lembrete: f.lembrete ? textoLembrete(f.lembrete, hoje) : undefined,
+      lembreteVencido: lembreteVencido(f, hoje),
+      fora: this.atuais.get(f.id)?.abertoNaUnidade === false,
     });
     const acoes = this.acoesItem(itens.map((f) => f.id));
     this.el.corpo.replaceChildren(
@@ -350,7 +420,13 @@ export class AppFavoritos {
             h(
               "section",
               { class: "fav-hoje" },
-              h("h3", {}, `Para hoje (${paraHoje.length})`),
+              h(
+                "h3",
+                { class: "fav-secao-titulo" },
+                icone("sino", 14),
+                h("span", {}, "Para hoje"),
+                h("span", { class: "fav-grupo-conta" }, String(paraHoje.length)),
+              ),
               renderLista({ itens: paraHoje, agrupar: false, pastas: this.pastas, apoio: apoio(false), acoes, vazio: "" }),
             ),
           ]
@@ -363,9 +439,16 @@ export class AppFavoritos {
             apoio: apoio(manual),
             acoes,
             reordenar: manual ? (id, antes, depois) => void this.repo.mover(id, antes, depois) : undefined,
-            vazio: temAlgum
-              ? "Nenhum favorito com esses filtros."
-              : "Nenhum favorito nesta lista ainda. Clique na estrela ao lado de um processo, no Controle de Processos ou na árvore, para guardá-lo aqui.",
+            vazio: temAlgum ? "Nenhum favorito com esses filtros." : "Nenhum favorito nesta lista ainda.",
+            vazioDica: temAlgum
+              ? "Tire um filtro ou limpe a busca para ver os outros."
+              : "Clique na estrela ao lado de um processo, no Controle de Processos ou na árvore, para guardá-lo aqui.",
+            recolhidos: this.recolhidos,
+            alternarGrupo: (id) => {
+              if (this.recolhidos.has(id)) this.recolhidos.delete(id);
+              else this.recolhidos.add(id);
+              this.redesenhar();
+            },
           })
         : h("span"),
     );
@@ -374,7 +457,78 @@ export class AppFavoritos {
   private desenharAtualizar(): void {
     const n = this.visao === "lista" ? this.foraDaUnidade() : 0;
     this.el.atualizar.hidden = n === 0;
-    this.el.atualizar.replaceChildren(icone("atualizar", 14), `Atualizar fora da unidade (${n})`);
+    this.el.atualizar.setAttribute("aria-label", `Atualizar fora da unidade (${n})`);
+    this.el.atualizar.title = `Ver o que mudou nos ${n} favoritos que não estão na sua caixa`;
+    this.el.atualizar.replaceChildren(
+      icone("atualizar", 14),
+      h("span", { class: "fav-atualizar-texto" }, "Atualizar fora da unidade"),
+      h("span", { class: "fav-conta" }, String(n)),
+    );
+  }
+
+  /** "34 favoritos · 3 com novidade · 1 para hoje", com a caixa de selecionar todos. */
+  private desenharResumo(visiveis: Favorito[]): void {
+    const ativos = this.ativos();
+    this.el.resumo.hidden = !ativos.length;
+    if (!ativos.length) return;
+    const marcados = visiveis.filter((f) => this.selecao.has(f.id)).length;
+    const estado = marcados === 0 ? "false" : marcados === visiveis.length ? "true" : "mixed";
+    const todos = h(
+      "button",
+      {
+        type: "button",
+        role: "checkbox",
+        class: "fav-sel-todos",
+        "aria-checked": estado,
+        "aria-label": "Selecionar todos",
+        title: estado === "true" ? "Desmarcar todos" : "Selecionar todos os da lista",
+        disabled: !visiveis.length,
+        onclick: () => {
+          for (const f of visiveis) {
+            if (estado === "true") this.selecao.delete(f.id);
+            else this.selecao.add(f.id);
+          }
+          this.redesenhar();
+        },
+      },
+      estado === "true" ? icone("check", 12) : estado === "mixed" ? h("span", { class: "fav-traco" }) : null,
+    );
+    const hoje = this.d.hoje();
+    const indicador = (n: number, rotulo: string, nome: NomeIcone, tom: string, filtro: Filtro) =>
+      n
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "fav-indicador",
+              style: `--tom:${tom}`,
+              title: `Mostrar só estes (${rotulo})`,
+              onclick: () => this.filtrar({ busca: this.filtro.busca, ...filtro }),
+            },
+            icone(nome, 13),
+            `${n} ${rotulo}`,
+          )
+        : null;
+    const nNovidade = ativos.filter((f) => this.novidades(f).length).length;
+    const nHoje = ativos.filter((f) => lembreteVencido(f, hoje)).length;
+    const nAtrasados = ativos.filter((f) => this.resumo(f)?.situacao === "atrasado").length;
+    const filtrado = visiveis.length !== ativos.length;
+    this.el.resumo.replaceChildren(
+      todos,
+      h(
+        "span",
+        { class: "fav-total" },
+        h("strong", {}, filtrado ? `${visiveis.length} de ${ativos.length}` : String(ativos.length)),
+        ` ${ativos.length === 1 ? "favorito" : "favoritos"}`,
+      ),
+      h(
+        "span",
+        { class: "fav-indicadores" },
+        indicador(nNovidade, "com novidade", "brilho", "var(--spro-novidade)", { situacoes: ["novidade"] }),
+        indicador(nHoje, "para hoje", "sino", "var(--spro-aviso)", { situacoes: ["lembrete"] }),
+        indicador(nAtrasados, nAtrasados === 1 ? "atrasado" : "atrasados", "alerta", "var(--spro-perigo)", { prazos: ["atrasado"] }),
+      ),
+    );
   }
 
   /** "Atualizar fora da unidade": na 1ª vez, explica o cuidado antes de rodar. */
@@ -424,7 +578,7 @@ export class AppFavoritos {
         ),
       ),
     );
-    modal = this.d.abrirModal({ titulo: "Atualizar fora da unidade", conteudo });
+    modal = this.d.abrirModal({ titulo: "Atualizar fora da unidade", icone: "atualizar", conteudo });
   }
 
   /** Faixa "Atualizando 3 de 12…" enquanto a aba lê os favoritos fora da unidade. */
@@ -470,17 +624,18 @@ export class AppFavoritos {
       },
       fechar: () => modal?.fechar(),
     });
-    modal = this.d.abrirModal({ titulo: `Lembrete — ${f.protocolo}`, conteudo });
+    modal = this.d.abrirModal({ titulo: `Lembrete — ${f.protocolo}`, icone: "sino", conteudo });
   }
 
   private desenharAbas(): void {
-    const aba = (lista: TipoLista, rotulo: string) =>
+    const aba = (lista: TipoLista, rotulo: string, nome: NomeIcone, n: number) =>
       h(
         "button",
         {
           type: "button",
           role: "tab",
-          class: "spro-botao",
+          "aria-label": `${rotulo} (${n})`,
+          title: lista === "unidade" ? `Favoritos da unidade ${rotulo}` : "Seus favoritos pessoais, em todas as unidades",
           "aria-selected": String(this.lista === lista && this.visao === "lista"),
           onclick: () => {
             this.lista = lista;
@@ -490,11 +645,13 @@ export class AppFavoritos {
             void this.recarregar();
           },
         },
-        rotulo,
+        icone(nome, 14),
+        h("span", { class: "fav-aba-rotulo" }, rotulo),
+        h("span", { class: "fav-conta" }, String(n)),
       );
     this.el.abas.replaceChildren(
-      ...(this.d.repos.unidade ? [aba("unidade", `${this.sigla} (${this.contagem.unidade})`)] : []),
-      aba("pessoal", `Pessoal (${this.contagem.pessoal})`),
+      ...(this.d.repos.unidade ? [aba("unidade", this.sigla, "predio", this.contagem.unidade)] : []),
+      aba("pessoal", "Pessoal", "pessoa", this.contagem.pessoal),
     );
   }
 
@@ -550,7 +707,12 @@ export class AppFavoritos {
       alternarSelecao: (f, marcado) => {
         if (marcado) this.selecao.add(f.id);
         else this.selecao.delete(f.id);
-        this.desenharLote(this.visiveis());
+        for (const li of this.el.corpo.querySelectorAll<HTMLElement>("li.fav-item"))
+          if (li.dataset.id === f.id) li.classList.toggle("fav-item-selecionado", marcado);
+        const visiveis = this.visiveis();
+        this.desenharLote(visiveis);
+        this.desenharResumo(visiveis);
+        this.d.aoRedesenhar?.();
       },
       remover: (f) => void this.remover([f.id]),
       marcarVisto: (f) => void this.repo.marcarVisto([f.id]),
@@ -619,7 +781,7 @@ export class AppFavoritos {
           .chamar<{ documentos: DocumentoAssinado[] }>("documentosAssinados", { id: f.id, protocolo: f.protocolo, buscar }, 90_000)
           .then((r) => r.documentos),
     });
-    modal = this.d.abrirModal({ titulo: `Favorito ${f.protocolo}`, conteudo });
+    modal = this.d.abrirModal({ titulo: `Favorito ${f.protocolo}`, icone: "estrela", conteudo });
   }
 
   private async abrirGerenciar(): Promise<void> {
@@ -634,43 +796,39 @@ export class AppFavoritos {
       removerEtiqueta: (id) => repo.removerEtiqueta(id),
       confirmar: (t) => this.d.confirmar(t),
     });
-    this.d.abrirModal({ titulo: `Pastas e etiquetas — ${this.lista === "unidade" ? this.sigla : "Pessoal"}`, conteudo });
+    this.d.abrirModal({ titulo: `Pastas e etiquetas — ${this.lista === "unidade" ? this.sigla : "Pessoal"}`, icone: "etiqueta", conteudo });
   }
 
   private menu(): HTMLElement {
-    const detalhes = h("details", { class: "fav-menu-topo" });
-    const item = (rotulo: string, fazer: () => void) =>
-      h(
-        "button",
-        {
-          type: "button",
-          role: "menuitem",
-          onclick: () => {
-            detalhes.removeAttribute("open");
-            fazer();
+    return criarMenu({
+      rotulo: "Opções dos favoritos",
+      icone: "ajustes",
+      classe: "spro-botao-icone fav-menu-opcoes",
+      largura: 268,
+      itens: () => {
+        const lixo = naLixeira(this.todos, Date.now()).length;
+        return [
+          { rotulo: "Pastas e etiquetas", icone: "etiqueta", fazer: () => void this.abrirGerenciar() },
+          this.d.carregarMapa ? { rotulo: "Mapa dos favoritos", icone: "mapa", fazer: () => void this.abrirMapaGeral() } : null,
+          {
+            rotulo: "Lixeira",
+            icone: "lixeira",
+            dica: lixo ? String(lixo) : undefined,
+            fazer: () => {
+              this.visao = "lixeira";
+              this.redesenhar();
+            },
           },
-        },
-        rotulo,
-      );
-    detalhes.append(
-      h("summary", { title: "Opções", "aria-label": "Opções dos favoritos" }, icone("ajustes", 18)),
-      h(
-        "div",
-        { class: "fav-menu-lista", role: "menu" },
-        item("Pastas e etiquetas", () => void this.abrirGerenciar()),
-        this.d.carregarMapa ? item("Mapa dos favoritos", () => void this.abrirMapaGeral()) : null,
-        item("Lixeira", () => {
-          this.visao = "lixeira";
-          this.redesenhar();
-        }),
-        item("Exportar arquivo (.json)", () => void this.exportar()),
-        item("Importar arquivo", () => void this.importar()),
-        item("Trazer favoritos da versão anterior", () => void this.oferecerMigracao(true)),
-        item("Sincronização…", () => void this.abrirSincronizacao()),
-        item("Preferências…", () => void this.abrirPreferencias()),
-      ),
-    );
-    return detalhes;
+          "-",
+          { rotulo: "Exportar arquivo (.json)", icone: "baixar", fazer: () => void this.exportar() },
+          { rotulo: "Importar arquivo", icone: "subir", fazer: () => void this.importar() },
+          { rotulo: "Trazer favoritos da versão anterior", icone: "historico", fazer: () => void this.oferecerMigracao(true) },
+          "-",
+          { rotulo: "Sincronização…", icone: "nuvem", fazer: () => void this.abrirSincronizacao() },
+          { rotulo: "Preferências…", icone: "ajustes", fazer: () => void this.abrirPreferencias() },
+        ];
+      },
+    });
   }
 
   private async abrirMapa(f: Favorito): Promise<void> {
@@ -691,7 +849,7 @@ export class AppFavoritos {
       },
       fechar: () => modal?.fechar(),
     });
-    modal = this.d.abrirModal({ titulo: `Local no mapa — ${f.protocolo}`, conteudo: m.el });
+    modal = this.d.abrirModal({ titulo: `Local no mapa — ${f.protocolo}`, icone: "local", conteudo: m.el });
     m.iniciar();
   }
 
@@ -715,7 +873,7 @@ export class AppFavoritos {
             .catch((e: Error) => avisar(e.message));
       },
     });
-    this.d.abrirModal({ titulo: "Mapa dos favoritos", conteudo: m.el });
+    this.d.abrirModal({ titulo: "Mapa dos favoritos", icone: "mapa", conteudo: m.el });
     m.iniciar();
   }
 
@@ -805,7 +963,7 @@ export class AppFavoritos {
         ),
       ),
     );
-    modal = this.d.abrirModal({ titulo: "Sincronizar pelo Texto Padrão", conteudo });
+    modal = this.d.abrirModal({ titulo: "Sincronizar pelo Texto Padrão", icone: "nuvem", conteudo });
   }
 
   private ligarStatusSync(): void {
@@ -914,7 +1072,7 @@ export class AppFavoritos {
         : null,
       confirmar: (t) => this.d.confirmar(t),
     });
-    modal = this.d.abrirModal({ titulo: "Sincronização", conteudo });
+    modal = this.d.abrirModal({ titulo: "Sincronização", icone: "nuvem", conteudo });
   }
 
   /** O app voltou a ficar visível: o arquivo pode ter sido mudado por outro computador. */
@@ -924,7 +1082,7 @@ export class AppFavoritos {
 
   private async abrirPreferencias(): Promise<void> {
     const conteudo = await montarOpcoesExibicao({ sync: this.d.sync, lateralDisponivel: this.d.lateralDisponivel === true });
-    this.d.abrirModal({ titulo: "Preferências dos favoritos", conteudo });
+    this.d.abrirModal({ titulo: "Preferências dos favoritos", icone: "ajustes", conteudo });
   }
 
   private async exportar(): Promise<void> {
@@ -1010,7 +1168,7 @@ export class AppFavoritos {
         modal?.fechar();
       },
     });
-    modal = this.d.abrirModal({ titulo: "Favoritos da versão anterior", conteudo });
+    modal = this.d.abrirModal({ titulo: "Favoritos da versão anterior", icone: "historico", conteudo });
   }
 
   private async verificarFaixaUnidade(): Promise<void> {

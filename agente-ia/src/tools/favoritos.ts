@@ -64,8 +64,11 @@ export const TOOL_FAVORITOS = definirTool({
       sigilosos += ativos.filter(fechado).length;
       const visiveis = filtrar(
         ativos.filter((f) => !fechado(f)),
-        { busca: a.busca ? String(a.busca) : undefined, novidade: filtro === "novidades" || undefined, lembrete: filtro === "lembretes" || undefined },
-        { etiquetas: porEtiqueta, resumo: (f) => (f.prazo ? calcularPrazo(f.prazo, hoje) : undefined), novidades, hoje },
+        {
+          busca: a.busca ? String(a.busca) : undefined,
+          situacoes: filtro === "novidades" ? ["novidade"] : filtro === "lembretes" ? ["lembrete"] : undefined,
+        },
+        { etiquetas: porEtiqueta, resumo: (f) => (f.prazo ? calcularPrazo(f.prazo, hoje) : undefined), novidades, hoje, atual: (f) => atuais.get(f.id) },
       ).filter((f) => filtro !== "prazos" || !!f.prazo);
       for (const f of visiveis) {
         const prazo = f.prazo ? calcularPrazo(f.prazo, hoje) : undefined;

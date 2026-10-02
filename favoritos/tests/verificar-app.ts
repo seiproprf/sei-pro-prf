@@ -7,7 +7,7 @@ import { chaveStatusTexto } from "../src/pagina/sincronia";
 import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../src/preferencias";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { copiasEmMemoria } from "../src/sincronia/copias";
-import { botao, checar, disparar, escolher, instalarDom, secao, tique } from "./util";
+import { botao, checar, disparar, escolherCombo, instalarDom, itemDoMenu, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 function montar(extra: Partial<DepsApp> = {}, inicial: Record<string, unknown> = {}) {
@@ -100,8 +100,8 @@ export async function verificarApp(): Promise<void> {
   botao(a.raiz, "Remover selecionados")!.click();
   await tique(80);
   checar("remover manda para a lixeira", !(await a.repos.unidade.contem("2")) && itens() === 2);
-  checar("aviso com desfazer", !!botao(a.raiz, "Desfazer"));
-  botao(a.raiz, "Desfazer")!.click();
+  checar("aviso com desfazer, no rodape da tela", !!botao(a.doc.body, "Desfazer"));
+  botao(a.doc.body, "Desfazer")!.click();
   await tique(80);
   checar("desfazer devolve", (await a.repos.unidade.contem("2")) && itens() === 3);
 
@@ -123,7 +123,7 @@ export async function verificarApp(): Promise<void> {
   checar("aba Pessoal vazia convida a usar a estrela", (a.raiz.querySelector(".fav-vazio")?.textContent ?? "").includes("estrela"));
   botao(a.raiz, "GPF (3)")!.click();
   await tique(80);
-  botao(a.raiz, "Lixeira")!.click();
+  itemDoMenu(a.raiz, "Opções dos favoritos", "Lixeira");
   await tique(20);
   checar("lixeira abre (vazia depois do desfazer)", (a.raiz.textContent ?? "").includes("A lixeira está vazia."));
 
@@ -194,7 +194,7 @@ export async function verificarApp(): Promise<void> {
   secao("app: preferencias pelo menu");
   const pr = montar({ lateralDisponivel: true });
   await pr.app.iniciar();
-  botao(pr.raiz, "Preferências…")!.click();
+  itemDoMenu(pr.raiz, "Opções dos favoritos", "Preferências…");
   await tique(20);
   const dlgPref = pr.modais.at(-1);
   checar("abre o dialogo de preferencias", dlgPref?.titulo === "Preferências dos favoritos");
@@ -221,7 +221,7 @@ export async function verificarApp(): Promise<void> {
   await mp.repos.unidade.editar("61", { local: { lat: -3.7, lng: -38.5 } });
   await mp.app.iniciar();
   checar("item com local mostra o alfinete", !!mp.raiz.querySelector('li[data-id="61"] .fav-local'));
-  botao(mp.raiz.querySelector('li[data-id="61"]')!, "Local no mapa…")!.click();
+  itemDoMenu(mp.raiz.querySelector('li[data-id="61"]')!, "Mais ações para 50300.000061/2026-61", "Local no mapa…");
   await tique(80);
   checar("abre o mapa do favorito", mp.modais.at(-1)?.titulo === "Local no mapa — 50300.000061/2026-61");
   checar(
@@ -231,7 +231,7 @@ export async function verificarApp(): Promise<void> {
   botao(mp.modais.at(-1)!.conteudo, "Remover local")!.click();
   await tique(40);
   checar("remover local grava", (await mp.repos.unidade.obter("61"))?.local === undefined);
-  botao(mp.raiz, "Mapa dos favoritos")!.click();
+  itemDoMenu(mp.raiz, "Opções dos favoritos", "Mapa dos favoritos");
   await tique(80);
   checar(
     "mapa geral abre mesmo sem locais e explica",
@@ -239,7 +239,7 @@ export async function verificarApp(): Promise<void> {
   );
   const semMapa = montar();
   await semMapa.app.iniciar();
-  checar("sem carregador de mapa, sem item de mapa", !botao(semMapa.raiz, "Mapa dos favoritos"));
+  checar("sem carregador de mapa, sem item de mapa", !itemDoMenu(semMapa.raiz, "Opções dos favoritos", "Mapa dos favoritos"));
 
   secao("app: sincronia pelo Texto Padrao");
   const sy = montar();
@@ -284,7 +284,7 @@ export async function verificarApp(): Promise<void> {
   });
   await tique(30);
   checar("linha de status: erro com a mensagem", /expirada/.test(rodape()), rodape());
-  botao(sy.raiz, "Sincronização…")!.click();
+  itemDoMenu(sy.raiz, "Opções dos favoritos", "Sincronização…");
   await tique(20);
   const dlgS = sy.modais.at(-1)!;
   botao(dlgS.conteudo, "Sincronizar agora")!.click();
@@ -303,7 +303,7 @@ export async function verificarApp(): Promise<void> {
   // Na aba, o "apagar" desliga a unidade (pagina/sincronia.ts); aqui o rpc é falso, então desliga-se à mão.
   await definirTextoPadrao(sy.sync, CTX.host, CTX.login, CTX.unidade!.id, "desligado");
   await tique(30);
-  botao(sy.raiz, "Sincronização…")!.click();
+  itemDoMenu(sy.raiz, "Opções dos favoritos", "Sincronização…");
   await tique(30);
   const dlgD = sy.modais.at(-1)!;
   checar(
@@ -333,7 +333,7 @@ export async function verificarApp(): Promise<void> {
     lista.length === 1 && lista[0]!.dia === "2026-10-01",
     lista.map((c) => c.dia),
   );
-  botao(ap.raiz, "Sincronização…")!.click();
+  itemDoMenu(ap.raiz, "Opções dos favoritos", "Sincronização…");
   await tique(40);
   const dlgCp = ap.modais.at(-1)!;
   checar(
@@ -356,12 +356,31 @@ export async function verificarApp(): Promise<void> {
   const selo = () => nv.raiz.querySelector('li[data-id="41"] .fav-novidade')?.textContent ?? "";
   checar("selo com o resumo da mudanca", selo() === "2 documentos novos · saiu da sua unidade", selo());
   checar("item sem mudanca, sem selo", !nv.raiz.querySelector('li[data-id="42"] .fav-novidade'));
-  escolher(nv.raiz.querySelector('select[aria-label="Situação"]') as HTMLSelectElement, "novidade");
+  escolherCombo(nv.raiz, "Situação", "novidade");
   await tique(20);
   checar("filtro 'com novidade'", nv.raiz.querySelectorAll("li.fav-item").length === 1);
-  escolher(nv.raiz.querySelector('select[aria-label="Situação"]') as HTMLSelectElement, "");
+  escolherCombo(nv.raiz, "Situação", "novidade");
   await tique(20);
-  botao(nv.raiz.querySelector('li[data-id="41"]')!, "Marcar como visto")!.click();
+  checar("filtro tirado, voltam todos", nv.raiz.querySelectorAll("li.fav-item").length === 2);
+  checar("o resumo conta as novidades", (nv.raiz.querySelector(".fav-resumo")?.textContent ?? "").includes("1 com novidade"));
+  botao(nv.raiz, "1 com novidade")!.click();
+  await tique(20);
+  checar(
+    "clicar no indicador filtra e vira ficha",
+    nv.raiz.querySelectorAll("li.fav-item").length === 1 && !!botao(nv.raiz, "Tirar o filtro Com novidade"),
+  );
+  checar(
+    "situacao 'fora da unidade' pela ultima leitura",
+    (() => {
+      botao(nv.raiz, "Tirar o filtro Com novidade")!.click();
+      escolherCombo(nv.raiz, "Situação", "fora");
+      const n = nv.raiz.querySelectorAll("li.fav-item").length;
+      escolherCombo(nv.raiz, "Situação", "fora");
+      return n === 1;
+    })(),
+  );
+  await tique(20);
+  itemDoMenu(nv.raiz.querySelector('li[data-id="41"]')!, "Mais ações para 50300.000041/2026-41", "Marcar como visto");
   await tique(80);
   checar("marcar como visto tira o selo", selo() === "", selo());
   await nv.repos.unidade.gravarAtual("41", { quando: 3, fonte: "caixa", qtdDocumentos: 6, abertoNaUnidade: false });
@@ -380,14 +399,14 @@ export async function verificarApp(): Promise<void> {
     !!hoje && !!hoje.querySelector('li[data-id="52"]') && /cobrar a SFC/.test(hoje.textContent ?? ""),
   );
   checar("e o item nao repete na lista", lb.raiz.querySelectorAll('li[data-id="52"]').length === 1);
-  botao(lb.raiz.querySelector('li[data-id="51"]')!, "Lembrete…")!.click();
+  botao(lb.raiz.querySelector('li[data-id="51"]')!, "Lembrete de 50300.000051/2026-51")!.click();
   await tique(20);
   const dlgL = lb.modais.at(-1)!;
   checar("dialogo de lembrete", dlgL.titulo === "Lembrete — 50300.000051/2026-51");
   botao(dlgL.conteudo, "Amanhã")!.click();
   await tique(40);
   checar("'Amanha' grava o lembrete", (await lb.repos.unidade.obter("51"))?.lembrete?.em === "2026-10-02");
-  botao(lb.raiz.querySelector('li[data-id="52"]')!, "Lembrete…")!.click();
+  itemDoMenu(lb.raiz.querySelector('li[data-id="52"]')!, "Mais ações para 50300.000052/2026-52", "Lembrete…");
   await tique(20);
   botao(lb.modais.at(-1)!.conteudo, "Concluir")!.click();
   await tique(60);

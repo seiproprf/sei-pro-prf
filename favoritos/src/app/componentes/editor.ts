@@ -1,5 +1,6 @@
 import { type DataISO, formatarData } from "@comum/datas/dias";
-import { h } from "@comum/ui/dom";
+import { type Combo, criarCombo } from "@comum/ui/combobox";
+import { h, icone, type NomeIcone } from "@comum/ui/dom";
 import { MAX_NOTA } from "../../modelo/constantes";
 import { calcularPrazo } from "../../modelo/prazo";
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta } from "../../modelo/tipos";
@@ -23,7 +24,44 @@ export interface DepsEditor {
   listarDocumentos?: (buscar: boolean) => Promise<DocumentoAssinado[]>;
 }
 
-const campo = (rotulo: string, ...filhos: Array<Node | null>) => h("label", {}, rotulo, ...filhos);
+const campo = (rotulo: string, ...filhos: Array<Node | null>) =>
+  h("label", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, rotulo), ...filhos);
+
+const MODOS: ReadonlyArray<{ valor: ModoPrazo; rotulo: string; descricao: string; icone: NomeIcone }> = [
+  { valor: "nenhum", rotulo: "Sem prazo", descricao: "Só acompanhar, sem contar dias", icone: "fechar" },
+  { valor: "data", rotulo: "Até uma data", descricao: "Vence num dia certo", icone: "calendario" },
+  { valor: "dias", rotulo: "N dias a partir de uma data", descricao: "Ex.: 15 dias úteis depois da intimação", icone: "relogio" },
+  { valor: "contagem", rotulo: "Contar os dias desde uma data", descricao: "Mostra há quantos dias, sem vencimento", icone: "historico" },
+  {
+    valor: "proximo",
+    rotulo: "N dias a partir do próximo documento",
+    descricao: "A contagem começa quando chegar um documento do tipo escolhido",
+    icone: "documento",
+  },
+];
+
+/** Dois ou três botões que valem como um rádio (corridos/úteis, depois/antes). */
+function segmentado<T extends string>(rotulo: string, opcoes: ReadonlyArray<[T, string]>, inicial: T, mudar: (v: T) => void) {
+  let atual = inicial;
+  const botoes = opcoes.map(([v, texto]) =>
+    h(
+      "button",
+      {
+        type: "button",
+        role: "radio",
+        "aria-checked": String(v === atual),
+        onclick: () => {
+          if (v === atual) return;
+          atual = v;
+          for (const [i, b] of botoes.entries()) b.setAttribute("aria-checked", String(opcoes[i]?.[0] === atual));
+          mudar(v);
+        },
+      },
+      texto,
+    ),
+  );
+  return { el: h("div", { class: "spro-segmentado", role: "radiogroup", "aria-label": rotulo }, ...botoes), valor: () => atual };
+}
 
 export function montarEditor(d: DepsEditor): HTMLElement {
   const f = d.favorito;
@@ -35,91 +73,89 @@ export function montarEditor(d: DepsEditor): HTMLElement {
     placeholder: [f.tipo, f.especificacao].filter(Boolean).join(" · ") || "Como você quer chamar este processo",
   });
 
-  const pasta: HTMLSelectElement = h(
-    "select",
-    { class: "spro-campo", "aria-label": "Pasta" },
-    h("option", { value: "", selected: !f.pasta }, "(sem pasta)"),
-    ...d.pastas.map((p) => h("option", { value: p.id, selected: p.id === f.pasta }, p.nome)),
-  );
-  const novaPasta = h("input", { class: "spro-campo", placeholder: "Nova pasta", "aria-label": "Nova pasta", maxlength: "60" });
-  const criarPasta = h(
-    "button",
-    {
-      type: "button",
-      class: "spro-botao",
-      onclick: async () => {
-        const nome = novaPasta.value.trim();
-        if (!nome) return;
-        const p = await d.criarPasta(nome);
-        for (const o of pasta.querySelectorAll("option")) o.removeAttribute("selected");
-        pasta.append(h("option", { value: p.id, selected: true }, p.nome));
-        novaPasta.value = "";
-      },
+  let pastas = [...d.pastas];
+  const pasta: Combo = criarCombo({
+    rotulo: "Pasta",
+    icone: "pasta",
+    vazio: "(sem pasta)",
+    opcoes: () => [{ valor: "", rotulo: "(sem pasta)" }, ...pastas.map((p) => ({ valor: p.id, rotulo: p.nome, cor: p.cor }))],
+    valor: f.pasta ? [f.pasta] : [],
+    busca: true,
+    criar: async (nome) => {
+      const p = await d.criarPasta(nome.slice(0, 60));
+      pastas = [...pastas.filter((x) => x.id !== p.id), p];
+      return { valor: p.id, rotulo: p.nome, cor: p.cor };
     },
-    "Criar pasta",
-  );
+    rotuloCriar: (t) => `Criar a pasta “${t}”`,
+    larguraLista: 260,
+  });
 
-  const marcadas = new Set(f.etiquetas);
   let etiquetas = [...d.etiquetas];
-  const chips = h("div", { class: "fav-balao-chips" });
+  const chips = h("div", { class: "fav-chips-sel" });
+  const etiqueta: Combo = criarCombo({
+    rotulo: "Etiquetas",
+    icone: "etiqueta",
+    vazio: "Nenhuma",
+    multiplo: true,
+    opcoes: () => etiquetas.map((e) => ({ valor: e.id, rotulo: e.nome, cor: e.cor })),
+    valor: f.etiquetas.filter((id) => d.etiquetas.some((e) => e.id === id)),
+    criar: async (nome) => {
+      const e = await d.criarEtiqueta(nome.slice(0, 40));
+      etiquetas = [...etiquetas.filter((x) => x.id !== e.id), e];
+      return { valor: e.id, rotulo: e.nome, cor: e.cor };
+    },
+    rotuloCriar: (t) => `Criar a etiqueta “${t}”`,
+    aoMudar: () => desenharChips(),
+    larguraLista: 260,
+  });
+  // As escolhidas ficam à vista, como fichas na cor da etiqueta; clicar tira.
   const desenharChips = () =>
     chips.replaceChildren(
-      ...etiquetas.map((e) =>
-        h(
+      ...etiqueta.valor().map((id) => {
+        const e = etiquetas.find((x) => x.id === id);
+        return h(
           "button",
           {
             type: "button",
             class: "spro-chip",
-            style: `--cor:${e.cor}`,
-            "aria-pressed": String(marcadas.has(e.id)),
+            style: `--cor:${e?.cor ?? "#ccc"}`,
+            title: "Tirar esta etiqueta",
+            "aria-label": `Tirar a etiqueta ${e?.nome ?? ""}`,
             onclick: () => {
-              if (marcadas.has(e.id)) marcadas.delete(e.id);
-              else marcadas.add(e.id);
+              etiqueta.definir(etiqueta.valor().filter((x) => x !== id));
               desenharChips();
             },
           },
-          e.nome,
-        ),
-      ),
+          e?.nome ?? "",
+          icone("fechar", 11),
+        );
+      }),
     );
   desenharChips();
-  const novaEtiqueta = h("input", { class: "spro-campo", placeholder: "Nova etiqueta", "aria-label": "Nova etiqueta", maxlength: "40" });
-  const criarEtiqueta = h(
-    "button",
-    {
-      type: "button",
-      class: "spro-botao",
-      onclick: async () => {
-        const nome = novaEtiqueta.value.trim();
-        if (!nome) return;
-        const e = await d.criarEtiqueta(nome);
-        etiquetas = [...etiquetas.filter((x) => x.id !== e.id), e];
-        marcadas.add(e.id);
-        novaEtiqueta.value = "";
-        desenharChips();
-      },
-    },
-    "Adicionar etiqueta",
-  );
 
   const nota = h("textarea", { class: "spro-campo", rows: "4", maxlength: String(MAX_NOTA), "aria-label": "Nota", value: f.nota ?? "" });
 
   // Prazo: só é regravado se o usuário mexer nele (editar só a nota não reescreve o prazo).
   const v = valoresDoPrazo(f.prazo, d.hoje);
   let prazoAlterado = false;
-  const opcoes = (valor: string, lista: Array<[string, string]>) =>
-    lista.map(([val, t]) => h("option", { value: val, selected: val === valor }, t));
-  const modo: HTMLSelectElement = h(
-    "select",
-    { class: "spro-campo", "aria-label": "Prazo" },
-    ...opcoes(v.modo, [
-      ["nenhum", "Sem prazo"],
-      ["data", "Até uma data"],
-      ["dias", "N dias a partir de uma data"],
-      ["contagem", "Só contar os dias desde uma data"],
-      ["proximo", "N dias a partir do próximo documento de um tipo"],
-    ]),
-  );
+  let modoAtual: ModoPrazo = v.modo;
+  const mexeu = () => {
+    prazoAlterado = true;
+    atualizar();
+  };
+  const modo: Combo = criarCombo({
+    rotulo: "Prazo",
+    icone: "relogio",
+    busca: false,
+    opcoes: MODOS.map((m) => ({ valor: m.valor, rotulo: m.rotulo, descricao: m.descricao, icone: m.icone })),
+    valor: [v.modo],
+    aoMudar: (x) => {
+      modoAtual = (x[0] ?? "nenhum") as ModoPrazo;
+      mexeu();
+    },
+    larguraLista: 320,
+    classe: "fav-modo-prazo",
+  });
   const referencia = h("input", { type: "date", class: "spro-campo", "aria-label": "A partir de", value: v.referencia });
   const vencimento = h("input", { type: "date", class: "spro-campo", "aria-label": "Vence em", value: v.vencimento });
   const n = h("input", {
@@ -130,21 +166,23 @@ export function montarEditor(d: DepsEditor): HTMLElement {
     "aria-label": "Quantidade de dias",
     value: String(v.n),
   });
-  const contagem: HTMLSelectElement = h(
-    "select",
-    { class: "spro-campo", "aria-label": "Contagem" },
-    ...opcoes(v.contagem, [
+  const contagem = segmentado<ValoresPrazo["contagem"]>(
+    "Contagem",
+    [
       ["corridos", "dias corridos"],
       ["uteis", "dias úteis"],
-    ]),
+    ],
+    v.contagem,
+    mexeu,
   );
-  const sentido: HTMLSelectElement = h(
-    "select",
-    { class: "spro-campo", "aria-label": "Sentido" },
-    ...opcoes(v.sentido, [
+  const sentido = segmentado<ValoresPrazo["sentido"]>(
+    "Sentido",
+    [
       ["depois", "depois"],
       ["antes", "antes"],
-    ]),
+    ],
+    v.sentido,
+    mexeu,
   );
   // Prazo a partir da assinatura de um documento do processo (paridade com o legado).
   let documento = v.documento;
@@ -160,7 +198,7 @@ export function montarEditor(d: DepsEditor): HTMLElement {
               "button",
               {
                 type: "button",
-                class: "spro-botao",
+                class: "spro-botao pequeno",
                 onclick: () => {
                   documento = undefined;
                   prazoAlterado = true;
@@ -183,23 +221,28 @@ export function montarEditor(d: DepsEditor): HTMLElement {
         areaDocs.replaceChildren(h("p", { class: "fav-dica" }, "Nenhum documento assinado neste processo."));
         return;
       }
-      const sel: HTMLSelectElement = h(
-        "select",
-        { class: "spro-campo", "aria-label": "Documento" },
-        h("option", { value: "" }, "Escolha o documento"),
-        ...docs.map((x) => h("option", { value: x.id }, `${x.nome} (SEI nº ${x.numero}) — assinado em ${formatarData(x.data)}`)),
-      );
-      sel.addEventListener("change", () => {
-        const x = docs.find((y) => y.id === sel.value);
-        if (!x) return;
-        documento = { id: x.id, rotulo: `${x.nome} (SEI nº ${x.numero})` };
-        referencia.value = x.data;
-        prazoAlterado = true;
-        areaDocs.replaceChildren();
-        pintarDoc();
-        atualizar();
+      const sel = criarCombo({
+        rotulo: "Documento",
+        icone: "documento",
+        vazio: "Escolha o documento",
+        opcoes: docs.map((x) => ({
+          valor: x.id,
+          rotulo: x.nome,
+          descricao: `SEI nº ${x.numero} · assinado em ${formatarData(x.data)}`,
+        })),
+        larguraLista: 340,
+        aoMudar: (escolha) => {
+          const x = docs.find((y) => y.id === escolha[0]);
+          if (!x) return;
+          documento = { id: x.id, rotulo: `${x.nome} (SEI nº ${x.numero})` };
+          referencia.value = x.data;
+          prazoAlterado = true;
+          areaDocs.replaceChildren();
+          pintarDoc();
+          atualizar();
+        },
       });
-      areaDocs.replaceChildren(sel);
+      areaDocs.replaceChildren(sel.el);
     } catch (e) {
       const codigo = (e as { codigo?: string }).codigo;
       // O aviso do efeito colateral é do app, e não da mensagem que veio da aba.
@@ -211,17 +254,34 @@ export function montarEditor(d: DepsEditor): HTMLElement {
             : String(e);
       areaDocs.replaceChildren(h("p", { class: "fav-dica" }, texto));
       if (codigo === "PRECISA_BUSCAR") {
-        areaDocs.append(h("button", { type: "button", class: "spro-botao", onclick: () => void escolherDocumento(true) }, "Buscar no SEI"));
+        areaDocs.append(
+          h(
+            "button",
+            { type: "button", class: "spro-botao pequeno", onclick: () => void escolherDocumento(true) },
+            icone("busca", 14),
+            "Buscar no SEI",
+          ),
+        );
       }
     }
   };
   const botaoDoc = d.listarDocumentos
-    ? h("button", { type: "button", class: "spro-botao", onclick: () => void escolherDocumento(false) }, "Usar a data de um documento…")
+    ? h(
+        "button",
+        { type: "button", class: "spro-botao pequeno fantasma", onclick: () => void escolherDocumento(false) },
+        icone("documento", 14),
+        "Usar a data de um documento…",
+      )
     : null;
   const grupoRef = h("div", {}, h("div", { class: "linha" }, campo("A partir de", referencia), botaoDoc), docInfo, areaDocs);
   const grupoVenc = campo("Vence em", vencimento);
-  const grupoDias = h("div", { class: "linha" }, n, sentido);
-  const grupoContagem = campo("Contar em", contagem);
+  const grupoDias = h(
+    "div",
+    { class: "linha" },
+    campo("Dias", n),
+    h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Sentido"), sentido.el),
+  );
+  const grupoContagem = h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Contar em"), contagem.el);
   const tiposDoc = h("input", {
     class: "spro-campo",
     "aria-label": "Tipos de documento",
@@ -240,12 +300,12 @@ export function montarEditor(d: DepsEditor): HTMLElement {
   );
   const previa = h("p", { class: "fav-previa", "aria-live": "polite" });
   const ler = (): ValoresPrazo => ({
-    modo: (modo.value ?? "nenhum") as ModoPrazo,
+    modo: modoAtual,
     referencia: referencia.value,
     vencimento: vencimento.value,
     n: Number(n.value),
-    contagem: (contagem.value ?? "corridos") as ValoresPrazo["contagem"],
-    sentido: (sentido.value ?? "depois") as ValoresPrazo["sentido"],
+    contagem: contagem.valor(),
+    sentido: sentido.valor(),
     documento,
     tipos: tiposDoc.value,
   });
@@ -257,13 +317,15 @@ export function montarEditor(d: DepsEditor): HTMLElement {
     grupoContagem.hidden = m !== "dias" && m !== "contagem" && m !== "proximo";
     grupoTipos.hidden = m !== "proximo";
     const p = prazoDosValores(ler());
-    previa.textContent = p
-      ? `${calcularPrazo(p, d.hoje).texto}. ${calcularPrazo(p, d.hoje).dica}`
-      : m === "nenhum"
-        ? "Sem prazo."
-        : "Preencha as datas.";
+    const r = p ? calcularPrazo(p, d.hoje) : undefined;
+    previa.dataset.situacao = r?.situacao ?? "";
+    previa.replaceChildren(
+      icone("relogio", 14),
+      h("span", {}, r ? `${r.texto}. ${r.dica}` : m === "nenhum" ? "Sem prazo." : "Preencha as datas."),
+    );
+    previa.hidden = m === "nenhum";
   };
-  for (const el of [modo, referencia, vencimento, n, contagem, sentido, tiposDoc]) {
+  for (const el of [referencia, vencimento, n, tiposDoc]) {
     el.addEventListener("change", () => {
       prazoAlterado = true;
       // Data digitada à mão: deixa de ser a do documento.
@@ -278,16 +340,21 @@ export function montarEditor(d: DepsEditor): HTMLElement {
   pintarDoc();
   return h(
     "div",
-    { class: "fav-form" },
+    { class: "fav-form fav-editor" },
     campo("Título", titulo),
-    h("div", { class: "linha" }, campo("Pasta", pasta), novaPasta, criarPasta),
-    h("div", {}, h("span", { class: "fav-rotulo" }, "Etiquetas"), chips, h("div", { class: "linha" }, novaEtiqueta, criarEtiqueta)),
+    h(
+      "div",
+      { class: "fav-grade2" },
+      h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Pasta"), pasta.el),
+      h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Etiquetas"), etiqueta.el),
+    ),
+    chips,
     campo("Nota pessoal", nota),
     h(
-      "fieldset",
-      { class: "fav-prazo-campos" },
-      h("legend", {}, "Prazo"),
-      modo,
+      "section",
+      { class: "fav-cartao fav-prazo-campos", "aria-label": "Prazo" },
+      h("h3", { class: "fav-cartao-titulo" }, icone("relogio", 15), "Prazo"),
+      modo.el,
       grupoRef,
       grupoVenc,
       grupoDias,
@@ -307,8 +374,12 @@ export function montarEditor(d: DepsEditor): HTMLElement {
           onclick: async () => {
             const m: MudancasFavorito = {
               titulo: titulo.value,
-              pasta: pasta.value || undefined,
-              etiquetas: [...marcadas],
+              pasta: pasta.valor()[0] || undefined,
+              etiquetas: [
+                ...etiqueta.valor(),
+                // Etiquetas que o editor não lista (removidas em outro lugar) continuam como estavam.
+                ...f.etiquetas.filter((id) => !d.etiquetas.some((e) => e.id === id) && !etiquetas.some((e) => e.id === id)),
+              ],
               nota: nota.value,
             };
             if (prazoAlterado) m.prazo = prazoDosValores(ler());

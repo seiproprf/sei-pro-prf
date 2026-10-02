@@ -1,6 +1,6 @@
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta } from "../src/modelo/tipos";
 import { type DepsBalao, montarBalao } from "../src/pagina/balao";
-import { botao, checar, disparar, escolher, instalarDom, secao, tique } from "./util";
+import { botao, checar, combo, disparar, escolherCombo, instalarDom, secao, tique } from "./util";
 
 export async function verificarBalao(): Promise<void> {
   instalarDom();
@@ -40,30 +40,39 @@ export async function verificarBalao(): Promise<void> {
   };
   const ultimaEdicao = () => [...chamadas].reverse().find((c) => c[0] === "editar")?.[1] as MudancasFavorito | undefined;
   const el = montarBalao(deps);
+  document.body.append(el);
 
-  escolher(el.querySelector("select")!, "pA");
+  escolherCombo(el, "Pasta", "pA");
   await tique();
   checar("trocar a pasta grava", ultimaEdicao()?.pasta === "pA", ultimaEdicao());
-  escolher(el.querySelector("select")!, "");
+  escolherCombo(el, "Pasta", "");
   await tique();
   checar("sem pasta grava vazio", !!ultimaEdicao() && "pasta" in ultimaEdicao()! && ultimaEdicao()?.pasta === undefined);
 
-  const nomePasta = el.querySelector('input[aria-label="Nova pasta"]') as HTMLInputElement;
-  nomePasta.value = "Licitações";
-  botao(el, "Criar")!.click();
-  await tique();
+  // Pasta nova: digita no seletor e escolhe "Criar".
+  combo(el, "Pasta")!.click();
+  const buscaPasta = document.querySelector(".spro-combo-pop input.spro-combo-busca") as HTMLInputElement;
+  buscaPasta.value = "Licitações";
+  disparar(buscaPasta, "input");
+  (document.querySelector(".spro-combo-pop .spro-combo-criar") as HTMLElement).click();
+  await tique(20);
   checar(
     "nova pasta e criada e escolhida",
     chamadas.some((c) => c[0] === "criarPasta" && c[1] === "Licitações") && ultimaEdicao()?.pasta === "pB",
+    ultimaEdicao(),
   );
 
-  botao(el, "Urgente")!.click();
+  escolherCombo(el, "Etiquetas", "eA");
   await tique();
   checar("marcar etiqueta grava a lista", JSON.stringify(ultimaEdicao()?.etiquetas) === JSON.stringify(["eA"]));
-  const nomeEtiqueta = el.querySelector('input[aria-label="Nova etiqueta"]') as HTMLInputElement;
-  nomeEtiqueta.value = "Diligência";
-  botao(el, "Adicionar")!.click();
-  await tique();
+  checar("a etiqueta marcada vira ficha", !!botao(el, "Tirar a etiqueta Urgente"));
+  combo(el, "Etiquetas")!.click();
+  const buscaEt = document.querySelector(".spro-combo-pop input.spro-combo-busca") as HTMLInputElement;
+  buscaEt.value = "Diligência";
+  disparar(buscaEt, "input");
+  (document.querySelector(".spro-combo-pop .spro-combo-criar") as HTMLElement).click();
+  await tique(20);
+  combo(el, "Etiquetas")!.click();
   checar("nova etiqueta e criada e marcada", JSON.stringify(ultimaEdicao()?.etiquetas) === JSON.stringify(["eA", "eB"]), ultimaEdicao());
 
   const nota = el.querySelector("textarea")!;
@@ -82,7 +91,8 @@ export async function verificarBalao(): Promise<void> {
   checar("Pronto fecha", fechou === 1);
   checar("sem unidade nao oferece a troca de lista", !botao(montarBalao({ ...deps, siglaUnidade: null }), "Pessoal"));
   const comLembrete = montarBalao({ ...deps, hoje: "2026-10-01" });
-  escolher(comLembrete.querySelector('select[aria-label="Lembrete"]') as HTMLSelectElement, "7");
+  document.body.append(comLembrete);
+  escolherCombo(comLembrete, "Lembrete", "7");
   await tique();
   const ultimoL = chamadas.at(-1)?.[1] as { lembrete?: { em: string } } | undefined;
   checar("lembrete rapido no balao (em 1 semana)", ultimoL?.lembrete?.em === "2026-10-08", chamadas.at(-1));

@@ -8,7 +8,7 @@ import { exportarTudo, importarEnvelope, lerEnvelope } from "../src/arquivo";
 import { escoposDoContexto } from "../src/modelo/escopo";
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta } from "../src/modelo/tipos";
 import { RepositorioFavoritos } from "../src/repositorio";
-import { botao, checar, disparar, escolher, instalarDom, secao, tique } from "./util";
+import { botao, checar, disparar, escolherCombo, instalarDom, opcoesDoCombo, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 const HOJE = "2026-10-01";
@@ -108,8 +108,9 @@ export async function verificarDialogos(): Promise<void> {
     ed.textContent,
   );
   (ed.querySelector('input[aria-label="Título"]') as HTMLInputElement).value = "Porto";
-  escolher(ed.querySelector('select[aria-label="Pasta"]') as HTMLSelectElement, "p1");
-  botao(ed, "Urgente")!.click();
+  document.body.append(ed);
+  escolherCombo(ed, "Pasta", "p1");
+  escolherCombo(ed, "Etiquetas", "e1");
   botao(ed, "Salvar")!.click();
   await tique();
   checar(
@@ -119,7 +120,8 @@ export async function verificarDialogos(): Promise<void> {
   );
   checar("prazo intocado nao e regravado (preserva o do legado)", !!salvos[0] && !("prazo" in salvos[0]));
   const ed2 = montarEditor({ ...deps, favorito: fav({ id: "2" }) });
-  escolher(ed2.querySelector('select[aria-label="Prazo"]') as HTMLSelectElement, "data");
+  document.body.append(ed2);
+  escolherCombo(ed2, "Prazo", "data");
   const venc = ed2.querySelector('input[aria-label="Vence em"]') as HTMLInputElement;
   venc.value = "2026-10-05";
   disparar(venc, "change");
@@ -154,7 +156,8 @@ export async function verificarDialogos(): Promise<void> {
       return docsFalsos;
     },
   });
-  escolher(ed3.querySelector('select[aria-label="Prazo"]') as HTMLSelectElement, "dias");
+  document.body.append(ed3);
+  escolherCombo(ed3, "Prazo", "dias");
   botao(ed3, "Usar a data de um documento…")!.click();
   await tique(10);
   checar(
@@ -163,9 +166,8 @@ export async function verificarDialogos(): Promise<void> {
   );
   botao(ed3, "Buscar no SEI")!.click();
   await tique(10);
-  const selDoc = ed3.querySelector('select[aria-label="Documento"]') as HTMLSelectElement | null;
-  checar("lista os documentos assinados", pedidos.join() === "false,true" && selDoc?.options.length === 3, pedidos);
-  escolher(selDoc!, "902");
+  checar("lista os documentos assinados", pedidos.join() === "false,true" && opcoesDoCombo(ed3, "Documento").join() === "901,902", pedidos);
+  escolherCombo(ed3, "Documento", "902");
   checar(
     "a data de referencia vira a da assinatura",
     (ed3.querySelector('input[aria-label="A partir de"]') as HTMLInputElement).value === "2026-09-12",

@@ -1,5 +1,5 @@
 import { h, icone } from "@comum/ui/dom";
-import { corDoTexto } from "../../modelo/cores";
+import { criarMenu } from "@comum/ui/menu";
 import type { DocumentoFavorito, Etiqueta, Favorito, Pasta, ResumoPrazo } from "../../modelo/tipos";
 
 export interface ApoioItem {
@@ -14,6 +14,10 @@ export interface ApoioItem {
   novidade?: string;
   /** "hoje", "amanhã", "desde 28/09/2026"... */
   lembrete?: string;
+  /** Lembrete para hoje ou atrasado. */
+  lembreteVencido?: boolean;
+  /** Fora da unidade na última leitura. */
+  fora?: boolean;
 }
 
 export interface AcoesItem {
@@ -31,39 +35,73 @@ export interface AcoesItem {
   removerDocumento?(f: Favorito, d: DocumentoFavorito): void;
 }
 
-const itemMenu = (rotulo: string, fazer: () => void, classe?: string) =>
-  h(
-    "button",
-    {
-      type: "button",
-      role: "menuitem",
-      class: classe,
-      onclick: (ev) => {
-        (ev.currentTarget as HTMLElement | null)?.closest("details")?.removeAttribute("open");
-        fazer();
-      },
-    },
-    rotulo,
-  );
+/** O que a faixa colorida à esquerda do item conta, do mais urgente para o menos. */
+function estadoDoItem(a: ApoioItem): string | undefined {
+  if (a.resumo?.situacao === "atrasado") return "atrasado";
+  if (a.resumo?.situacao === "hoje" || a.lembreteVencido) return "hoje";
+  if (a.novidade) return "novidade";
+  return undefined;
+}
+
+const TOM_PRAZO: Record<string, string> = {
+  atrasado: "var(--spro-perigo)",
+  hoje: "var(--spro-aviso)",
+  noPrazo: "var(--spro-ok)",
+};
 
 export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIElement {
-  const titulo = f.titulo || [f.tipo, f.especificacao].filter(Boolean).join(" · ") || "(sem descrição)";
+  const descricao = [f.tipo, f.especificacao].filter(Boolean).join(" · ");
+  const titulo = f.titulo || descricao || "(sem descrição)";
   const pasta = f.pasta ? a.pastas.get(f.pasta) : undefined;
   const etiquetas = f.etiquetas.map((id) => a.etiquetas.get(id)).filter((e): e is Etiqueta => !!e && e.removidoEm === undefined);
+  const novaAba = (ev: Event) => {
+    const m = ev as MouseEvent;
+    return !!(m.ctrlKey || m.metaKey);
+  };
+
+  const menu = criarMenu({
+    rotulo: `Mais ações para ${f.protocolo}`,
+    icone: "menu",
+    classe: "spro-botao-icone pequeno fav-acao",
+    itens: () => [
+      { rotulo: "Editar", icone: "lapis", fazer: () => acoes.editar(f) },
+      { rotulo: "Abrir em outra aba", icone: "saida", fazer: () => acoes.abrir(f, true) },
+      a.novidade && acoes.marcarVisto ? { rotulo: "Marcar como visto", icone: "olho", fazer: () => acoes.marcarVisto?.(f) } : null,
+      acoes.lembrete ? { rotulo: "Lembrete…", icone: "sino", fazer: () => acoes.lembrete?.(f) } : null,
+      acoes.mapa ? { rotulo: "Local no mapa…", icone: "local", fazer: () => acoes.mapa?.(f) } : null,
+      "-",
+      a.outraLista ? { rotulo: `Mover para ${a.outraLista}`, icone: "mover", fazer: () => acoes.moverLista(f) } : null,
+      { rotulo: "Mover para cima", icone: "setaCima", fazer: () => acoes.moverOrdem(f, -1) },
+      { rotulo: "Mover para baixo", icone: "setaBaixo", fazer: () => acoes.moverOrdem(f, 1) },
+      "-",
+      { rotulo: "Remover", icone: "lixeira", perigo: true, fazer: () => acoes.remover(f) },
+    ],
+  });
+
+  const estado = estadoDoItem(a);
   return h(
     "li",
-    { class: "fav-item", "data-id": f.id, draggable: a.arrastavel ? "true" : undefined },
-    h("input", {
-      type: "checkbox",
-      class: "fav-sel",
-      "aria-label": `Selecionar ${f.protocolo}`,
-      checked: a.selecionado,
-      onchange: (ev) => acoes.alternarSelecao(f, (ev.target as HTMLInputElement).checked),
-    }),
-    a.arrastavel ? h("span", { class: "fav-alca", title: "Arraste para reordenar", "aria-hidden": "true" }, icone("alca", 14)) : h("span"),
+    {
+      class: `fav-item${a.selecionado ? " fav-item-selecionado" : ""}`,
+      "data-id": f.id,
+      "data-estado": estado,
+      draggable: a.arrastavel ? "true" : undefined,
+    },
+    h(
+      "span",
+      { class: "fav-sel-caixa" },
+      h("input", {
+        type: "checkbox",
+        class: "fav-sel",
+        "aria-label": `Selecionar ${f.protocolo}`,
+        checked: a.selecionado,
+        onchange: (ev) => acoes.alternarSelecao(f, (ev.target as HTMLInputElement).checked),
+      }),
+    ),
+    a.arrastavel ? h("span", { class: "fav-alca", title: "Arraste para reordenar", "aria-hidden": "true" }, icone("alca", 14)) : null,
     h(
       "div",
-      { class: "fav-principal" },
+      { class: "fav-cabeca-item" },
       h(
         "a",
         {
@@ -72,22 +110,52 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
           title: "Abrir o processo (Ctrl+clique abre em outra aba)",
           onclick: (ev) => {
             ev.preventDefault();
-            const m = ev as MouseEvent;
-            acoes.abrir(f, !!(m.ctrlKey || m.metaKey));
+            acoes.abrir(f, novaAba(ev));
           },
         },
         f.protocolo,
       ),
-      f.sigiloso ? h("span", { class: "fav-selo", title: "Processo sigiloso" }, "sigiloso") : null,
-      a.novidade
-        ? h("span", { class: "fav-novidade", title: `O que mudou desde a última vez que você viu: ${a.novidade}` }, a.novidade)
+      f.sigiloso
+        ? h(
+            "span",
+            { class: "spro-pilula fav-selo", title: "Processo sigiloso", style: "--tom:var(--spro-perigo)" },
+            icone("cadeado", 11),
+            "sigiloso",
+          )
         : null,
-      h("button", { type: "button", class: "fav-titulo", title: "Editar favorito", onclick: () => acoes.editar(f) }, titulo),
+    ),
+    h(
+      "div",
+      { class: "fav-principal" },
+      a.novidade
+        ? h(
+            "span",
+            { class: "spro-pilula fav-novidade", title: `O que mudou desde a última vez que você viu: ${a.novidade}` },
+            icone("brilho", 12),
+            h("span", {}, a.novidade),
+          )
+        : null,
+      h(
+        "button",
+        {
+          type: "button",
+          class: "fav-titulo",
+          title: descricao && f.titulo ? `${titulo} — ${descricao}` : "Editar favorito",
+          onclick: () => acoes.editar(f),
+        },
+        titulo,
+      ),
       f.documentos?.length
         ? h(
             "details",
             { class: "fav-docs" },
-            h("summary", {}, icone("documento", 13), ` ${f.documentos.length} ${f.documentos.length === 1 ? "documento" : "documentos"}`),
+            h(
+              "summary",
+              {},
+              icone("documento", 12),
+              ` ${f.documentos.length} ${f.documentos.length === 1 ? "documento favorito" : "documentos favoritos"}`,
+              icone("chevron", 12),
+            ),
             h(
               "ul",
               {},
@@ -101,10 +169,7 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
                       type: "button",
                       class: "fav-doc-abrir",
                       title: "Abrir o documento (Ctrl+clique abre em outra aba)",
-                      onclick: (ev) => {
-                        const m = ev as MouseEvent;
-                        acoes.abrirDocumento?.(f, d, !!(m.ctrlKey || m.metaKey));
-                      },
+                      onclick: (ev) => acoes.abrirDocumento?.(f, d, novaAba(ev)),
                     },
                     `${d.numero} — ${d.titulo}`,
                   ),
@@ -113,7 +178,7 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
                         "button",
                         {
                           type: "button",
-                          class: "spro-botao-icone",
+                          class: "spro-botao-icone pequeno",
                           "aria-label": `Tirar ${d.numero} dos documentos favoritos`,
                           title: "Tirar dos documentos favoritos",
                           onclick: () => acoes.removerDocumento?.(f, d),
@@ -130,25 +195,51 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
     h(
       "div",
       { class: "fav-meta" },
-      pasta ? h("span", { class: "fav-pasta" }, icone("pasta", 13), pasta.nome) : null,
-      ...etiquetas.map((e) => h("span", { class: "fav-etiqueta", style: `--cor:${e.cor};--cor-texto:${corDoTexto(e.cor)}` }, e.nome)),
-      a.resumo
-        ? h("span", { class: `fav-prazo fav-prazo-${a.resumo.situacao}`, title: a.resumo.dica }, icone("relogio", 13), a.resumo.texto)
+      pasta
+        ? h(
+            "span",
+            { class: "spro-pilula fav-pasta", title: `Pasta ${pasta.nome}`, style: pasta.cor ? `--cor-pasta:${pasta.cor}` : undefined },
+            icone("pasta", 12),
+            h("span", {}, pasta.nome),
+          )
         : null,
-      f.nota ? h("span", { class: "fav-nota", title: f.nota, "aria-label": `Nota: ${f.nota}` }, icone("nota", 14)) : null,
+      ...etiquetas.map((e) =>
+        h("span", { class: "fav-etiqueta", style: `--cor:${e.cor}`, title: `Etiqueta ${e.nome}` }, h("span", {}, e.nome)),
+      ),
+      a.resumo
+        ? h(
+            "span",
+            {
+              class: `spro-pilula fav-prazo fav-prazo-${a.resumo.situacao}`,
+              title: a.resumo.dica,
+              style: TOM_PRAZO[a.resumo.situacao] ? `--tom:${TOM_PRAZO[a.resumo.situacao]}` : undefined,
+            },
+            icone("relogio", 12),
+            h("span", {}, a.resumo.texto),
+          )
+        : null,
       f.lembrete && a.lembrete
         ? h(
             "button",
             {
               type: "button",
-              class: "fav-lembrete",
+              class: `spro-pilula fav-lembrete${a.lembreteVencido ? " fav-lembrete-vencido" : ""}`,
               title: `Lembrete ${a.lembrete}${f.lembrete.texto ? `: ${f.lembrete.texto}` : ""}`,
               onclick: () => acoes.lembrete?.(f),
             },
-            icone("sino", 13),
-            f.lembrete.texto ? `${a.lembrete} · ${f.lembrete.texto}` : a.lembrete,
+            icone("sino", 12),
+            h("span", {}, f.lembrete.texto ? `${a.lembrete} · ${f.lembrete.texto}` : a.lembrete),
           )
         : null,
+      a.fora
+        ? h(
+            "span",
+            { class: "spro-pilula fav-fora", title: "Fora da sua unidade na última leitura" },
+            icone("saida", 12),
+            h("span", {}, "fora"),
+          )
+        : null,
+      f.nota ? h("span", { class: "fav-nota", title: f.nota, "aria-label": `Nota: ${f.nota}` }, icone("nota", 14)) : null,
       f.local && acoes.mapa
         ? h(
             "button",
@@ -164,21 +255,33 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
         : null,
     ),
     h(
-      "details",
-      { class: "fav-menu" },
-      h("summary", { title: "Mais ações", "aria-label": `Mais ações para ${f.protocolo}` }, icone("menu", 16)),
+      "div",
+      { class: "fav-acoes" },
       h(
-        "div",
-        { class: "fav-menu-lista", role: "menu" },
-        itemMenu("Editar", () => acoes.editar(f)),
-        a.novidade && acoes.marcarVisto ? itemMenu("Marcar como visto", () => acoes.marcarVisto?.(f)) : null,
-        acoes.lembrete ? itemMenu("Lembrete…", () => acoes.lembrete?.(f)) : null,
-        a.outraLista ? itemMenu(`Mover para ${a.outraLista}`, () => acoes.moverLista(f)) : null,
-        itemMenu("Mover para cima", () => acoes.moverOrdem(f, -1)),
-        itemMenu("Mover para baixo", () => acoes.moverOrdem(f, 1)),
-        acoes.mapa ? itemMenu("Local no mapa…", () => acoes.mapa?.(f)) : null,
-        itemMenu("Remover", () => acoes.remover(f), "perigo"),
+        "button",
+        {
+          type: "button",
+          class: "spro-botao-icone pequeno fav-acao",
+          title: "Editar",
+          "aria-label": `Editar ${f.protocolo}`,
+          onclick: () => acoes.editar(f),
+        },
+        icone("lapis", 15),
       ),
+      acoes.lembrete
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "spro-botao-icone pequeno fav-acao",
+              title: "Lembrete",
+              "aria-label": `Lembrete de ${f.protocolo}`,
+              onclick: () => acoes.lembrete?.(f),
+            },
+            icone("sino", 15),
+          )
+        : null,
+      menu,
     ),
   );
 }

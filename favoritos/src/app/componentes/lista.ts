@@ -1,4 +1,4 @@
-import { h } from "@comum/ui/dom";
+import { h, icone } from "@comum/ui/dom";
 import { SEM_PASTA } from "../../modelo/constantes";
 import type { Favorito, Pasta } from "../../modelo/tipos";
 import { type AcoesItem, type ApoioItem, renderItem } from "./item";
@@ -27,10 +27,22 @@ export interface OpcoesLista {
   acoes: AcoesItem;
   reordenar?: (id: string, anteriorId: string | null, posteriorId: string | null) => void;
   vazio: string;
+  /** Dica abaixo do texto do vazio (ex.: como favoritar). */
+  vazioDica?: string;
+  /** Grupos (pastas) recolhidos; sem isto, os grupos não recolhem. */
+  recolhidos?: ReadonlySet<string>;
+  alternarGrupo?: (id: string) => void;
 }
 
 export function renderLista(o: OpcoesLista): HTMLElement {
-  if (!o.itens.length) return h("p", { class: "fav-vazio" }, o.vazio);
+  if (!o.itens.length)
+    return h(
+      "div",
+      { class: "fav-vazio" },
+      h("span", { class: "fav-vazio-arte", "aria-hidden": "true" }, icone("estrela", 28)),
+      h("p", { class: "fav-vazio-texto" }, o.vazio),
+      o.vazioDica ? h("p", { class: "fav-vazio-dica" }, o.vazioDica) : null,
+    );
   if (!o.agrupar) return listaSimples(o.itens, o);
   const grupos = new Map<string, Favorito[]>();
   for (const f of o.itens) {
@@ -41,14 +53,34 @@ export function renderLista(o: OpcoesLista): HTMLElement {
     .filter(([id]) => grupos.has(id))
     .map(([id, nome]) => {
       const lista = grupos.get(id) ?? [];
+      const cor = o.pastas.find((p) => p.id === id)?.cor;
+      const recolhido = o.recolhidos?.has(id) ?? false;
+      const titulo = h(
+        "h3",
+        {},
+        h(
+          "button",
+          {
+            type: "button",
+            class: "fav-grupo-titulo",
+            "aria-expanded": String(!recolhido),
+            disabled: !o.alternarGrupo,
+            onclick: () => o.alternarGrupo?.(id),
+          },
+          icone("chevron", 14),
+          h("span", { class: "fav-grupo-icone", style: cor ? `color:${cor}` : undefined }, icone("pasta", 15)),
+          h("span", { class: "fav-grupo-nome" }, nome),
+          h("span", { class: "fav-grupo-conta" }, String(lista.length)),
+        ),
+      );
       return h(
         "section",
-        { class: "fav-grupo" },
-        h("h3", {}, `${nome} (${lista.length})`),
-        listaSimples(lista, { ...o, reordenar: undefined }),
+        { class: `fav-grupo${recolhido ? " fav-grupo-recolhido" : ""}`, "data-grupo": id },
+        titulo,
+        recolhido ? null : listaSimples(lista, { ...o, reordenar: undefined }),
       );
     });
-  return h("div", {}, ...secoes);
+  return h("div", { class: "fav-grupos" }, ...secoes);
 }
 
 function listaSimples(itens: Favorito[], o: OpcoesLista): HTMLElement {

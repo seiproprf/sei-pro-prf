@@ -1,4 +1,4 @@
-import { corDoTexto, corPadrao, PALETA } from "../src/modelo/cores";
+import { corDoTexto, corPadrao, destaqueDaCorSei, PALETA } from "../src/modelo/cores";
 import { chaveEscopo, escoposDoContexto } from "../src/modelo/escopo";
 import { editar, filtrar, novoFavorito, ordenar, remover, restaurar } from "../src/modelo/operacoes";
 import type { ContextoAba, Etiqueta, Favorito } from "../src/modelo/tipos";
@@ -31,6 +31,23 @@ export function verificarModelo(): void {
   secao("cores");
   checar("cor padrao vem da paleta e e estavel", PALETA.includes(corPadrao("Urgente")) && corPadrao("Urgente") === corPadrao(" urgente "));
   checar("texto escuro em fundo claro, claro em fundo escuro", corDoTexto("#fff9c4") === "#1f2328" && corDoTexto("#123456") === "#ffffff");
+  checar(
+    "cor do tema do SEI (rgb do getComputedStyle) vira hex",
+    destaqueDaCorSei("rgb(21, 94, 158)") === "#155e9e",
+    destaqueDaCorSei("rgb(21, 94, 158)"),
+  );
+  checar("aceita hex", destaqueDaCorSei("#1F5FBF") === "#1f5fbf");
+  checar(
+    "transparente ou cinza nao serve (fica o azul padrao)",
+    destaqueDaCorSei("rgba(0, 0, 0, 0)") === null && destaqueDaCorSei("rgb(80, 80, 80)") === null,
+  );
+  const clara = destaqueDaCorSei("rgb(120, 200, 120)");
+  checar(
+    "cor clara demais e escurecida para dar contraste com o branco",
+    !!clara && clara !== "#78c878" && corDoTexto(clara) === "#ffffff",
+    clara,
+  );
+  checar("lixo nao quebra", destaqueDaCorSei("") === null && destaqueDaCorSei("var(--x)") === null);
 
   secao("operacoes");
   const c = { agora: 1000, dispositivo: "D1" };
@@ -75,10 +92,15 @@ export function verificarModelo(): void {
   checar("busca pela etiqueta", ids(filtrar(lista, { busca: "urgencia" }, apoio)) === "1");
   checar("busca com dois termos na nota", ids(filtrar(lista, { busca: "FISCAL ligar" }, apoio)) === "2");
   checar("lapide nunca aparece", !filtrar(lista, {}, apoio).some((x) => x.id === "3"));
-  checar("filtro por pasta", ids(filtrar(lista, { pasta: "p1" }, apoio)) === "1");
-  checar("filtro sem pasta", ids(filtrar(lista, { pasta: "__sem__" }, apoio)) === "2");
-  checar("filtro por etiqueta", ids(filtrar(lista, { etiqueta: "e1" }, apoio)) === "1");
-  checar("filtro sem prazo", ids(filtrar(lista, { prazo: "semPrazo" }, apoio)) === "1,2");
+  checar("filtro por pasta", ids(filtrar(lista, { pastas: ["p1"] }, apoio)) === "1");
+  checar("filtro sem pasta", ids(filtrar(lista, { pastas: ["__sem__"] }, apoio)) === "2");
+  checar("duas pastas = uma OU outra", ids(filtrar(lista, { pastas: ["p1", "__sem__"] }, apoio)) === "1,2");
+  checar("lista vazia nao filtra", ids(filtrar(lista, { pastas: [], etiquetas: [] }, apoio)) === "1,2");
+  checar("filtro por etiqueta", ids(filtrar(lista, { etiquetas: ["e1"] }, apoio)) === "1");
+  checar("etiquetas = qualquer uma delas", ids(filtrar(lista, { etiquetas: ["e9", "e1"] }, apoio)) === "1");
+  checar("campos diferentes = E", ids(filtrar(lista, { pastas: ["__sem__"], etiquetas: ["e1"] }, apoio)) === "");
+  checar("filtro sem prazo", ids(filtrar(lista, { prazos: ["semPrazo"] }, apoio)) === "1,2");
+  checar("situacao: com nota", ids(filtrar(lista, { situacoes: ["nota"] }, apoio)) === "2");
 
   secao("ordenacao");
   checar("manual pela chave com <", ids(ordenar(lista, "manual", () => undefined)) === "2,1,3");

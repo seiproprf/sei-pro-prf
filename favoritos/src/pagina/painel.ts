@@ -39,6 +39,11 @@ export function inserirNaOrdem(container: Element, painel: Element, ordem: numbe
 
 export interface OpcoesPainel {
   urlApp: string;
+  /**
+   * Mesmo esquema de cor do app: com esquemas diferentes, o navegador pinta um
+   * fundo opaco atrás do iframe, e o diálogo sobreposto não teria fundo transparente.
+   */
+  temaEscuro?: boolean;
   recolhido: boolean;
   ordem: number | null;
   aoRecolher(recolhido: boolean): void;
@@ -61,7 +66,7 @@ export function montarPainel(
     src: o.urlApp,
     title: "Favoritos do SEI Pro",
     allow: "clipboard-write",
-    style: "width: 100%; height: 120px; border: 0; display: block;",
+    style: `width: 100%; height: 120px; border: 0; display: block; color-scheme: ${o.temaEscuro ? "dark" : "light"};`,
   });
   const corpo = h("div", { class: "spro-fav-corpo", hidden: o.recolhido }, iframe);
   const recolher = h("button", { type: "button", class: "spro-fav-recolher" });

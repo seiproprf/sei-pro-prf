@@ -25,6 +25,7 @@ import { ControleArquivo, type HandleArquivo, handlesNoIndexedDB, temSeletorDeAr
 import { copiasNoIndexedDB } from "../sincronia/copias";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
+import { definirEmissorDeAviso, mostrarAviso } from "./aviso";
 import { PonteLateral } from "./lateral";
 import { carregarLeaflet } from "./mapa";
 import { esperarConexaoDaAba } from "./ponte";
@@ -64,9 +65,22 @@ async function iniciarEmbutido(): Promise<void> {
   const ctx = await rpc.chamar<ContextoAba>("contexto");
   const b = await base();
   const altura = observarAltura(rpc);
+  // A lista de um seletor ou menu aberto perto do fim do painel: o iframe cresce até ela caber.
+  addEventListener("spro-popover", (ev) => altura.extra(Number((ev as CustomEvent<{ fundo?: number }>).detail?.fundo) || 0));
+  const sobrepor = sobreposicao(rpc, altura);
+  // Aviso no rodapé da TELA do SEI (o do iframe ficaria lá embaixo, fora da vista); com diálogo aberto, aqui mesmo.
+  definirEmissorDeAviso((texto, acao, ms) => {
+    if (document.documentElement.dataset.sobreposto) return false;
+    rpc
+      .chamar<boolean>("aviso", { texto, acao: acao?.rotulo, ms }, ms + 5000)
+      .then((acionado) => acionado && acao?.fazer())
+      .catch(() => mostrarAviso(document, texto, acao, ms));
+    return true;
+  });
   const app = criarApp(b, ctx, rpc, {
-    aoAbrirModal: () => altura.minimo(640),
-    aoFecharModal: () => altura.minimo(0),
+    embutido: true,
+    aoAbrirModal: sobrepor.abrir,
+    aoFecharModal: sobrepor.fechar,
     aoRedesenhar: () => altura.medir(),
   });
   appAtual = app;
@@ -142,7 +156,52 @@ async function iniciarLateral(): Promise<void> {
   setTimeout(reagir, 1500);
 }
 
+/**
+ * Diálogo do painel embutido FORA do contêiner: enquanto há diálogo aberto, a
+ * aba põe o iframe por cima da tela inteira (pagina/sobreposicao.ts), o app
+ * esconde a lista e deixa o fundo transparente; o diálogo fica no meio da parte
+ * visível da tela, onde quer que o usuário esteja na página. Sem resposta da
+ * aba (versão antiga do content script), volta ao jeito antigo: o iframe cresce.
+ */
+function sobreposicao(rpc: Pick<Rpc, "chamar">, altura: ReturnType<typeof observarAltura>): { abrir(): void; fechar(): void } {
+  const html = document.documentElement;
+  let abertos = 0;
+  return {
+    abrir() {
+      if (abertos++ > 0) return;
+      html.dataset.sobreposto = "abrindo";
+      const reserva = setTimeout(() => {
+        if (html.dataset.sobreposto !== "abrindo") return;
+        html.dataset.sobreposto = "falhou";
+        altura.minimo(640);
+      }, 800);
+      void rpc
+        .chamar<boolean>("sobrepor", { ativo: true }, 3000)
+        .then((ok) => {
+          clearTimeout(reserva);
+          if (!abertos) return;
+          html.dataset.sobreposto = ok ? "sim" : "falhou";
+          if (!ok) altura.minimo(640);
+        })
+        .catch(() => {
+          clearTimeout(reserva);
+          if (!abertos) return;
+          html.dataset.sobreposto = "falhou";
+          altura.minimo(640);
+        });
+    },
+    fechar() {
+      if (abertos === 0 || --abertos > 0) return;
+      delete html.dataset.sobreposto;
+      altura.minimo(0);
+      void rpc.chamar("sobrepor", { ativo: false }, 3000).catch(() => undefined);
+    },
+  };
+}
+
 interface Ganchos {
+  /** Painel abaixo da lista: segue o tema do SEI. O lateral segue o sistema. */
+  embutido?: boolean;
   aoContar?: (n: number) => void;
   aoAbrirModal?: () => void;
   aoFecharModal?: () => void;
@@ -150,14 +209,25 @@ interface Ganchos {
 }
 
 function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Ganchos): AppFavoritos {
-  document.documentElement.dataset.tema = ctx.temaEscuro ? "escuro" : "claro";
+  const html = document.documentElement;
+  if (g.embutido) {
+    html.dataset.tema = ctx.temaEscuro ? "escuro" : "claro";
+    if (ctx.corTema) {
+      html.style.setProperty("--spro-cor-sei", ctx.corTema);
+      html.dataset.corSei = "";
+    }
+  } else {
+    // Painel lateral: claro ou escuro conforme o sistema (prefers-color-scheme).
+    delete html.dataset.tema;
+    delete html.dataset.corSei;
+  }
   const esc = escoposDoContexto(ctx);
   const repos = {
     unidade: esc.unidade ? new RepositorioFavoritos(b.area, esc.unidade, b.carimbo) : null,
     pessoal: new RepositorioFavoritos(b.area, esc.pessoal, b.carimbo),
   };
 
-  const abrirModal: AbrirModal = ({ titulo, conteudo, aoFechar }) => {
+  const abrirModal: AbrirModal = ({ titulo, conteudo, icone: nome, aoFechar }) => {
     const dlg = h("dialog", { class: "spro-dialogo", "aria-label": titulo });
     const fechar = () => {
       if (dlg.open) dlg.close();
@@ -166,8 +236,13 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
       h(
         "header",
         {},
+        nome ? h("span", { class: "spro-dialogo-icone", "aria-hidden": "true" }, icone(nome, 18)) : null,
         h("h2", {}, titulo),
-        h("button", { type: "button", class: "spro-botao-icone", "aria-label": "Fechar", onclick: fechar }, icone("fechar", 16)),
+        h(
+          "button",
+          { type: "button", class: "spro-botao-icone", "aria-label": "Fechar", title: "Fechar (Esc)", onclick: fechar },
+          icone("fechar", 16),
+        ),
       ),
       h("div", { class: "spro-dialogo-corpo" }, conteudo),
     );
@@ -179,6 +254,12 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
     document.body.append(dlg);
     g.aoAbrirModal?.();
     dlg.showModal();
+    // Foco no primeiro campo (e não no X do cabeçalho, o primeiro focável da árvore).
+    dlg
+      .querySelector<HTMLElement>(
+        ".spro-dialogo-corpo :is(input:not([type=hidden]):not([type=radio]):not([type=checkbox]), textarea, .spro-combo, .spro-botao.primario)",
+      )
+      ?.focus({ preventScroll: true });
     return { fechar };
   };
 
@@ -208,7 +289,7 @@ function criarApp(b: Base, ctx: ContextoAba, rpc: Pick<Rpc, "chamar">, g: Gancho
           ),
         ),
       );
-      modal = abrirModal({ titulo: "Confirmar", conteudo: corpo, aoFechar: () => ok(resposta) });
+      modal = abrirModal({ titulo: "Confirmar", icone: "alerta", conteudo: corpo, aoFechar: () => ok(resposta) });
     });
 
   const baixar = (nome: string, conteudo: string, tipo: string) => {

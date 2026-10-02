@@ -5,10 +5,11 @@
  */
 
 import type { DataISO } from "@comum/datas/dias";
+import { type Combo, criarCombo } from "@comum/ui/combobox";
 import { h, icone } from "@comum/ui/dom";
 import { MAX_NOTA } from "../modelo/constantes";
 import type { Etiqueta, Favorito, MudancasFavorito, Pasta, TipoLista } from "../modelo/tipos";
-import { seletorLembrete } from "./lembreteRapido";
+import { comboLembrete } from "./lembreteRapido";
 
 export interface DepsBalao {
   favorito: Favorito;
@@ -29,14 +30,21 @@ export interface DepsBalao {
 }
 
 const ESTILO_BALAO = `:host{all:initial}
-.fav-balao{box-sizing:border-box;width:320px;display:grid;gap:6px;padding:10px 12px;font:13px/1.4 var(--spro-fonte);color:var(--spro-texto);background:var(--spro-fundo);border:1px solid var(--spro-borda);border-radius:10px;box-shadow:0 8px 24px rgb(0 0 0 / 18%)}
-.fav-balao label{font-size:12px;color:var(--spro-suave)}
-.fav-balao-topo{display:flex;align-items:center;gap:6px;color:var(--spro-estrela)}
-.fav-balao-topo strong{color:var(--spro-texto);flex:1}
-.fav-balao-linha,.fav-balao-chips,.fav-balao-listas{display:flex;flex-wrap:wrap;gap:6px}
-.fav-balao-linha .spro-campo{flex:1}
-.fav-balao-rodape{display:flex;justify-content:flex-end}
-textarea.spro-campo{resize:vertical}`;
+.fav-balao{box-sizing:border-box;width:340px;display:grid;gap:10px;padding:14px;font:13px/1.4 var(--spro-fonte);color:var(--spro-texto);background:var(--spro-fundo);border:1px solid var(--spro-borda);border-radius:var(--spro-raio-xg);box-shadow:var(--spro-sombra-3);animation:spro-surgir 160ms var(--spro-curva)}
+.fav-balao-topo{display:flex;align-items:center;gap:10px}
+.fav-balao-estrela{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:var(--spro-raio);color:var(--spro-estrela);background:color-mix(in srgb,var(--spro-estrela) 16%,transparent)}
+.fav-balao-titulo{flex:1;min-width:0;display:grid;line-height:1.25}
+.fav-balao-titulo strong{font-size:14px}
+.fav-balao-titulo span{font-size:11.5px;color:var(--spro-suave);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav-campo{display:grid;gap:5px}
+.fav-rotulo{font-size:11.5px;font-weight:600;color:var(--spro-suave);letter-spacing:.01em}
+.fav-campo .spro-combo{width:100%}
+.fav-campo .spro-combo-ativo{color:var(--spro-texto);background:var(--spro-fundo);border-color:var(--spro-borda-forte)}
+.fav-chips-sel{display:flex;flex-wrap:wrap;gap:5px}
+.fav-chips-sel:empty{display:none}
+.fav-chips-sel .spro-chip .spro-icone{opacity:.6}
+.fav-balao-rodape{display:flex;justify-content:flex-end;padding-top:2px}
+textarea.spro-campo{resize:vertical;width:100%}`;
 
 export function montarBalao(d: DepsBalao): HTMLElement {
   let fav = d.favorito;
@@ -50,8 +58,8 @@ export function montarBalao(d: DepsBalao): HTMLElement {
       "button",
       {
         type: "button",
-        class: "spro-chip",
         "aria-pressed": String(d.lista === lista),
+        title: lista === "pessoal" ? "Mover para a sua lista Pessoal" : `Mover para a lista da ${rotulo}`,
         onclick: () => {
           if (d.lista !== lista) void d.moverPara(lista);
         },
@@ -61,77 +69,74 @@ export function montarBalao(d: DepsBalao): HTMLElement {
   const listas = d.siglaUnidade
     ? h(
         "div",
-        { class: "fav-balao-listas", role: "group", "aria-label": "Lista" },
+        { class: "spro-segmentado fav-balao-listas", role: "group", "aria-label": "Lista" },
         escolherLista(d.siglaUnidade, "unidade"),
         escolherLista("Pessoal", "pessoal"),
       )
     : null;
 
-  const pasta = h(
-    "select",
-    { class: "spro-campo", "aria-label": "Pasta", onchange: () => void salvar({ pasta: pasta.value || undefined }) },
-    h("option", { value: "", selected: !fav.pasta }, "(sem pasta)"),
-    ...d.pastas.map((p) => h("option", { value: p.id, selected: p.id === fav.pasta }, p.nome)),
-  );
-  const novaPasta = h("input", { class: "spro-campo", placeholder: "Nova pasta", "aria-label": "Nova pasta", maxlength: "60" });
-  const criarPasta = h(
-    "button",
-    {
-      type: "button",
-      class: "spro-botao",
-      onclick: async () => {
-        const nome = novaPasta.value.trim();
-        if (!nome) return;
-        const p = await d.criarPasta(nome);
-        for (const o of pasta.querySelectorAll("option")) o.removeAttribute("selected");
-        pasta.append(h("option", { value: p.id, selected: true }, p.nome));
-        novaPasta.value = "";
-        await salvar({ pasta: p.id });
-      },
+  let pastas = [...d.pastas];
+  const pasta: Combo = criarCombo({
+    rotulo: "Pasta",
+    icone: "pasta",
+    vazio: "(sem pasta)",
+    busca: true,
+    opcoes: () => [{ valor: "", rotulo: "(sem pasta)" }, ...pastas.map((p) => ({ valor: p.id, rotulo: p.nome, cor: p.cor }))],
+    valor: fav.pasta ? [fav.pasta] : [],
+    criar: async (nome) => {
+      const p = await d.criarPasta(nome.slice(0, 60));
+      pastas = [...pastas.filter((x) => x.id !== p.id), p];
+      return { valor: p.id, rotulo: p.nome, cor: p.cor };
     },
-    "Criar",
-  );
+    rotuloCriar: (t) => `Criar a pasta “${t}”`,
+    aoMudar: (v) => void salvar({ pasta: v[0] || undefined }),
+    larguraLista: 260,
+  });
 
-  const chips = h("div", { class: "fav-balao-chips" });
+  const chips = h("div", { class: "fav-chips-sel" });
+  const etiqueta: Combo = criarCombo({
+    rotulo: "Etiquetas",
+    icone: "etiqueta",
+    vazio: "Nenhuma",
+    multiplo: true,
+    opcoes: () => etiquetas.map((e) => ({ valor: e.id, rotulo: e.nome, cor: e.cor })),
+    valor: fav.etiquetas,
+    criar: async (nome) => {
+      const e = await d.criarEtiqueta(nome.slice(0, 40));
+      etiquetas = [...etiquetas.filter((x) => x.id !== e.id), e];
+      return { valor: e.id, rotulo: e.nome, cor: e.cor };
+    },
+    rotuloCriar: (t) => `Criar a etiqueta “${t}”`,
+    aoMudar: (v) => {
+      desenharChips();
+      void salvar({ etiquetas: v });
+    },
+    larguraLista: 260,
+  });
   const desenharChips = () =>
     chips.replaceChildren(
-      ...etiquetas.map((e) =>
-        h(
+      ...etiqueta.valor().map((id) => {
+        const e = etiquetas.find((x) => x.id === id);
+        return h(
           "button",
           {
             type: "button",
             class: "spro-chip",
-            style: `--cor:${e.cor}`,
-            "aria-pressed": String(fav.etiquetas.includes(e.id)),
-            onclick: async () => {
-              const marcada = fav.etiquetas.includes(e.id);
-              await salvar({ etiquetas: marcada ? fav.etiquetas.filter((x) => x !== e.id) : [...fav.etiquetas, e.id] });
-              desenharChips();
-            },
+            style: `--cor:${e?.cor ?? "#ccc"}`,
+            title: "Tirar esta etiqueta",
+            "aria-label": `Tirar a etiqueta ${e?.nome ?? ""}`,
+            onclick: () =>
+              etiqueta.definir(
+                etiqueta.valor().filter((x) => x !== id),
+                true,
+              ),
           },
-          e.nome,
-        ),
-      ),
+          e?.nome ?? "",
+          icone("fechar", 11),
+        );
+      }),
     );
   desenharChips();
-  const novaEtiqueta = h("input", { class: "spro-campo", placeholder: "Nova etiqueta", "aria-label": "Nova etiqueta", maxlength: "40" });
-  const criarEtiqueta = h(
-    "button",
-    {
-      type: "button",
-      class: "spro-botao",
-      onclick: async () => {
-        const nome = novaEtiqueta.value.trim();
-        if (!nome) return;
-        const e = await d.criarEtiqueta(nome);
-        etiquetas = [...etiquetas.filter((x) => x.id !== e.id), e];
-        novaEtiqueta.value = "";
-        await salvar({ etiquetas: [...new Set([...fav.etiquetas, e.id])] });
-        desenharChips();
-      },
-    },
-    "Adicionar",
-  );
 
   const nota = h("textarea", {
     class: "spro-campo",
@@ -149,30 +154,30 @@ export function montarBalao(d: DepsBalao): HTMLElement {
     h(
       "div",
       { class: "fav-balao-topo" },
-      icone("estrelaCheia", 16),
-      h("strong", {}, "Favoritado"),
+      h("span", { class: "fav-balao-estrela" }, icone("estrelaCheia", 16)),
+      h("span", { class: "fav-balao-titulo" }, h("strong", {}, "Favoritado"), h("span", {}, fav.protocolo)),
       listas,
-      h("button", { type: "button", class: "spro-botao-icone", "aria-label": "Fechar", onclick: () => d.fechar() }, icone("fechar", 14)),
+      h(
+        "button",
+        { type: "button", class: "spro-botao-icone pequeno", "aria-label": "Fechar", onclick: () => d.fechar() },
+        icone("fechar", 14),
+      ),
     ),
-    h("label", {}, "Pasta"),
-    h("div", { class: "fav-balao-linha" }, pasta),
-    h("div", { class: "fav-balao-linha" }, novaPasta, criarPasta),
-    h("label", {}, "Etiquetas"),
-    chips,
-    h("div", { class: "fav-balao-linha" }, novaEtiqueta, criarEtiqueta),
-    h("label", {}, "Nota"),
-    nota,
+    h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Pasta"), pasta.el),
+    h("div", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Etiquetas"), etiqueta.el, chips),
+    h("label", { class: "fav-campo" }, h("span", { class: "fav-rotulo" }, "Nota"), nota),
     d.hoje
       ? h(
           "div",
-          { class: "fav-balao-linha" },
-          seletorLembrete(d.hoje, fav.lembrete, (l) => void salvar({ lembrete: l })),
+          { class: "fav-campo" },
+          h("span", { class: "fav-rotulo" }, "Lembrete"),
+          comboLembrete(d.hoje, fav.lembrete, (l) => void salvar({ lembrete: l })),
         )
       : null,
     h(
       "div",
       { class: "fav-balao-rodape" },
-      h("button", { type: "button", class: "spro-botao primario", onclick: () => d.fechar() }, "Pronto"),
+      h("button", { type: "button", class: "spro-botao primario", onclick: () => d.fechar() }, icone("check", 14), "Pronto"),
     ),
   );
 }
@@ -189,7 +194,8 @@ export function abrirBalao(ancora: HTMLElement, d: Omit<DepsBalao, "fechar">, cs
   const doc = ancora.ownerDocument;
   const v = doc.defaultView;
   const host = doc.createElement("div");
-  if (d.temaEscuro) host.setAttribute("data-tema", "escuro");
+  // Explícito nos dois sentidos: sem data-tema, o balão seguiria o sistema, e não o SEI.
+  host.setAttribute("data-tema", d.temaEscuro ? "escuro" : "claro");
   const raiz: ParentNode = host.attachShadow({ mode: "open" });
   const estilo = doc.createElement("style");
   estilo.textContent = `${cssBase}\n${ESTILO_BALAO}`;
@@ -197,7 +203,8 @@ export function abrirBalao(ancora: HTMLElement, d: Omit<DepsBalao, "fechar">, cs
     if (!ev.composedPath().includes(host)) fechar();
   };
   const tecla = (ev: KeyboardEvent) => {
-    if (ev.key === "Escape") fechar();
+    // Esc com uma lista aberta fecha só a lista (o seletor cuida disso).
+    if (ev.key === "Escape" && !(raiz as ShadowRoot).querySelector(".spro-combo-pop")) fechar();
   };
   function fechar() {
     host.remove();
@@ -213,7 +220,7 @@ export function abrirBalao(ancora: HTMLElement, d: Omit<DepsBalao, "fechar">, cs
   doc.body.append(host);
   doc.addEventListener("pointerdown", fora, true);
   doc.addEventListener("keydown", tecla, true);
-  caixa.querySelector("select")?.focus();
+  caixa.querySelector<HTMLElement>(".spro-combo")?.focus();
   aberto = fechar;
   return fechar;
 }

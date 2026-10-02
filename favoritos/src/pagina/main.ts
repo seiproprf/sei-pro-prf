@@ -27,9 +27,10 @@ import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import { moverEntreListas, RepositorioFavoritos } from "../repositorio";
 import { DESCRICAO_TEXTO, nomeDoTexto } from "../sincronia/textoPadrao";
 import { ControleAtualizar, chaveProgresso } from "./atualizar";
+import { avisoNaPagina } from "./aviso";
 import { abrirBalao } from "./balao";
 import { contarPendencias, instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral, pintarContador } from "./botao";
-import { contextoDe, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
+import { contextoDe, corDoTemaSei, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
 import { alternarDocumento, instalarEstrelasDocumentos } from "./documentosArvore";
 import { instalarManterNoEnvio } from "./enviar";
 import { instalarEstilo } from "./estilo";
@@ -45,6 +46,7 @@ import { capturarDaArvore, capturarDaCaixa } from "./novidades";
 import { montarPainel, ordemLegada } from "./painel";
 import { ServicoFavoritosPagina } from "./servico";
 import { ControleSincronia, ocultarTextosInternos } from "./sincronia";
+import { criarSobreposicao } from "./sobreposicao";
 
 marcarAtivo(document);
 
@@ -78,6 +80,8 @@ async function principal(): Promise<void> {
   const topo = documentoTopo();
   const ctx = contextoDe(topo, temaEscuroLegado(localStorage), topo.location?.href);
   if (!ctx) return;
+  const corTema = corDoTemaSei(topo);
+  if (corTema) ctx.corTema = corTema;
   const area = areaChrome(chrome.storage.local, "local");
   const sync = areaChrome(chrome.storage.sync, "sync");
   const lateral = temPainelLateral(chrome.runtime.getManifest());
@@ -283,6 +287,7 @@ function montarEmbutido(
 ): { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null {
   const montado = montarPainel(document, {
     urlApp: chrome.runtime.getURL("html/favoritos.html"),
+    temaEscuro: ctx.temaEscuro,
     recolhido,
     ordem: ordemLegada(localStorage),
     aoRecolher: (r) => void gravarPreferencias(sync, { recolhido: r }),
@@ -296,6 +301,8 @@ function montarEmbutido(
     lerArquivo: () => lerArquivoAntigo(),
     sincronia,
     atualizar,
+    sobreposicao: criarSobreposicao(document, montado.iframe, montado.corpo),
+    avisar: avisoNaPagina(document, ctx.temaEscuro),
   });
   let rpc: Rpc | null = null;
   // A cada carga do iframe, uma porta nova: o app só aceita a porta da própria aba (app/ponte.ts).

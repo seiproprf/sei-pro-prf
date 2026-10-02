@@ -13,7 +13,7 @@
  */
 
 import type { Area } from "@comum/armazenamento/area";
-import { h } from "@comum/ui/dom";
+import { h, icone, type NomeIcone } from "@comum/ui/dom";
 
 export type AbaPainel = "favoritos" | "agente";
 export const CHAVE_ABA = "painelAba";
@@ -35,6 +35,7 @@ export const CHAVE_CONTADOR = "favoritos/contadorPainel";
 interface DefAba {
   id: AbaPainel;
   rotulo: string;
+  icone: NomeIcone;
   caminho: string;
   titulo: string;
 }
@@ -42,10 +43,18 @@ interface DefAba {
 export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mostrar(aba: AbaPainel): void; atual(): AbaPainel }> {
   const defs: DefAba[] = [
     ...(d.temFavoritos !== false
-      ? [{ id: "favoritos", rotulo: "Favoritos", caminho: "html/favoritos.html#modo=lateral", titulo: "Favoritos do SEI Pro" } as const]
+      ? [
+          {
+            id: "favoritos",
+            rotulo: "Favoritos",
+            icone: "estrela",
+            caminho: "html/favoritos.html#modo=lateral",
+            titulo: "Favoritos do SEI Pro",
+          } as const,
+        ]
       : []),
     ...(d.temAgente
-      ? [{ id: "agente", rotulo: "Agente de IA", caminho: "html/agente.html", titulo: "Agente de IA do SEI Pro" } as const]
+      ? [{ id: "agente", rotulo: "Agente de IA", icone: "brilho", caminho: "html/agente.html", titulo: "Agente de IA do SEI Pro" } as const]
       : []),
   ];
   const frames = new Map<AbaPainel, HTMLIFrameElement>();
@@ -76,12 +85,15 @@ export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mo
           type: "button",
           role: "tab",
           "aria-selected": "false",
+          "aria-label": def.rotulo,
           onclick: () => {
             mostrar(def.id);
             void d.sessao.gravar({ [CHAVE_ABA]: def.id }).catch(() => undefined);
           },
         },
-        def.rotulo,
+        icone(def.icone, 15),
+        h("span", {}, def.rotulo),
+        h("span", { class: "painel-conta", hidden: true }),
       );
       botoes.set(def.id, b);
       barra.append(b);
@@ -95,7 +107,12 @@ export async function montarShell(raiz: HTMLElement, d: DepsShell): Promise<{ mo
   if (fav && d.local) {
     const pintar = (v: unknown) => {
       const n = typeof v === "number" && v > 0 ? v : 0;
-      fav.textContent = n ? `Favoritos (${n})` : "Favoritos";
+      const conta = fav.querySelector<HTMLElement>(".painel-conta");
+      if (conta) {
+        conta.textContent = String(n);
+        conta.hidden = !n;
+      }
+      fav.setAttribute("aria-label", n ? `Favoritos (${n})` : "Favoritos");
       fav.title = n ? `${n} ${n === 1 ? "favorito pede" : "favoritos pedem"} atenção (lembrete ou novidade)` : "";
     };
     pintar((await d.local.obter(CHAVE_CONTADOR).catch(() => ({}) as Record<string, unknown>))[CHAVE_CONTADOR]);

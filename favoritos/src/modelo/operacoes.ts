@@ -9,7 +9,7 @@ import { normalizarTexto } from "@comum/texto";
 import { SEM_PASTA } from "./constantes";
 import { lembreteVencido } from "./lembrete";
 import type { Mudanca } from "./novidades";
-import type { Carimbo, DadosProcesso, Etiqueta, Favorito, Filtro, ModoOrdem, ResumoPrazo } from "./tipos";
+import type { Carimbo, DadosProcesso, Etiqueta, Favorito, Filtro, Instantaneo, ModoOrdem, ResumoPrazo, SituacaoFiltro } from "./tipos";
 
 /** Chaves com `undefined` saem do objeto: o storage guarda menos e o "apagar campo" fica explícito. */
 function semVazios<T extends object>(o: T): T {
@@ -57,6 +57,27 @@ export interface ApoioFiltro {
   /** Para os filtros "com novidade" e "lembrete para hoje". */
   novidades?: (f: Favorito) => Mudanca[];
   hoje?: DataISO;
+  /** A última leitura do processo (filtro "fora da unidade"). */
+  atual?: (f: Favorito) => Instantaneo | undefined;
+}
+
+function temSituacao(fav: Favorito, s: SituacaoFiltro, apoio: ApoioFiltro): boolean {
+  switch (s) {
+    case "novidade":
+      return !!apoio.novidades?.(fav).length;
+    case "lembrete":
+      return !!apoio.hoje && lembreteVencido(fav, apoio.hoje);
+    case "nota":
+      return !!fav.nota?.trim();
+    case "documentos":
+      return !!fav.documentos?.length;
+    case "local":
+      return !!fav.local;
+    case "fora":
+      return apoio.atual?.(fav)?.abertoNaUnidade === false;
+    case "sigiloso":
+      return !!fav.sigiloso || !!fav.sigiloAConfirmar;
+  }
 }
 
 export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favorito[] {
@@ -67,16 +88,13 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
     if (fav.removidoEm !== undefined) return false;
     // Registro mínimo sem a cópia local (veio do Texto Padrão de outro computador): não há o que mostrar.
     if (fav.resumido && !fav.protocolo) return false;
-    if (f.pasta === SEM_PASTA) {
-      if (fav.pasta) return false;
-    } else if (f.pasta && fav.pasta !== f.pasta) return false;
-    if (f.etiqueta && !fav.etiquetas.includes(f.etiqueta)) return false;
-    if (f.prazo) {
+    if (f.pastas?.length && !f.pastas.includes(fav.pasta ?? SEM_PASTA)) return false;
+    if (f.etiquetas?.length && !f.etiquetas.some((e) => fav.etiquetas.includes(e))) return false;
+    if (f.prazos?.length) {
       const r = apoio.resumo(fav);
-      if (f.prazo === "semPrazo" ? !!r : r?.situacao !== f.prazo) return false;
+      if (!f.prazos.includes(r ? r.situacao : "semPrazo")) return false;
     }
-    if (f.novidade && !apoio.novidades?.(fav).length) return false;
-    if (f.lembrete && !(apoio.hoje && lembreteVencido(fav, apoio.hoje))) return false;
+    if (f.situacoes?.length && !f.situacoes.some((s) => temSituacao(fav, s, apoio))) return false;
     if (!termos.length) return true;
     const alvo = normalizarTexto(
       [

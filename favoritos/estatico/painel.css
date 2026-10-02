@@ -1,13 +1,90 @@
-html, body { height: 100%; margin: 0; background: var(--spro-fundo); color: var(--spro-texto); font: 13px/1.4 var(--spro-fonte); }
-#painel { height: 100%; display: flex; flex-direction: column; }
-.painel-abas { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--spro-borda); flex: none; }
-.painel-abas button {
-  all: unset; cursor: pointer; padding: 6px 12px; border-radius: var(--spro-raio) var(--spro-raio) 0 0;
-  color: var(--spro-suave); border: 1px solid transparent; border-bottom: 0; margin-bottom: -1px;
+/* Shell do painel lateral (html/painel.html): abas Favoritos | Agente de IA. Base em sei-comum/src/ui/base.css. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  color: var(--spro-texto);
+  background: var(--spro-pagina);
+  font: 13px/1.4 var(--spro-fonte);
+  -webkit-font-smoothing: antialiased;
 }
-.painel-abas button:hover { color: var(--spro-texto); }
-.painel-abas button:focus-visible { outline: 2px solid var(--spro-destaque); }
-.painel-abas button[aria-selected="true"] { color: var(--spro-destaque); font-weight: 600; background: var(--spro-fundo); border-color: var(--spro-borda); }
-.painel-corpo { flex: 1; min-height: 0; position: relative; }
-.painel-corpo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
-.painel-corpo iframe[hidden] { display: none; }
+#painel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.painel-abas {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px 0;
+  background: var(--spro-fundo);
+  border-bottom: 1px solid var(--spro-borda);
+}
+.painel-abas button {
+  all: unset;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px 9px;
+  font-weight: 500;
+  color: var(--spro-suave);
+  border-radius: var(--spro-raio) var(--spro-raio) 0 0;
+  cursor: pointer;
+  transition:
+    color var(--spro-dur),
+    background var(--spro-dur);
+}
+.painel-abas button:hover {
+  color: var(--spro-texto);
+  background: var(--spro-fundo-2);
+}
+.painel-abas button:focus-visible {
+  box-shadow: var(--spro-anel);
+}
+.painel-abas button[aria-selected="true"] {
+  color: var(--spro-texto);
+  font-weight: 650;
+}
+.painel-abas button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--spro-destaque);
+  border-radius: 2px 2px 0 0;
+}
+.painel-abas button[aria-selected="true"] .spro-icone {
+  color: var(--spro-destaque);
+}
+.painel-conta {
+  min-width: 18px;
+  padding: 1px 6px;
+  box-sizing: border-box;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  background: var(--spro-perigo);
+  border-radius: 999px;
+}
+.painel-corpo {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.painel-corpo iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.painel-corpo iframe[hidden] {
+  display: none;
+}

@@ -10,8 +10,10 @@ import { Sei } from "@nucleo/sei";
 import { lerLegadoLocal } from "../migracao/fontes";
 import type { ContextoAba } from "../modelo/tipos";
 import { abrirProcesso } from "./abrir";
+import type { AvisarNaPagina } from "./aviso";
 import { paginaDe } from "./contexto";
 import { buscarDocumentosAssinados, type DepsDocumentos } from "./documentos";
+import type { Sobreposicao } from "./sobreposicao";
 
 export interface DepsExecutor {
   doc: Document;
@@ -23,6 +25,10 @@ export interface DepsExecutor {
   atualizar?: { iniciar(): Promise<unknown>; cancelar(): boolean } | null;
   /** Sincronia por Texto Padrão desta aba (só na janela de topo, com unidade). */
   sincronia?: { agora(): Promise<unknown>; apagar(): Promise<boolean> } | null;
+  /** Painel embutido: diálogo no meio da tela (pagina/sobreposicao.ts). */
+  sobreposicao?: Sobreposicao | null;
+  /** Painel embutido: aviso no rodapé da tela (pagina/aviso.ts). */
+  avisar?: AvisarNaPagina | null;
 }
 
 export function tratadoresDaAba(d: DepsExecutor): Record<string, Tratador> {
@@ -30,8 +36,20 @@ export function tratadoresDaAba(d: DepsExecutor): Record<string, Tratador> {
     contexto: () => d.ctx,
     altura: (args) => {
       const px = Number((args as { px?: unknown } | null)?.px);
-      if (d.iframe && Number.isFinite(px)) d.iframe.style.height = `${Math.max(80, Math.min(Math.round(px), 20000))}px`;
+      if (d.sobreposicao) d.sobreposicao.altura(px);
+      else if (d.iframe && Number.isFinite(px)) d.iframe.style.height = `${Math.max(80, Math.min(Math.round(px), 20000))}px`;
       return true;
+    },
+    sobrepor: (args) => (d.sobreposicao ? d.sobreposicao.ligar((args as { ativo?: unknown } | null)?.ativo === true) : false),
+    aviso: (args) => {
+      const a = (args ?? {}) as { texto?: unknown; acao?: unknown; ms?: unknown };
+      if (!d.avisar) return false;
+      const ms = Number(a.ms);
+      return d.avisar(
+        String(a.texto ?? "").slice(0, 400),
+        a.acao ? String(a.acao).slice(0, 40) : undefined,
+        Number.isFinite(ms) ? ms : 7000,
+      );
     },
     abrirProcesso: (args) => {
       const a = (args ?? {}) as { id?: unknown; protocolo?: unknown; novaAba?: unknown };

@@ -99,7 +99,10 @@ export function partesDestacadas(texto: string, termo: string): Parte[] {
   let normal = "";
   const origem: number[] = [];
   chars.forEach((c, i) => {
-    const n = c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const n = c
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
     for (const x of n) {
       normal += x;
       origem.push(i);
