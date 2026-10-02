@@ -46,7 +46,6 @@ import { capturarDaArvore, capturarDaCaixa } from "./novidades";
 import { montarPainel, ordemLegada } from "./painel";
 import { ServicoFavoritosPagina } from "./servico";
 import { ControleSincronia, ocultarTextosInternos } from "./sincronia";
-import { criarSobreposicao } from "./sobreposicao";
 
 marcarAtivo(document);
 
@@ -301,7 +300,7 @@ function montarEmbutido(
     lerArquivo: () => lerArquivoAntigo(),
     sincronia,
     atualizar,
-    sobreposicao: criarSobreposicao(document, montado.iframe, montado.corpo),
+    sobreposicao: montado.sobreposicao,
     avisar: avisoNaPagina(document, ctx.temaEscuro),
   });
   let rpc: Rpc | null = null;
@@ -309,13 +308,15 @@ function montarEmbutido(
   montado.iframe.addEventListener("load", () => {
     rpc?.fechar();
     rpc = criarRpc(chrome.runtime.connect({ name: CANAL_FAVORITOS }), tratadores);
+    // A porta caiu (app fechado ou extensão atualizada): ninguém mais vai pedir para desligar a sobreposição.
+    rpc.aoFechar(() => montado.sobreposicao.ligar(false));
   });
   return {
     painel: montado.painel,
     corpo: montado.corpo,
     fechar: () => {
       rpc?.fechar();
-      montado.painel.remove();
+      montado.fechar();
     },
   };
 }

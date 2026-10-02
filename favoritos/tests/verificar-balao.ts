@@ -90,6 +90,22 @@ export async function verificarBalao(): Promise<void> {
   botao(el, "Pronto")!.click();
   checar("Pronto fecha", fechou === 1);
   checar("sem unidade nao oferece a troca de lista", !botao(montarBalao({ ...deps, siglaUnidade: null }), "Pessoal"));
+  // Etiqueta que o balão não lista (apagada em outro lugar): o Backspace não pode tirá-la sem o usuário ver.
+  const comOculta = montarBalao({ ...deps, favorito: { ...fav, etiquetas: ["eA", "eX"] } });
+  document.body.append(comOculta);
+  combo(comOculta, "Etiquetas")!.click();
+  const buscaO = document.querySelector(".spro-combo-pop input.spro-combo-busca") as HTMLInputElement;
+  const Ev = (buscaO.ownerDocument.defaultView as unknown as { Event: typeof Event }).Event;
+  const bs = new Ev("keydown", { bubbles: true, cancelable: true });
+  Object.defineProperty(bs, "key", { value: "Backspace" });
+  buscaO.dispatchEvent(bs);
+  await tique();
+  combo(comOculta, "Etiquetas")!.click();
+  checar(
+    "Backspace tira a etiqueta visivel e preserva a oculta",
+    JSON.stringify(ultimaEdicao()?.etiquetas) === JSON.stringify(["eX"]),
+    ultimaEdicao(),
+  );
   const comLembrete = montarBalao({ ...deps, hoje: "2026-10-01" });
   document.body.append(comLembrete);
   escolherCombo(comLembrete, "Lembrete", "7");

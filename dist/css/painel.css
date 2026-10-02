@@ -834,6 +834,12 @@ dialog.spro-dialogo > header h2 {
   transform: translateX(-50%);
   animation: spro-aviso-entrar 220ms var(--spro-curva);
 }
+/* Como popover (camada de cima, acima de diálogo aberto): sem a posição e a margem padrão do navegador. */
+.spro-aviso[popover] {
+  inset: auto auto 16px 50%;
+  margin: 0;
+  overflow: visible;
+}
 .spro-aviso > .spro-icone {
   color: #8fd6b4;
 }

@@ -126,7 +126,8 @@ export function criarMenu(cfg: ConfigMenu): HTMLButtonElement {
           fechar(true);
           break;
         case "Tab":
-          fechar(false);
+          // Foco de volta no botão: o Tab nativo segue a partir dele, e não do fim da página.
+          fechar(true);
           return;
         default: {
           // Primeira letra: pula para o próximo item que começa com ela.

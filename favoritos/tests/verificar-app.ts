@@ -4,7 +4,7 @@ import { chaveMigracao, chaveUltimaUnidade } from "../src/modelo/constantes";
 import { escoposDoContexto } from "../src/modelo/escopo";
 import { chaveCancelar, chaveProgresso } from "../src/pagina/atualizar";
 import { chaveStatusTexto } from "../src/pagina/sincronia";
-import { definirTextoPadrao, estadoTextoPadrao, lerPreferencias } from "../src/preferencias";
+import { definirTextoPadrao, estadoTextoPadrao, gravarPreferencias, lerPreferencias } from "../src/preferencias";
 import { RepositorioFavoritos } from "../src/repositorio";
 import { copiasEmMemoria } from "../src/sincronia/copias";
 import { botao, checar, disparar, escolherCombo, instalarDom, itemDoMenu, secao, tique } from "./util";
@@ -92,6 +92,13 @@ export async function verificarApp(): Promise<void> {
   // No linkedom, `checked` não reflete o atributo: marca-se como o navegador faz.
   sel.checked = true;
   disparar(sel, "change");
+  checar("barra de selecao entra animada so na primeira vez", !!a.raiz.querySelector(".fav-lote.fav-lote-entrar"));
+  const sel3 = a.raiz.querySelector('li[data-id="3"] input.fav-sel') as HTMLInputElement;
+  sel3.checked = true;
+  disparar(sel3, "change");
+  checar("segunda marcacao nao reanima a barra", !!a.raiz.querySelector(".fav-lote") && !a.raiz.querySelector(".fav-lote-entrar"));
+  sel3.checked = false;
+  disparar(sel3, "change");
   botao(a.raiz, "Copiar números")!.click();
   await tique();
   checar("copia os numeros selecionados", a.copiados.join() === "50300.000002/2026-02");
@@ -101,6 +108,10 @@ export async function verificarApp(): Promise<void> {
   await tique(80);
   checar("remover manda para a lixeira", !(await a.repos.unidade.contem("2")) && itens() === 2);
   checar("aviso com desfazer, no rodape da tela", !!botao(a.doc.body, "Desfazer"));
+  checar(
+    "o aviso vai para a camada de cima (acima de dialogo aberto)",
+    a.doc.body.querySelector(".spro-aviso")?.getAttribute("popover") === "manual",
+  );
   botao(a.doc.body, "Desfazer")!.click();
   await tique(80);
   checar("desfazer devolve", (await a.repos.unidade.contem("2")) && itens() === 3);
@@ -386,6 +397,40 @@ export async function verificarApp(): Promise<void> {
   await nv.repos.unidade.gravarAtual("41", { quando: 3, fonte: "caixa", qtdDocumentos: 6, abertoNaUnidade: false });
   await tique(80);
   checar("leitura nova (outro contexto) aparece sozinha", selo() === "1 documento novo", selo());
+
+  secao("app: menu aberto e lista redesenhada");
+  const or = montar();
+  await or.repos.unidade.adicionar({ id: "81", protocolo: "50300.000081/2026-81" });
+  await or.app.iniciar();
+  (or.raiz.querySelector('li[data-id="81"] button[aria-haspopup="menu"]') as HTMLElement).click();
+  checar("menu do item aberto", !!or.doc.querySelector(".spro-menu-pop"));
+  await or.repos.unidade.adicionar({ id: "82", protocolo: "50300.000082/2026-82" });
+  await tique(80);
+  checar(
+    "a lista redesenhou e o menu orfao fechou",
+    !or.doc.querySelector(".spro-menu-pop") && or.raiz.querySelectorAll("li.fav-item").length === 2,
+  );
+
+  secao("app: selecionar todos nao pega grupo recolhido");
+  const gr = montar();
+  const pastaG = await gr.repos.unidade.criarPasta("Contratos");
+  await gr.repos.unidade.adicionar({ id: "91", protocolo: "50300.000091/2026-91" });
+  await gr.repos.unidade.adicionar({ id: "92", protocolo: "50300.000092/2026-92" });
+  await gr.repos.unidade.editar("92", { pasta: pastaG.id });
+  await gravarPreferencias(gr.sync, { agruparPorPasta: true });
+  await gr.app.iniciar();
+  const tituloGrupo = [...gr.raiz.querySelectorAll<HTMLElement>(".fav-grupo-titulo")].find((b) =>
+    (b.textContent ?? "").includes("Contratos"),
+  )!;
+  tituloGrupo.click();
+  checar("grupo recolhido esconde os itens", gr.raiz.querySelectorAll("li.fav-item").length === 1);
+  botao(gr.raiz, "Selecionar todos")!.click();
+  checar(
+    "so seleciona o que esta a vista",
+    (gr.raiz.querySelector(".fav-lote")?.textContent ?? "").includes("1 selecionado") &&
+      !(gr.raiz.querySelector(".fav-lote")?.textContent ?? "").includes("2 selecionados"),
+    gr.raiz.querySelector(".fav-lote")?.textContent,
+  );
 
   secao("app: lembretes e 'Para hoje'");
   const lb = montar();

@@ -101,6 +101,11 @@ export function verificarModelo(): void {
   checar("campos diferentes = E", ids(filtrar(lista, { pastas: ["__sem__"], etiquetas: ["e1"] }, apoio)) === "");
   checar("filtro sem prazo", ids(filtrar(lista, { prazos: ["semPrazo"] }, apoio)) === "1,2");
   checar("situacao: com nota", ids(filtrar(lista, { situacoes: ["nota"] }, apoio)) === "2");
+  const orfa = [...lista.slice(0, 2), { ...f, id: "4", pasta: "apagada", ordem: "a3" }];
+  checar(
+    "pasta que nao existe mais conta como 'sem pasta' (igual a contagem e ao agrupamento)",
+    ids(filtrar(orfa, { pastas: ["__sem__"] }, { ...apoio, pastas: new Set(["p1"]) })) === "2,4",
+  );
 
   secao("ordenacao");
   checar("manual pela chave com <", ids(ordenar(lista, "manual", () => undefined)) === "2,1,3");

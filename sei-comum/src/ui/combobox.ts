@@ -92,7 +92,9 @@ export function filtrarOpcoes<T extends Pick<OpcaoCombo, "rotulo" | "descricao">
  * compara sem acento: cada caractere do texto normalizado aponta para o
  * caractere original de onde veio.
  */
-export function partesDestacadas(texto: string, termo: string): Parte[] {
+export function partesDestacadas(original: string, termo: string): Parte[] {
+  // Forma composta: em "ç" decomposto (c + cedilha), a cedilha ficaria fora do destaque.
+  const texto = original.normalize("NFC");
   const palavras = normalizarTexto(termo).split(" ").filter(Boolean);
   if (!palavras.length) return [{ texto, marcado: false }];
   const chars = [...texto];
@@ -309,6 +311,49 @@ export function criarCombo(cfg: ConfigCombo): Combo {
 
   function teclado(ev: KeyboardEvent): void {
     const n = visiveis.length;
+    const alvo = ev.target as HTMLElement | null;
+    const rodape = pop ? [...pop.querySelectorAll<HTMLButtonElement>(".spro-combo-rodape button:not(:disabled)")] : [];
+    const noBotao = !!alvo?.closest?.(".spro-combo-rodape, .spro-combo-criar");
+    if (ev.key === "Tab") {
+      const i = rodape.indexOf(alvo as HTMLButtonElement);
+      if (!ev.shiftKey && i < rodape.length - 1) {
+        // Da busca (ou de um botão do rodape) para o próximo botão do rodapé: "Marcar os filtrados", "Limpar".
+        rodape[i + 1]?.focus();
+      } else if (ev.shiftKey && i >= 0) {
+        if (i > 0) rodape[i - 1]?.focus();
+        else (pop?.querySelector<HTMLElement>(".spro-combo-busca") ?? pop?.querySelector<HTMLElement>('[role="listbox"]'))?.focus();
+      } else {
+        // Foco de volta no botão: o Tab nativo segue a partir dele, e não do fim da página.
+        fechar(true);
+        return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+    // Nos botões do rodapé e no "Criar", Enter e Espaço são do próprio botão.
+    if (noBotao && ev.key !== "Escape") return;
+    const semBusca = !pop?.querySelector(".spro-combo-busca");
+    if (semBusca && ev.key === " ") {
+      const o = visiveis[ativo];
+      if (o) escolher(o);
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+    if (semBusca && ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+      // Sem caixa de busca: a letra pula para a próxima opção que começa com ela.
+      const l = normalizarTexto(ev.key);
+      const ordem = [...visiveis.keys()].map((k) => (ativo + 1 + k) % Math.max(1, n));
+      const achada = ordem.find((k) => normalizarTexto(visiveis[k]?.rotulo ?? "").startsWith(l));
+      if (achada !== undefined) {
+        ativo = achada;
+        marcarAtiva();
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
     switch (ev.key) {
       case "ArrowDown":
         ativo = n ? (ativo + 1) % n : 0;
@@ -337,9 +382,6 @@ export function criarCombo(cfg: ConfigCombo): Combo {
       case "Escape":
         fechar(true);
         break;
-      case "Tab":
-        fechar(false);
-        return;
       case "Backspace":
         if (!cfg.multiplo || termo || !escolhidos.length) return;
         escolhidos = escolhidos.slice(0, -1);
@@ -410,6 +452,7 @@ export function criarCombo(cfg: ConfigCombo): Combo {
     botao.classList.add("spro-combo-aberto");
     desenharLista();
     posicionar();
+    if (!pop) return;
     const foco = busca ?? pop.querySelector<HTMLElement>('[role="listbox"]');
     foco?.focus?.({ preventScroll: true });
     if (busca && semente) busca.setSelectionRange?.(semente.length, semente.length);

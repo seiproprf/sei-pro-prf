@@ -59,6 +59,8 @@ export interface ApoioFiltro {
   hoje?: DataISO;
   /** A última leitura do processo (filtro "fora da unidade"). */
   atual?: (f: Favorito) => Instantaneo | undefined;
+  /** Ids das pastas que existem: favorito numa pasta apagada conta como "sem pasta" (como na contagem e no agrupamento). */
+  pastas?: ReadonlySet<string>;
 }
 
 function temSituacao(fav: Favorito, s: SituacaoFiltro, apoio: ApoioFiltro): boolean {
@@ -88,7 +90,10 @@ export function filtrar(lista: Favorito[], f: Filtro, apoio: ApoioFiltro): Favor
     if (fav.removidoEm !== undefined) return false;
     // Registro mínimo sem a cópia local (veio do Texto Padrão de outro computador): não há o que mostrar.
     if (fav.resumido && !fav.protocolo) return false;
-    if (f.pastas?.length && !f.pastas.includes(fav.pasta ?? SEM_PASTA)) return false;
+    if (f.pastas?.length) {
+      const pasta = fav.pasta && (!apoio.pastas || apoio.pastas.has(fav.pasta)) ? fav.pasta : SEM_PASTA;
+      if (!f.pastas.includes(pasta)) return false;
+    }
     if (f.etiquetas?.length && !f.etiquetas.some((e) => fav.etiquetas.includes(e))) return false;
     if (f.prazos?.length) {
       const r = apoio.resumo(fav);

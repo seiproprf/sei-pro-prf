@@ -158,6 +158,18 @@ export async function verificarDialogos(): Promise<void> {
   });
   document.body.append(ed3);
   escolherCombo(ed3, "Prazo", "dias");
+  const radios = () => [...ed3.querySelectorAll<HTMLElement>('[role="radiogroup"][aria-label="Contagem"] [role="radio"]')];
+  const Ev3 = (ed3.ownerDocument.defaultView as unknown as { Event: typeof Event }).Event;
+  const seta = new Ev3("keydown", { bubbles: true, cancelable: true });
+  Object.defineProperty(seta, "key", { value: "ArrowRight" });
+  radios()[0]!.dispatchEvent(seta);
+  checar(
+    "controle segmentado anda com as setas (um so no Tab)",
+    radios()[1]?.getAttribute("aria-checked") === "true" &&
+      radios()[1]?.getAttribute("tabindex") === "0" &&
+      radios()[0]?.getAttribute("tabindex") === "-1",
+  );
+  radios()[0]!.click();
   botao(ed3, "Usar a data de um documento…")!.click();
   await tique(10);
   checar(

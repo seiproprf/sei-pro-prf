@@ -100,7 +100,8 @@ export function montarBalao(d: DepsBalao): HTMLElement {
     vazio: "Nenhuma",
     multiplo: true,
     opcoes: () => etiquetas.map((e) => ({ valor: e.id, rotulo: e.nome, cor: e.cor })),
-    valor: fav.etiquetas,
+    // Só as que o balão lista: uma etiqueta apagada em outro lugar não pode sair pelo Backspace sem o usuário ver.
+    valor: fav.etiquetas.filter((id) => etiquetas.some((e) => e.id === id)),
     criar: async (nome) => {
       const e = await d.criarEtiqueta(nome.slice(0, 40));
       etiquetas = [...etiquetas.filter((x) => x.id !== e.id), e];
@@ -109,7 +110,8 @@ export function montarBalao(d: DepsBalao): HTMLElement {
     rotuloCriar: (t) => `Criar a etiqueta “${t}”`,
     aoMudar: (v) => {
       desenharChips();
-      void salvar({ etiquetas: v });
+      const ocultas = fav.etiquetas.filter((id) => !etiquetas.some((e) => e.id === id));
+      void salvar({ etiquetas: [...v, ...ocultas] });
     },
     larguraLista: 260,
   });

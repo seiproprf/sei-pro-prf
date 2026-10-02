@@ -352,12 +352,19 @@ html[data-sobreposto="abrindo"] dialog.spro-dialogo::backdrop {
   border: 1px solid color-mix(in srgb, var(--spro-destaque) 35%, var(--spro-borda));
   border-radius: var(--spro-raio-g);
   box-shadow: var(--spro-sombra-2);
+}
+.fav-lote-entrar {
   animation: spro-surgir 160ms var(--spro-curva);
 }
+/* No lateral a barra vai para o fim e fica presa ao rodapé enquanto a lista rola. */
 html[data-modo="lateral"] .fav-lote-lugar {
+  order: 1;
   position: sticky;
   bottom: 8px;
   z-index: 5;
+}
+html[data-modo="lateral"] .fav-status-sync {
+  order: 2;
 }
 .fav-lote-qtd {
   display: flex;

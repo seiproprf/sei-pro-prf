@@ -47,7 +47,14 @@ export function mostrarAviso(doc: Document, texto: string, acao: AcaoAviso | und
         )
       : null,
   );
+  // Camada de cima (popover): por cima do véu de um diálogo aberto, e não escondido atrás dele.
+  el.setAttribute("popover", "manual");
   raiz.append(el);
+  try {
+    (el as HTMLElement & { showPopover?: () => void }).showPopover?.();
+  } catch {
+    /* navegador sem popover: fica como elemento fixo comum */
+  }
   setTimeout(() => el.remove(), ms);
   return el;
 }

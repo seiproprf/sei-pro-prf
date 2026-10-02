@@ -15,6 +15,7 @@ import { hojeISO } from "@comum/datas/dias";
 import { novoId } from "@comum/id";
 import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { h, icone } from "@comum/ui/dom";
+import { definirJanelaQueCresce } from "@comum/ui/flutuante";
 import { CANAL_LATERAL } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import { temPainelLateral } from "../modelo/exibicao";
@@ -67,6 +68,8 @@ async function iniciarEmbutido(): Promise<void> {
   const altura = observarAltura(rpc);
   // A lista de um seletor ou menu aberto perto do fim do painel: o iframe cresce até ela caber.
   addEventListener("spro-popover", (ev) => altura.extra(Number((ev as CustomEvent<{ fundo?: number }>).detail?.fundo) || 0));
+  // O iframe cresce com o conteúdo: listas abrem para baixo. Com diálogo sobreposto, a janela é a tela e não cresce.
+  definirJanelaQueCresce(() => document.documentElement.dataset.sobreposto !== "sim");
   const sobrepor = sobreposicao(rpc, altura);
   // Aviso no rodapé da TELA do SEI (o do iframe ficaria lá embaixo, fora da vista); com diálogo aberto, aqui mesmo.
   definirEmissorDeAviso((texto, acao, ms) => {
@@ -166,11 +169,13 @@ async function iniciarLateral(): Promise<void> {
 function sobreposicao(rpc: Pick<Rpc, "chamar">, altura: ReturnType<typeof observarAltura>): { abrir(): void; fechar(): void } {
   const html = document.documentElement;
   let abertos = 0;
+  let reserva: ReturnType<typeof setTimeout> | undefined;
   return {
     abrir() {
       if (abertos++ > 0) return;
       html.dataset.sobreposto = "abrindo";
-      const reserva = setTimeout(() => {
+      clearTimeout(reserva);
+      reserva = setTimeout(() => {
         if (html.dataset.sobreposto !== "abrindo") return;
         html.dataset.sobreposto = "falhou";
         altura.minimo(640);
@@ -192,6 +197,7 @@ function sobreposicao(rpc: Pick<Rpc, "chamar">, altura: ReturnType<typeof observ
     },
     fechar() {
       if (abertos === 0 || --abertos > 0) return;
+      clearTimeout(reserva);
       delete html.dataset.sobreposto;
       altura.minimo(0);
       void rpc.chamar("sobrepor", { ativo: false }, 3000).catch(() => undefined);

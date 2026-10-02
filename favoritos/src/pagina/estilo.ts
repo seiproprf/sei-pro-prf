@@ -21,7 +21,9 @@ const CSS = `.spro-fav-estrela{background:none;border:0;padding:0 3px;margin:0 2
 .spro-fav-botao{position:relative}
 .spro-fav-contador{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#d93025;color:#fff;font:600 10px/16px sans-serif;text-align:center;box-sizing:border-box}
 .spro-fav-titulo{display:flex!important;align-items:center;gap:6px}
-.spro-fav-recolher{margin-left:auto;background:none;border:0;cursor:pointer;color:inherit;line-height:0;padding:2px}`;
+.spro-fav-recolher{margin-left:auto;background:none;border:0;cursor:pointer;color:inherit;line-height:0;padding:2px}
+@keyframes spro-fav-aviso{from{opacity:0;transform:translate(-50%,10px)}}
+@media (prefers-reduced-motion:reduce){.spro-fav-aviso{animation:none!important}}`;
 
 export function instalarEstilo(doc: Document): void {
   if (doc.getElementById(ID)) return;

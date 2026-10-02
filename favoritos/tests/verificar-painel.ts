@@ -2,6 +2,7 @@ import { parDePortas } from "@comum/ponte/parDePortas";
 import { criarRpc } from "@comum/ponte/rpc";
 import { abrirProcesso, localizarAbertura } from "../src/pagina/abrir";
 import { avisoNaPagina } from "../src/pagina/aviso";
+import { instalarEstilo } from "../src/pagina/estilo";
 import { tratadoresDaAba } from "../src/pagina/executor";
 import { inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
 import { criarSobreposicao } from "../src/pagina/sobreposicao";
@@ -133,7 +134,28 @@ export async function verificarPainel(): Promise<void> {
     fr.getAttribute("style"),
   );
 
+  secao("sobreposicao: painel recolhido e painel fechado com dialogo aberto");
+  const docR = instalarDom('<html><body><form id="frmProcedimentoControlar"></form></body></html>');
+  const rec = montarPainel(docR, { urlApp: "x", recolhido: true, ordem: null, aoRecolher: () => undefined })!;
+  checar(
+    "painel recolhido: nega a sobreposicao (o dialogo nem aparece) e nao trava a pagina",
+    rec.sobreposicao.ligar(true) === false && docR.documentElement.style.overflow === "" && rec.iframe.style.position === "",
+  );
+  rec.corpo.hidden = false;
+  checar("aberto de novo: liga", rec.sobreposicao.ligar(true) === true && docR.documentElement.style.overflow === "hidden");
+  rec.fechar();
+  checar(
+    "fechar o painel (trocou 'onde mostrar') com o dialogo aberto destrava a pagina",
+    docR.documentElement.style.overflow === "" && !docR.querySelector("#favoritesPro"),
+  );
+
   secao("aviso do painel embutido no rodape da tela");
+  const docEst = instalarDom("<html><head></head><body></body></html>");
+  instalarEstilo(docEst);
+  checar(
+    "a animacao do aviso existe no CSS da pagina",
+    (docEst.getElementById("spro-fav-estilo")?.textContent ?? "").includes("@keyframes spro-fav-aviso"),
+  );
   const docA = instalarDom("<html><body></body></html>");
   const [aApp, aAba] = parDePortas();
   criarRpc(

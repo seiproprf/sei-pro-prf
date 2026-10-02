@@ -41,8 +41,15 @@ export function criarSobreposicao(doc: Document, iframe: HTMLIFrameElement, rese
     return lista;
   };
 
+  const visivel = () => {
+    if (!iframe.isConnected || reserva.hidden || reserva.closest?.("[hidden]")) return false;
+    return typeof iframe.getClientRects !== "function" || iframe.getClientRects().length > 0;
+  };
+
   const api: Sobreposicao = {
     ligar(ativo) {
+      // Painel recolhido (ou fora da página): o diálogo nem apareceria, e a página ficaria travada sem motivo visível.
+      if (ativo && !salvo && !visivel()) return false;
       if (ativo && !salvo) {
         const alturaAtual = iframe.getBoundingClientRect?.().height || Number.parseFloat(iframe.style.height) || 0;
         const travados = rolaveis().map((el): [HTMLElement, string] => [el, el.style.overflow]);

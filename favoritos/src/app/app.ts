@@ -8,6 +8,7 @@ import type { Area } from "@comum/armazenamento/area";
 import type { DataISO } from "@comum/datas/dias";
 import type { Rpc } from "@comum/ponte/rpc";
 import { h, icone, type NomeIcone } from "@comum/ui/dom";
+import { fecharOrfaos } from "@comum/ui/flutuante";
 import { criarMenu } from "@comum/ui/menu";
 import { exportarTudo, importarEnvelope, lerEnvelope } from "../arquivo";
 import { converterLegado } from "../migracao/legado";
@@ -184,7 +185,7 @@ export class AppFavoritos {
     const atalho = (ev: KeyboardEvent) => {
       if (ev.key !== "/" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const alvo = ev.target as HTMLElement | null;
-      if (alvo?.closest?.("input, textarea, select, [contenteditable], dialog")) return;
+      if (alvo?.closest?.("input, textarea, select, [contenteditable], dialog, .spro-combo-pop, .spro-menu-pop")) return;
       ev.preventDefault();
       busca.focus();
       busca.select();
@@ -302,6 +303,7 @@ export class AppFavoritos {
       novidades: this.novidades,
       hoje: this.d.hoje(),
       atual: (f: Favorito) => this.atuais.get(f.id),
+      pastas: new Set(this.pastas.map((p) => p.id)),
     };
     return ordenar(filtrar(this.todos, this.filtro, apoio), this.prefs.ordem, this.resumo, this.novidades);
   }
@@ -363,6 +365,8 @@ export class AppFavoritos {
   private redesenhar(): void {
     if (this.destruido) return;
     this.desenhar();
+    // Menu ou seletor aberto num item que acabou de ser redesenhado: a camada ficaria solta.
+    fecharOrfaos();
     this.d.aoRedesenhar?.();
   }
 
@@ -471,8 +475,16 @@ export class AppFavoritos {
     const ativos = this.ativos();
     this.el.resumo.hidden = !ativos.length;
     if (!ativos.length) return;
-    const marcados = visiveis.filter((f) => this.selecao.has(f.id)).length;
-    const estado = marcados === 0 ? "false" : marcados === visiveis.length ? "true" : "mixed";
+    const hoje = this.d.hoje();
+    // "Selecionar todos" só pega o que está à vista: nada de dentro de um grupo recolhido.
+    const existe = new Set(this.pastas.map((p) => p.id));
+    const grupo = (f: Favorito) => (f.pasta && existe.has(f.pasta) ? f.pasta : SEM_PASTA);
+    const comParaHoje = !this.filtro.situacoes?.includes("lembrete");
+    const aVista = this.prefs.agruparPorPasta
+      ? visiveis.filter((f) => (comParaHoje && lembreteVencido(f, hoje)) || !this.recolhidos.has(grupo(f)))
+      : visiveis;
+    const marcados = aVista.filter((f) => this.selecao.has(f.id)).length;
+    const estado = marcados === 0 ? "false" : marcados === aVista.length ? "true" : "mixed";
     const todos = h(
       "button",
       {
@@ -482,9 +494,9 @@ export class AppFavoritos {
         "aria-checked": estado,
         "aria-label": "Selecionar todos",
         title: estado === "true" ? "Desmarcar todos" : "Selecionar todos os da lista",
-        disabled: !visiveis.length,
+        disabled: !aVista.length,
         onclick: () => {
-          for (const f of visiveis) {
+          for (const f of aVista) {
             if (estado === "true") this.selecao.delete(f.id);
             else this.selecao.add(f.id);
           }
@@ -493,7 +505,6 @@ export class AppFavoritos {
       },
       estado === "true" ? icone("check", 12) : estado === "mixed" ? h("span", { class: "fav-traco" }) : null,
     );
-    const hoje = this.d.hoje();
     const indicador = (n: number, rotulo: string, nome: NomeIcone, tom: string, filtro: Filtro) =>
       n
         ? h(
@@ -661,6 +672,7 @@ export class AppFavoritos {
 
   private desenharLote(visiveis: Favorito[]): void {
     const qtd = visiveis.filter((f) => this.selecao.has(f.id)).length;
+    const entrando = this.el.lote.hidden;
     this.el.lote.hidden = qtd === 0;
     if (!qtd) {
       this.el.lote.replaceChildren();
@@ -693,6 +705,9 @@ export class AppFavoritos {
         outraLista: outra ? { rotulo: outra.rotulo, mover: () => void this.moverParaOutra(this.selecionados().map((f) => f.id)) } : null,
       }),
     );
+    // Anima só quando a barra aparece, e não a cada marcação.
+    if (entrando) this.el.lote.querySelector(".fav-lote")?.classList.add("fav-lote-entrar");
+    fecharOrfaos();
   }
 
   private async emLote(fazer: (f: Favorito) => Promise<unknown>): Promise<void> {
@@ -1038,8 +1053,9 @@ export class AppFavoritos {
               avisar("Sincronização desligada. O texto continua no SEI até você apagá-lo.");
             },
             apagar: async () => {
-              await chamar("apagarDoSei", "Texto apagado do SEI e sincronização desligada.");
+              // Fecha antes: o aviso do resultado aparece com a tela já de volta ao normal.
               modal?.fechar();
+              await chamar("apagarDoSei", "Texto apagado do SEI e sincronização desligada.");
             },
           }
         : null,

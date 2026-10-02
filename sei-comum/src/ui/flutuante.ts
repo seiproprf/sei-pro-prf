@@ -31,6 +31,30 @@ export interface Flutuante {
   fechar(): void;
 }
 
+/** As camadas abertas, com a âncora e o fecho de cada uma. */
+const abertas = new Set<{ ancora: Element; fechar: () => void }>();
+
+/**
+ * Fecha as camadas cuja âncora saiu da página (quem a abriu foi redesenhado):
+ * a camada ficaria solta, sem dono, e pularia para o canto no próximo scroll.
+ * O app chama a cada redesenho.
+ */
+export function fecharOrfaos(): void {
+  for (const a of [...abertas]) if (!a.ancora.isConnected) a.fechar();
+}
+
+let janelaCresce: (() => boolean) | null = null;
+
+/**
+ * A janela cresce com o conteúdo (o iframe abaixo da lista de processos): a
+ * camada abre sempre para baixo e anuncia a altura inteira, para o iframe
+ * crescer até ela caber. Sem isto (painel lateral), abre para cima quando falta
+ * espaço embaixo.
+ */
+export function definirJanelaQueCresce(f: (() => boolean) | null): void {
+  janelaCresce = f;
+}
+
 /** Onde a camada deve morar para ficar visível e clicável a partir da âncora. */
 export function destinoDaCamada(ancora: Element): ParentNode {
   const dialogo = ancora.closest?.("dialog[open]");
@@ -66,13 +90,16 @@ export function abrirFlutuante(ancora: HTMLElement, camada: HTMLElement, o: Opco
     const esquerdaIdeal = o.alinharDireita ? r.right - largura : r.left;
     const esquerda = Math.max(8, Math.min(esquerdaIdeal, largJanela - largura - 8));
     const maxima = o.alturaMaxima ?? 360;
+    // Mede o conteúdo sem o teto anterior: com ele, a medida nunca passaria do espaço que já havia.
+    camada.style.maxHeight = "none";
     const desejada = Math.min(camada.scrollHeight || maxima, maxima);
     const embaixo = altJanela - r.bottom - 8;
     const emCima = r.top - 8;
-    const paraCima = embaixo < Math.min(desejada, 200) && emCima > embaixo;
+    const cresce = janelaCresce?.() ?? false;
+    const paraCima = !cresce && embaixo < Math.min(desejada, 200) && emCima > embaixo;
     camada.style.left = `${esquerda}px`;
     camada.style.width = `${largura}px`;
-    camada.style.maxHeight = `${Math.max(140, Math.min(maxima, paraCima ? emCima : embaixo > 140 ? embaixo : maxima))}px`;
+    camada.style.maxHeight = `${cresce ? maxima : Math.max(140, Math.min(maxima, paraCima ? emCima : embaixo > 140 ? embaixo : maxima))}px`;
     camada.classList.toggle("spro-flutuante-cima", paraCima);
     if (paraCima) {
       camada.style.top = "";
@@ -91,13 +118,23 @@ export function abrirFlutuante(ancora: HTMLElement, camada: HTMLElement, o: Opco
     if (dentro(camada) || dentro(ancora)) return;
     o.aoFechar();
   };
+  // Rolagem ou mudança de tamanho com a âncora já redesenhada (fora da página): a camada fecha.
+  const reposicionar = () => {
+    if (ancora.isConnected) posicionar();
+    else o.aoFechar();
+  };
   const rolou = (ev: Event) => {
     if (ev.target instanceof Node && camada.contains(ev.target)) return;
-    posicionar();
+    reposicionar();
   };
+  // A janela perdeu o foco (clique na página do SEI, fora do iframe, ou em outra aba): fecha, como um menu nativo.
+  const saiu = () => o.aoFechar();
   doc.addEventListener("pointerdown", fora, true);
   janela?.addEventListener("scroll", rolou, true);
-  janela?.addEventListener("resize", posicionar);
+  janela?.addEventListener("resize", reposicionar);
+  janela?.addEventListener("blur", saiu);
+  const registro = { ancora, fechar: () => o.aoFechar() };
+  abertas.add(registro);
   posicionar();
 
   return {
@@ -105,9 +142,11 @@ export function abrirFlutuante(ancora: HTMLElement, camada: HTMLElement, o: Opco
     fechar() {
       if (!aberta) return;
       aberta = false;
+      abertas.delete(registro);
       doc.removeEventListener("pointerdown", fora, true);
       janela?.removeEventListener("scroll", rolou, true);
-      janela?.removeEventListener("resize", posicionar);
+      janela?.removeEventListener("resize", reposicionar);
+      janela?.removeEventListener("blur", saiu);
       camada.remove();
       anunciar(janela, 0);
     },

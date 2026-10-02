@@ -9,6 +9,7 @@
 
 import { h, icone } from "@comum/ui/dom";
 import { instalarEstilo } from "./estilo";
+import { criarSobreposicao, type Sobreposicao } from "./sobreposicao";
 
 export function ordemLegada(armazenamento: Pick<Storage, "getItem">): number | null {
   try {
@@ -49,10 +50,17 @@ export interface OpcoesPainel {
   aoRecolher(recolhido: boolean): void;
 }
 
-export function montarPainel(
-  doc: Document,
-  o: OpcoesPainel,
-): { painel: HTMLElement; iframe: HTMLIFrameElement; corpo: HTMLElement } | null {
+export interface PainelMontado {
+  painel: HTMLElement;
+  iframe: HTMLIFrameElement;
+  corpo: HTMLElement;
+  /** Diálogo do app no meio da tela (pagina/sobreposicao.ts). */
+  sobreposicao: Sobreposicao;
+  /** Tira o painel da página, destravando antes a rolagem se havia diálogo aberto. */
+  fechar(): void;
+}
+
+export function montarPainel(doc: Document, o: OpcoesPainel): PainelMontado | null {
   const form = doc.querySelector("#frmProcedimentoControlar");
   // #tblMarcadores: caixa filtrada por marcador, onde o legado também não punha painéis.
   if (!form || doc.querySelector("#tblMarcadores") || doc.querySelector("#favoritesPro")) return null;
@@ -99,5 +107,15 @@ export function montarPainel(
     corpo,
   );
   inserirNaOrdem(container, painel, o.ordem);
-  return { painel, iframe, corpo };
+  const sobreposicao = criarSobreposicao(doc, iframe, corpo);
+  return {
+    painel,
+    iframe,
+    corpo,
+    sobreposicao,
+    fechar: () => {
+      sobreposicao.ligar(false);
+      painel.remove();
+    },
+  };
 }

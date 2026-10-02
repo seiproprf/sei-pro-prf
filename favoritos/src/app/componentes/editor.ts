@@ -43,24 +43,33 @@ const MODOS: ReadonlyArray<{ valor: ModoPrazo; rotulo: string; descricao: string
 /** Dois ou três botões que valem como um rádio (corridos/úteis, depois/antes). */
 function segmentado<T extends string>(rotulo: string, opcoes: ReadonlyArray<[T, string]>, inicial: T, mudar: (v: T) => void) {
   let atual = inicial;
-  const botoes = opcoes.map(([v, texto]) =>
-    h(
-      "button",
-      {
-        type: "button",
-        role: "radio",
-        "aria-checked": String(v === atual),
-        onclick: () => {
-          if (v === atual) return;
-          atual = v;
-          for (const [i, b] of botoes.entries()) b.setAttribute("aria-checked", String(opcoes[i]?.[0] === atual));
-          mudar(v);
-        },
-      },
-      texto,
-    ),
-  );
-  return { el: h("div", { class: "spro-segmentado", role: "radiogroup", "aria-label": rotulo }, ...botoes), valor: () => atual };
+  const pintar = () => {
+    for (const [i, b] of botoes.entries()) {
+      const marcado = opcoes[i]?.[0] === atual;
+      b.setAttribute("aria-checked", String(marcado));
+      // Um só no Tab; as setas andam entre eles (padrão ARIA de radiogroup).
+      b.setAttribute("tabindex", marcado ? "0" : "-1");
+    }
+  };
+  const escolher = (v: T) => {
+    if (v === atual) return;
+    atual = v;
+    pintar();
+    mudar(v);
+  };
+  const botoes = opcoes.map(([v, texto]) => h("button", { type: "button", role: "radio", onclick: () => escolher(v) }, texto));
+  const grupo = h("div", { class: "spro-segmentado", role: "radiogroup", "aria-label": rotulo }, ...botoes);
+  grupo.addEventListener("keydown", (ev) => {
+    const passo = ev.key === "ArrowRight" || ev.key === "ArrowDown" ? 1 : ev.key === "ArrowLeft" || ev.key === "ArrowUp" ? -1 : 0;
+    if (!passo) return;
+    ev.preventDefault();
+    const i = opcoes.findIndex(([v]) => v === atual);
+    const proximo = (i + passo + opcoes.length) % opcoes.length;
+    escolher(opcoes[proximo]![0]);
+    botoes[proximo]?.focus();
+  });
+  pintar();
+  return { el: grupo, valor: () => atual };
 }
 
 export function montarEditor(d: DepsEditor): HTMLElement {
