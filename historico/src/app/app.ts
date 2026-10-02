@@ -29,10 +29,11 @@ import {
 } from "../modelo/tipos";
 import { gravarPreferencias, lerPreferencias } from "../preferencias";
 import type { RepositorioHistorico } from "../repositorio";
-import { montarApagar, montarLimite, numero, processos } from "./componentes/dialogos";
+import { montarApagar, montarLimite } from "./componentes/dialogos";
 import { type BarraFiltros, criarFiltros, type EstadoFiltros } from "./componentes/filtros";
 import type { AcoesItem } from "./componentes/item";
 import { renderLista } from "./componentes/lista";
+import { numero, processos } from "./formato";
 
 export type AbrirModal = (o: { titulo: string; conteudo: HTMLElement; icone?: NomeIcone; aoFechar?: () => void }) => { fechar(): void };
 
@@ -252,7 +253,12 @@ export class AppHistorico {
     if (this.ligado) {
       const [todas, favs, prefs, meta] = await Promise.all([
         this.d.repo.listar(),
-        this.d.favoritos ? this.d.favoritos.ids().catch(() => null) : Promise.resolve(null),
+        this.d.favoritos
+          ? this.d.favoritos.ids().catch((e) => {
+              console.warn("[SEI Pro] histórico: favoritos não lidos (sem estrela nesta recarga)", e);
+              return null;
+            })
+          : Promise.resolve(null),
         lerPreferencias(this.d.area),
         this.d.repo.meta(),
       ]);
@@ -272,9 +278,14 @@ export class AppHistorico {
     return ordenar(filtrar(this.todas, this.filtro, this.apoio(agora)), this.prefs.ordem);
   }
 
-  /** Os selecionados que estão à vista agora: o lote nunca age sobre item escondido pelo filtro. */
+  /** As linhas desenhadas: as primeiras `visiveis` do filtro ("Mostrar mais" desenha mais). */
+  private desenhadas(filtradas = this.filtradas()): Visita[] {
+    return filtradas.slice(0, this.visiveis);
+  }
+
+  /** Os selecionados entre as linhas desenhadas: o lote nunca age sobre item escondido pelo filtro nem ainda não desenhado. */
   private selecionados(): Visita[] {
-    return this.filtradas().filter((v) => this.selecao.has(v.id));
+    return this.desenhadas().filter((v) => this.selecao.has(v.id));
   }
 
   private estadoFiltros(agora: number): EstadoFiltros {
@@ -328,13 +339,15 @@ export class AppHistorico {
     }
     const agora = this.d.agora();
     const filtradas = this.filtradas(agora);
-    const aVista = new Set(filtradas.map((v) => v.id));
+    const desenhadas = this.desenhadas(filtradas);
+    // A seleção só guarda o que está desenhado: trocar o filtro (que volta a 200 linhas) tira quem sumiu.
+    const aVista = new Set(desenhadas.map((v) => v.id));
     for (const id of [...this.selecao]) if (!aVista.has(id)) this.selecao.delete(id);
     this.el.barra.atualizar(this.estadoFiltros(agora));
     if (this.el.busca.value !== (this.filtro.busca ?? "") && document.activeElement !== this.el.busca)
       this.el.busca.value = this.filtro.busca ?? "";
     this.desenharResumo(filtradas);
-    this.desenharLote(filtradas);
+    this.desenharLote(desenhadas);
     if (!this.todas.length) {
       this.el.corpo.replaceChildren(
         this.vazio(
@@ -422,8 +435,8 @@ export class AppHistorico {
       this.el.resumo.replaceChildren();
       return;
     }
-    // "Visíveis" = as linhas desenhadas (as primeiras `visiveis` do filtro), e não as que ainda não apareceram.
-    const aVista = filtradas.slice(0, this.visiveis);
+    // "Visíveis" = as linhas desenhadas, e não as que ainda estão atrás do "Mostrar mais".
+    const aVista = this.desenhadas(filtradas);
     const marcados = aVista.filter((v) => this.selecao.has(v.id)).length;
     const estado = marcados === 0 ? "false" : marcados === aVista.length ? "true" : "mixed";
     const todos = h(
@@ -458,8 +471,8 @@ export class AppHistorico {
     );
   }
 
-  private desenharLote(filtradas: Visita[]): void {
-    const sel = filtradas.filter((v) => this.selecao.has(v.id));
+  private desenharLote(desenhadas: Visita[]): void {
+    const sel = desenhadas.filter((v) => this.selecao.has(v.id));
     const qtd = sel.length;
     const entrando = this.el.lote.hidden;
     this.el.lote.hidden = qtd === 0;
@@ -516,7 +529,7 @@ export class AppHistorico {
         if (li.dataset.id === v.id) li.classList.toggle("spro-lista-item-selecionado", marcado);
       const filtradas = this.filtradas();
       this.desenharResumo(filtradas);
-      this.desenharLote(filtradas);
+      this.desenharLote(this.desenhadas(filtradas));
     },
     alternarFavorito: (v) => void this.alternarFavorito(v),
     copiar: (v) => this.copiarNumeros([v]),
@@ -557,18 +570,25 @@ export class AppHistorico {
     const alvo = this.selecionados().filter((v) => !favs.has(v.id));
     if (!alvo.length) return;
     const feitos: Array<{ lista: string; desfazer(): Promise<void> }> = [];
+    let erro: unknown = null;
     try {
       for (const v of alvo) feitos.push(await f.favoritar(v));
     } catch (e) {
-      avisar(mensagem(e));
+      erro = e;
     }
-    const lista = feitos[0]?.lista;
-    if (lista)
-      avisar(feitos.length === 1 ? `Favoritado em ${lista}` : `${processos(feitos.length)} favoritados em ${lista}`, {
-        rotulo: "Desfazer",
-        fazer: () => void Promise.all(feitos.map((x) => x.desfazer())).catch((e) => avisar(mensagem(e))),
-      });
     this.agendarRecarga();
+    const lista = feitos[0]?.lista;
+    if (!lista) {
+      if (erro) avisar(mensagem(erro));
+      return;
+    }
+    const desfazer = {
+      rotulo: "Desfazer",
+      fazer: () => void Promise.all(feitos.map((x) => x.desfazer())).catch((e) => avisar(mensagem(e))),
+    };
+    // Um aviso só: o de sucesso não pode esconder a falha no meio do lote.
+    if (erro) avisar(`${feitos.length} de ${alvo.length} favoritados em ${lista}. ${mensagem(erro)}`, desfazer);
+    else avisar(feitos.length === 1 ? `Favoritado em ${lista}` : `${processos(feitos.length)} favoritados em ${lista}`, desfazer);
   }
 
   private copiarNumeros(vs: Visita[]): void {
@@ -663,7 +683,13 @@ export class AppHistorico {
       try {
         await this.d.rpc.chamar("apagarLegado", undefined, 5000);
       } catch {
-        await this.d.repo.gravarMeta({ apagarLegado: true }).catch(() => undefined);
+        try {
+          await this.d.repo.gravarMeta({ apagarLegado: true });
+        } catch (e) {
+          console.warn("[SEI Pro] histórico: pendência de apagar o histórico antigo não gravada", e);
+          avisar("Histórico apagado, mas o histórico antigo do SEI não foi apagado.");
+          return;
+        }
       }
       avisar("Histórico apagado");
       return;

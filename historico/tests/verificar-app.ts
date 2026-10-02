@@ -1,4 +1,4 @@
-import { areaMemoria } from "@comum/armazenamento/area";
+import { type Area, areaMemoria } from "@comum/armazenamento/area";
 import { gerarCsv } from "@comum/csv";
 import { type AbrirModal, AppHistorico, type DepsApp, type FavoritosDoApp } from "../src/app/app";
 import { chaveEscopo } from "../src/modelo/constantes";
@@ -65,16 +65,38 @@ function marcar(el: Element | null | undefined): void {
   disparar(el, "change");
 }
 
-function favoritosFalsos(inicial: string[]) {
+/** Avisos do console durante `fazer` (sem sujar a saída das provas). */
+async function avisosDoConsole(fazer: () => Promise<unknown>): Promise<string[]> {
+  const original = console.warn;
+  const avisos: string[] = [];
+  console.warn = (...a: unknown[]) => {
+    avisos.push(a.map(String).join(" "));
+  };
+  try {
+    await fazer();
+  } finally {
+    console.warn = original;
+  }
+  return avisos;
+}
+
+/** `falharNa`: a n-ésima chamada de favoritar rejeita; `idsFalham`: a leitura dos ids rejeita. */
+function favoritosFalsos(inicial: string[], o: { falharNa?: number; idsFalham?: boolean } = {}) {
   const ids = new Set(inicial);
   const ouvintes = new Set<() => void>();
   const log: string[] = [];
+  let chamadas = 0;
   const mudou = () => {
     for (const o of [...ouvintes]) o();
   };
   const f: FavoritosDoApp = {
-    ids: async () => new Set(ids),
+    ids: async () => {
+      if (o.idsFalham) throw new Error("favoritos ilegíveis");
+      return new Set(ids);
+    },
     favoritar: async (v) => {
+      chamadas += 1;
+      if (chamadas === o.falharNa) throw new Error("Lista cheia");
       ids.add(v.id);
       log.push(`fav:${v.id}`);
       mudou();
@@ -107,7 +129,7 @@ function favoritosFalsos(inicial: string[]) {
       };
     },
   };
-  return { f, ids, log };
+  return { f, ids, log, ouvintes: () => ouvintes.size };
 }
 
 interface OpcoesMontar {
@@ -119,7 +141,22 @@ interface OpcoesMontar {
 
 async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
   const doc = instalarDom(o.html ?? '<html><body><div id="app"></div></body></html>');
-  const area = areaMemoria();
+  // A área conta os ouvintes ligados: destruir tem de desligar todos os do app.
+  const base = areaMemoria();
+  let ouvintes = 0;
+  const area: Area = {
+    ...base,
+    aoMudar(cb) {
+      ouvintes += 1;
+      const parar = base.aoMudar(cb);
+      let ligado = true;
+      return () => {
+        if (ligado) ouvintes -= 1;
+        ligado = false;
+        parar();
+      };
+    },
+  };
   const repo = new RepositorioHistorico(area, chaveEscopo(CTX.host, CTX.login));
   await repo.importar(o.visitas ?? CINCO);
   if (o.meta) await repo.gravarMeta(o.meta);
@@ -178,7 +215,20 @@ async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
     ...extra,
   };
   const raiz = doc.getElementById("app")!;
-  return { doc, raiz, area, repo, chamadas, modais, baixados, copiados, confirmados, t, app: new AppHistorico(raiz, deps) };
+  return {
+    doc,
+    raiz,
+    area,
+    repo,
+    chamadas,
+    modais,
+    baixados,
+    copiados,
+    confirmados,
+    t,
+    ouvintes: () => ouvintes,
+    app: new AppHistorico(raiz, deps),
+  };
 }
 
 const ids = (raiz: ParentNode): string => [...raiz.querySelectorAll("li.spro-lista-item")].map((li) => li.getAttribute("data-id")).join();
@@ -475,6 +525,30 @@ export async function verificarApp(): Promise<void> {
   botao(ap2.modais.at(-1)!.conteudo, "Apagar")!.click();
   await tique(80);
   checar("RPC do legado falhou: fica pendente na meta", (await noRepo(ap2.repo)) === "" && (await ap2.repo.meta()).apagarLegado === true);
+  checar("e o aviso e o de sucesso", textoAviso(ap2.doc).includes("Histórico apagado") && !textoAviso(ap2.doc).includes("antigo"));
+  const ap3 = await montar();
+  ap3.t.rejeitar.add("apagarLegado");
+  ap3.repo.gravarMeta = async () => {
+    throw new Error("cota cheia");
+  };
+  await ap3.app.iniciar();
+  itemDoMenu(ap3.raiz, MENU, "Apagar histórico…");
+  await tique(20);
+  marcar(ap3.modais.at(-1)!.conteudo.querySelector('input[value="tudo"]'));
+  const avisosAp3 = await avisosDoConsole(async () => {
+    botao(ap3.modais.at(-1)!.conteudo, "Apagar")!.click();
+    await tique(80);
+  });
+  checar(
+    "RPC e meta falharam: o aviso diz que o antigo ficou",
+    textoAviso(ap3.doc).includes("Histórico apagado, mas o histórico antigo do SEI não foi apagado."),
+    textoAviso(ap3.doc),
+  );
+  checar(
+    "e registra no console",
+    avisosAp3.some((a) => a.includes("cota cheia")),
+    avisosAp3,
+  );
 
   secao("historico app: faixa de migracao");
   const mg = await montar({}, { meta: { migrados: 7 } });
@@ -591,10 +665,90 @@ export async function verificarApp(): Promise<void> {
   await tique(60);
   checar("e tira", fv.log.at(-1) === "tirar:2");
 
+  secao("historico app: favoritar em lote com falha no meio");
+  const fp = favoritosFalsos([], { falharNa: 2 });
+  const fl = await montar({ favoritos: fp.f });
+  await fl.app.iniciar();
+  marcar(caixa(fl.raiz, "1"));
+  marcar(caixa(fl.raiz, "2"));
+  marcar(caixa(fl.raiz, "3"));
+  botao(fl.raiz, "Favoritar")!.click();
+  await tique(60);
+  const tFl = textoAviso(fl.doc);
+  checar("um aviso so, com '1 de 3' e a falha", tFl.includes("1 de 3 favoritados em GPF.") && tFl.includes("Lista cheia"), tFl);
+  checar("para no primeiro erro", fp.log.join() === "fav:1", fp.log);
+  botao(fl.doc.body, "Desfazer")!.click();
+  await tique(60);
+  checar("Desfazer desfaz o que foi feito", fp.log.join() === "fav:1,desfaz:1", fp.log);
+  const fz = favoritosFalsos([], { falharNa: 1 });
+  const fz0 = await montar({ favoritos: fz.f });
+  await fz0.app.iniciar();
+  marcar(caixa(fz0.raiz, "1"));
+  marcar(caixa(fz0.raiz, "2"));
+  botao(fz0.raiz, "Favoritar")!.click();
+  await tique(60);
+  checar(
+    "nada feito: so o erro, sem Desfazer",
+    textoAviso(fz0.doc).includes("Lista cheia") && !textoAviso(fz0.doc).includes("favoritados") && !botao(fz0.doc.body, "Desfazer"),
+    textoAviso(fz0.doc),
+  );
+
+  secao("historico app: favoritos ilegiveis");
+  const fi = favoritosFalsos(["1"], { idsFalham: true });
+  const fil = await montar({ favoritos: fi.f });
+  const avisosFi = await avisosDoConsole(() => fil.app.iniciar());
+  checar("a lista aparece mesmo assim, sem estrela", ids(fil.raiz) === "1,2,3,4,5" && !fil.raiz.querySelector(".spro-lista-estrela"));
+  checar(
+    "e registra no console",
+    avisosFi.some((a) => a.includes("favoritos ilegíveis")),
+    avisosFi,
+  );
+
+  secao("historico app: selecao so com as linhas desenhadas");
+  const longas = Array.from({ length: 250 }, (_, i) =>
+    visita({ id: `h${i}`, protocolo: `${i}/2026`, tipo: i < 230 ? "Contrato" : "Ofício", ultima: AGORA - i * MIN }),
+  );
+  const sd = await montar({}, { visitas: longas });
+  await sd.app.iniciar();
+  const linhas = () => sd.raiz.querySelectorAll("li.spro-lista-item").length;
+  checar("desenha 200 de 250", linhas() === 200);
+  botao(sd.raiz, "Mostrar mais 50")!.click();
+  checar("'Mostrar mais' desenha as 250", linhas() === 250);
+  sd.raiz.querySelector<HTMLElement>('[role="checkbox"][aria-label="Selecionar todos os visíveis"]')!.click();
+  checar("seleciona as 250 desenhadas", qtdLote(sd.raiz) === "250 selecionados", qtdLote(sd.raiz));
+  escolherCombo(sd.raiz, "Tipo", "Contrato");
+  checar("filtro novo: 230 filtradas, 200 desenhadas", linhas() === 200);
+  checar("a selecao fica so nas desenhadas", qtdLote(sd.raiz) === "200 selecionados", qtdLote(sd.raiz));
+  botao(sd.raiz, "Remover do histórico")!.click();
+  await tique(80);
+  checar("confirma 200", sd.confirmados.at(-1)?.[0] === "Remover 200 processos do histórico?", sd.confirmados.at(-1));
+  checar(
+    "remove so as desenhadas e selecionadas",
+    (await sd.repo.contar()) === 50 && !(await sd.repo.obter("h199")) && !!(await sd.repo.obter("h200")) && !!(await sd.repo.obter("h229")),
+    await sd.repo.contar(),
+  );
+
   secao("historico app: destruir");
-  const dz = await montar();
+  const fd = favoritosFalsos([]);
+  const dz = await montar({ favoritos: fd.f });
+  checar("antes de iniciar, nenhum ouvinte", dz.ouvintes() === 0 && fd.ouvintes() === 0);
   await dz.app.iniciar();
+  checar("iniciado: visitas e preferencias na area, e os favoritos", dz.ouvintes() === 2 && fd.ouvintes() === 1, {
+    area: dz.ouvintes(),
+    fav: fd.ouvintes(),
+  });
+  const buscaDz = dz.raiz.querySelector<HTMLInputElement>("input.spro-lista-busca")!;
+  let focouDz = 0;
+  buscaDz.focus = () => {
+    focouDz += 1;
+  };
+  tecla(dz.doc.body, "/");
+  checar("vivo, '/' foca a busca", focouDz === 1);
   dz.app.destruir();
+  checar("destruido: nenhum ouvinte do app na area", dz.ouvintes() === 0, dz.ouvintes());
+  checar("nem nos favoritos", fd.ouvintes() === 0, fd.ouvintes());
+  tecla(dz.doc.body, "/");
+  checar("destruido, '/' nao foca mais a busca", focouDz === 1);
   await dz.repo.registrarVisita({ id: "8", protocolo: "8/2026" }, AGORA + MIN);
   await tique(60);
   checar("destruido nao reage mais ao storage", !ids(dz.raiz).includes("8"));

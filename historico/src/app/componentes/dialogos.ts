@@ -8,11 +8,7 @@
 
 import { h } from "@comum/ui/dom";
 import { LIMITES, type Limite, type PeriodoApagar } from "../../modelo/tipos";
-
-/** "1.234" (milhar com ponto). */
-export const numero = (n: number): string => n.toLocaleString("pt-BR");
-/** "1 processo", "1.234 processos". */
-export const processos = (n: number): string => `${numero(n)} ${n === 1 ? "processo" : "processos"}`;
+import { numero, processos } from "../formato";
 
 const PERIODOS_APAGAR: ReadonlyArray<[PeriodoApagar, string]> = [
   ["hora", "Da última hora"],
