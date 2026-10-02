@@ -92,6 +92,7 @@ function favorito(v: unknown): Favorito | null {
   for (const k of ["titulo", "tipo", "especificacao", "pasta", "nota"]) if (f[k] !== undefined && !ehTexto(f[k])) delete f[k];
   // Ordem que o algoritmo não aceita travaria o próximo favorito: vira uma chave válida.
   if (!indiceValido(f.ordem as string)) f.ordem = "a0";
+  if (f.fixado !== true) delete f.fixado;
   if (f.sigiloso !== true) delete f.sigiloso;
   else delete f.especificacao;
   // Campos da F4: quebrados (arquivo editado à mão, formato futuro) saem; o favorito fica.

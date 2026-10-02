@@ -399,8 +399,10 @@ export class AppFavoritos {
     this.d.aoContar?.(this.pendencias());
     const hoje = this.d.hoje();
     // "Para hoje" no topo (lembretes vencidos), salvo quando o próprio filtro já é esse.
-    const paraHoje = this.filtro.situacoes?.includes("lembrete") ? [] : todosVisiveis.filter((f) => lembreteVencido(f, hoje));
-    const itens = paraHoje.length ? todosVisiveis.filter((f) => !paraHoje.includes(f)) : todosVisiveis;
+    // Fixados no topo, numa seção própria; depois "Para hoje" (lembretes vencidos), salvo quando o próprio filtro já é esse.
+    const fixados = todosVisiveis.filter((f) => f.fixado);
+    const paraHoje = this.filtro.situacoes?.includes("lembrete") ? [] : todosVisiveis.filter((f) => !f.fixado && lembreteVencido(f, hoje));
+    const itens = todosVisiveis.filter((f) => !f.fixado && !paraHoje.includes(f));
     const pastas = new Map(this.pastas.map((p) => [p.id, p]));
     const etiquetas = new Map(this.etiquetas.map((e) => [e.id, e]));
     const manual = this.prefs.ordem === "manual" && !this.prefs.agruparPorPasta;
@@ -419,6 +421,22 @@ export class AppFavoritos {
     });
     const acoes = this.acoesItem(itens.map((f) => f.id));
     this.el.corpo.replaceChildren(
+      ...(fixados.length
+        ? [
+            h(
+              "section",
+              { class: "fav-fixados" },
+              h(
+                "h3",
+                { class: "fav-secao-titulo" },
+                icone("pinoCheio", 14),
+                h("span", {}, "Fixados"),
+                h("span", { class: "fav-grupo-conta" }, String(fixados.length)),
+              ),
+              renderLista({ itens: fixados, agrupar: false, pastas: this.pastas, apoio: apoio(false), acoes, vazio: "" }),
+            ),
+          ]
+        : []),
       ...(paraHoje.length
         ? [
             h(
@@ -435,7 +453,7 @@ export class AppFavoritos {
             ),
           ]
         : []),
-      itens.length || !paraHoje.length
+      itens.length || (!paraHoje.length && !fixados.length)
         ? renderLista({
             itens,
             agrupar: this.prefs.agruparPorPasta,
@@ -481,7 +499,7 @@ export class AppFavoritos {
     const grupo = (f: Favorito) => (f.pasta && existe.has(f.pasta) ? f.pasta : SEM_PASTA);
     const comParaHoje = !this.filtro.situacoes?.includes("lembrete");
     const aVista = this.prefs.agruparPorPasta
-      ? visiveis.filter((f) => (comParaHoje && lembreteVencido(f, hoje)) || !this.recolhidos.has(grupo(f)))
+      ? visiveis.filter((f) => f.fixado || (comParaHoje && lembreteVencido(f, hoje)) || !this.recolhidos.has(grupo(f)))
       : visiveis;
     const marcados = aVista.filter((f) => this.selecao.has(f.id)).length;
     const estado = marcados === 0 ? "false" : marcados === aVista.length ? "true" : "mixed";
@@ -735,6 +753,7 @@ export class AppFavoritos {
       abrirDocumento: (_f, d, novaAba) =>
         void this.d.rpc.chamar("abrirProcesso", { id: "", protocolo: d.numero, novaAba }).catch((e: Error) => avisar(e.message)),
       removerDocumento: (f, d) => void this.repo.editar(f.id, { documentos: (f.documentos ?? []).filter((x) => x.id !== d.id) }),
+      fixar: (f) => void this.repo.editar(f.id, { fixado: f.fixado ? undefined : true }),
       lembrete: (f) => this.abrirLembrete(f),
       moverLista: (f) => void this.moverParaOutra([f.id]),
       mapa: this.d.carregarMapa ? (f) => void this.abrirMapa(f) : undefined,

@@ -82,6 +82,7 @@ export const TOOL_FAVORITOS = definirTool({
           ...(f.pasta && porPasta.get(f.pasta) ? { pasta: porPasta.get(f.pasta)!.nome } : {}),
           ...(f.etiquetas.length ? { etiquetas: f.etiquetas.map((id) => porEtiqueta.get(id)?.nome).filter(Boolean) } : {}),
           ...(f.nota ? { nota: f.nota } : {}),
+          ...(f.fixado ? { fixado: true } : {}),
           ...(prazo ? { prazo: prazo.texto } : {}),
           ...(f.lembrete ? { lembrete: { ...f.lembrete, vencido: lembreteVencido(f, hoje) } } : {}),
           ...(novidade ? { novidade } : {}),

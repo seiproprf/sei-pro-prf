@@ -18,10 +18,14 @@ const CSS = `.spro-fav-estrela{background:none;border:0;padding:0 3px;margin:0 2
 .spro-fav-doc[aria-pressed="true"]{color:#e0a100}
 .spro-fav-doc[aria-busy="true"]{opacity:.5}
 .spro-fav-doc:focus-visible{outline:2px solid #1a73e8;outline-offset:1px;border-radius:3px}
+#topmenu .spro-fav-estrela,#topmenu .spro-fav-abrir{display:inline-block;width:27px;height:24px;padding:0;margin:0;line-height:0;vertical-align:baseline}
+#topmenu .spro-fav-estrela svg,#topmenu .spro-fav-abrir svg{display:block;width:20px;height:20px;margin:2px auto}
 .spro-fav-botao{position:relative}
 .spro-fav-contador{position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#d93025;color:#fff;font:600 10px/16px sans-serif;text-align:center;box-sizing:border-box}
-.spro-fav-titulo{display:flex!important;align-items:center;gap:6px}
-.spro-fav-recolher{margin-left:auto;background:none;border:0;cursor:pointer;color:inherit;line-height:0;padding:2px}
+.spro-fav-titulo{display:flex!important;align-items:center;gap:8px}
+.spro-fav-recolher{margin-left:4px;background:none;border:0;cursor:pointer;color:inherit;line-height:0;padding:2px;border-radius:4px}
+.spro-fav-recolher:hover{background:rgb(127 127 127 / 14%)}
+.spro-fav-recolher:focus-visible{outline:2px solid #1a73e8;outline-offset:1px}
 @keyframes spro-fav-aviso{from{opacity:0;transform:translate(-50%,10px)}}
 @media (prefers-reduced-motion:reduce){.spro-fav-aviso{animation:none!important}}`;
 

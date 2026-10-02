@@ -4,7 +4,7 @@ import { abrirProcesso, localizarAbertura } from "../src/pagina/abrir";
 import { avisoNaPagina } from "../src/pagina/aviso";
 import { instalarEstilo } from "../src/pagina/estilo";
 import { tratadoresDaAba } from "../src/pagina/executor";
-import { inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
+import { igualarAoTituloDoSei, inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
 import { criarSobreposicao } from "../src/pagina/sobreposicao";
 import { botao, checar, disparar, instalarDom, lanca, secao, telaSei, tique } from "./util";
 import { CTX } from "./verificar-modelo";
@@ -42,6 +42,19 @@ export async function verificarPainel(): Promise<void> {
     ordemLegada({ getItem: () => JSON.stringify({ orderPanelHome: [{ name: "favoritesPro", index: 3 }] }) }) === 3,
   );
   checar("sem ordem guardada", ordemLegada({ getItem: () => null }) === null && ordemLegada({ getItem: () => "{x" }) === null);
+  const docT = instalarDom('<html><body><div id="divInfraBarraLocalizacao">Controle de Processos</div></body></html>');
+  (docT.defaultView as unknown as { getComputedStyle: () => Partial<CSSStyleDeclaration> }).getComputedStyle = () => ({
+    fontSize: "22.4px",
+    fontWeight: "600",
+    fontFamily: "Roboto, Arial",
+  });
+  const tituloT = docT.createElement("div");
+  igualarAoTituloDoSei(docT, tituloT);
+  checar(
+    "titulo Favoritos com a mesma letra do titulo da tela",
+    tituloT.style.fontSize === "22.4px" && tituloT.style.fontWeight === "600",
+    tituloT.getAttribute("style"),
+  );
   const docP = instalarDom('<html><body><form id="frmProcedimentoControlar"></form></body></html>');
   const recolhidos: boolean[] = [];
   const m = montarPainel(docP, {
@@ -60,6 +73,12 @@ export async function verificarPainel(): Promise<void> {
   );
   (docP.querySelector(".spro-fav-recolher") as HTMLButtonElement).click();
   checar("recolher esconde e grava a preferencia", m?.corpo.hidden === true && recolhidos.join() === "true");
+  const tituloP = docP.querySelector("#favoritesPro .spro-fav-titulo");
+  checar(
+    "texto do titulo solto no div, como o do Controle de Processos (o SEI encolhe todo span)",
+    !tituloP?.querySelector("span") && (tituloP?.textContent ?? "").trim() === "Favoritos",
+    tituloP?.innerHTML,
+  );
   checar("nao monta duas vezes", montarPainel(docP, { urlApp: "x", recolhido: false, ordem: null, aoRecolher: () => undefined }) === null);
 
   const docO = instalarDom(

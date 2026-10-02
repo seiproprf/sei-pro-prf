@@ -1382,9 +1382,17 @@ function insertDivPanelControleProc() {
     var statusIconHide = ( getOptionsPro(elementControleProc) == 'hide' ) ? 'display:none;' : '';
     var idControleProc = isNewSEI ? '.'+elementControleProc : '#'+elementControleProc;
     var idOrder = (getOptionsPro('orderPanelHome') && typeof jmespath !== 'undefined' && jmespath.search(getOptionsPro('orderPanelHome'), "[?name=='processosSEIPro'].index | length(@)") > 0) ? jmespath.search(getOptionsPro('orderPanelHome'), "[?name=='processosSEIPro'].index | [0]") : '';
-    var htmlIconTable =     '<i class="controleProcPro '+(localStorage.getItem('seiSlim') ? 'fad fa-folders' : 'fas fa-folder-open')+' cinzaColor" style="margin: 0 10px 0 0; font-size: 1.1em;"></i>';
-    var htmlToggleTable =   '<a class="controleProcPro newLink" id="'+elementControleProc+'_showIcon" onclick="toggleTablePro(\''+idControleProc+'\',\'show\')" onmouseover="return infraTooltipMostrar(\'Mostrar Tabela\');" onmouseout="return infraTooltipOcultar();" style="font-size: 11pt; '+statusIconShow+'"><i class="fas fa-plus-square cinzaColor"></i></a>'+
-                            '<a class="controleProcPro newLink" id="'+elementControleProc+'_hideIcon" onclick="toggleTablePro(\''+idControleProc+'\',\'hide\')" onmouseover="return infraTooltipMostrar(\'Recolher Tabela\');" onmouseout="return infraTooltipOcultar();" style="font-size: 11pt; '+statusIconHide+'"><i class="fas fa-minus-square cinzaColor"></i></a>';
+    // Mesmo desenho do titulo do painel Favoritos (favoritos/pagina/painel.ts): icone em SVG (cinza) e a seta de recolher.
+    var svgTituloPro = function (caminhos, tamanho) {
+        return '<svg viewBox="0 0 24 24" width="'+tamanho+'" height="'+tamanho+'" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="flex:none;vertical-align:middle">'+caminhos+'</svg>';
+    };
+    var htmlIconTable =     '<i class="controleProcPro cinzaColor" style="display:inline-flex;margin:0 8px 0 0;line-height:0;font-style:normal">'+
+                            svgTituloPro('<path d="M1.5 19V5.2A1.7 1.7 0 0 1 3.2 3.5h5.6l2.4 2.4h8.6A1.7 1.7 0 0 1 21.5 7.6V9.4H6.9a2.2 2.2 0 0 0-2.1 1.5z" fill="currentColor" opacity=".6" stroke="none"/>'+
+                                         '<path d="M1.9 20.2 5.3 11.3A1.7 1.7 0 0 1 6.9 10.2h15.3a1.1 1.1 0 0 1 1 1.5l-2.9 8.1a1.7 1.7 0 0 1-1.6 1.1H2.8a.95.95 0 0 1-.9-.7z" fill="currentColor" stroke="none"/>', 22)+
+                            '</i>';
+    var estiloSetaPro =     'background:none;border:0;cursor:pointer;color:inherit;line-height:0;padding:2px;margin-left:4px;';
+    var htmlToggleTable =   '<button type="button" class="controleProcPro spro-fav-recolher" id="'+elementControleProc+'_showIcon" onclick="toggleTablePro(\''+idControleProc+'\',\'show\')" title="Mostrar a lista de processos" aria-label="Mostrar a lista de processos" style="'+estiloSetaPro+statusIconShow+'">'+svgTituloPro('<path d="M6 9l6 6 6-6"/>', 18)+'</button>'+
+                            '<button type="button" class="controleProcPro spro-fav-recolher" id="'+elementControleProc+'_hideIcon" onclick="toggleTablePro(\''+idControleProc+'\',\'hide\')" title="Recolher a lista de processos" aria-label="Recolher a lista de processos" style="'+estiloSetaPro+statusIconHide+'">'+svgTituloPro('<path d="M6 15l6-6 6 6"/>', 18)+'</button>';
     var htmlDivPanel = '<div class="controleProcPro panelHomePro" style="display: inline-block; width: 100%;" id="processosSEIPro" data-order="'+idOrder+'"></div>';
     
     if (isNewSEI) $('#divFiltro, #collapseControle, #newFiltro, #divTabelaProcesso').addClass('collapseTabelaProcesso');
@@ -1406,10 +1414,13 @@ function insertDivPanelControleProc() {
     }
 }
 function insertDivPanel() {
-    if ($('#panelHomePro').length == 0 && $('#tblMarcadores').length == 0) { 
-        $('#frmProcedimentoControlar').after('<div id="panelHomePro" style="display: inline-block; width: 100%;"></div>'); 
-        initSortDivPanel();
+    if ($('#tblMarcadores').length > 0) return;
+    if ($('#panelHomePro').length == 0) {
+        $('#frmProcedimentoControlar').after('<div id="panelHomePro" style="display: inline-block; width: 100%;"></div>');
     }
+    // O painel novo de favoritos (favoritos/pagina/painel.ts) pode criar o #panelHomePro antes desta funcao rodar:
+    // o titulo do Controle de Processos (icone e recolher) e a ordenacao dos paineis continuam sendo montados aqui.
+    if ($('.controleProcPro').length == 0) initSortDivPanel();
 }
 function initSortDivPanel(TimeOut = 9000) {
     if (TimeOut <= 0) { return; }

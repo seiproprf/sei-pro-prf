@@ -153,6 +153,14 @@ const ICONES = {
   ],
   nuvem: [["path", { d: "M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5a4.5 4.5 0 0 0 0 9z" }]],
   chevron: [["path", { d: "M7 9.5l5 5 5-5" }]],
+  pino: [
+    ["path", { d: "M9.5 3.5h5l-.8 5.2 3.3 3.1v1.7H7v-1.7l3.3-3.1z" }],
+    ["path", { d: "M12 13.5v7" }],
+  ],
+  pinoCheio: [
+    ["path", { d: "M9.5 3.5h5l-.8 5.2 3.3 3.1v1.7H7v-1.7l3.3-3.1z", fill: "currentColor" }],
+    ["path", { d: "M12 13.5v7" }],
+  ],
   filtro: [["path", { d: "M4 5.5h16l-6.2 7.3v5.4l-3.6 1.8v-7.2z" }]],
   ordenar: [
     ["path", { d: "M7.5 4.5v15" }],

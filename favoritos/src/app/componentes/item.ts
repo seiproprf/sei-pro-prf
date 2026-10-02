@@ -33,6 +33,8 @@ export interface AcoesItem {
   lembrete?(f: Favorito): void;
   abrirDocumento?(f: Favorito, d: DocumentoFavorito, novaAba: boolean): void;
   removerDocumento?(f: Favorito, d: DocumentoFavorito): void;
+  /** Fixa ou desafixa no topo da lista. */
+  fixar?(f: Favorito): void;
 }
 
 /** O que a faixa colorida à esquerda do item conta, do mais urgente para o menos. */
@@ -65,6 +67,7 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
     classe: "spro-botao-icone pequeno fav-acao",
     itens: () => [
       { rotulo: "Editar", icone: "lapis", fazer: () => acoes.editar(f) },
+      acoes.fixar ? { rotulo: f.fixado ? "Desafixar" : "Fixar no topo", icone: "pino", fazer: () => acoes.fixar?.(f) } : null,
       { rotulo: "Abrir em outra aba", icone: "saida", fazer: () => acoes.abrir(f, true) },
       a.novidade && acoes.marcarVisto ? { rotulo: "Marcar como visto", icone: "olho", fazer: () => acoes.marcarVisto?.(f) } : null,
       acoes.lembrete ? { rotulo: "Lembrete…", icone: "sino", fazer: () => acoes.lembrete?.(f) } : null,
@@ -82,7 +85,7 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
   return h(
     "li",
     {
-      class: `fav-item${a.selecionado ? " fav-item-selecionado" : ""}`,
+      class: `fav-item${a.selecionado ? " fav-item-selecionado" : ""}${f.fixado ? " fav-item-fixado" : ""}`,
       "data-id": f.id,
       "data-estado": estado,
       draggable: a.arrastavel ? "true" : undefined,
@@ -279,6 +282,20 @@ export function renderItem(f: Favorito, a: ApoioItem, acoes: AcoesItem): HTMLLIE
               onclick: () => acoes.lembrete?.(f),
             },
             icone("sino", 15),
+          )
+        : null,
+      acoes.fixar
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "spro-botao-icone pequeno fav-acao fav-fixar",
+              "aria-pressed": String(!!f.fixado),
+              "aria-label": f.fixado ? "Desafixar" : "Fixar no topo",
+              title: f.fixado ? "Desafixar (deixa de ficar no topo)" : "Fixar no topo da lista",
+              onclick: () => acoes.fixar?.(f),
+            },
+            icone(f.fixado ? "pinoCheio" : "pino", 15),
           )
         : null,
       menu,

@@ -116,6 +116,8 @@ export interface Favorito extends Versionada {
   visto?: Instantaneo;
   /** Índice fracionário (comparar com < e >). */
   ordem: string;
+  /** Fixado no topo da lista (o pino do item). */
+  fixado?: true;
   sigiloso?: true;
   /** Veio de tela que não informa o sigilo (Pesquisa); a caixa ou a árvore confirmam depois. */
   sigiloAConfirmar?: true;

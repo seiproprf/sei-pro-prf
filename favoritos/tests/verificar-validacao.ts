@@ -12,14 +12,22 @@ export function verificarValidacaoCampos(): void {
       {
         escopo: { host: CTX.host, login: "pedro.soares", lista: "pessoal" },
         favoritos: [
-          { ...base, id: "1", lembrete: { texto: "sem data" }, documentos: "abc", visto: "ontem", local: { lat: 999, lng: 1 } },
+          {
+            ...base,
+            id: "1",
+            lembrete: { texto: "sem data" },
+            documentos: "abc",
+            visto: "ontem",
+            local: { lat: 999, lng: 1 },
+            fixado: "sim",
+          },
           {
             ...base,
             id: "2",
             lembrete: { em: "2026-10-05", texto: 7 },
             documentos: [{ id: "9", numero: "0104019", titulo: "Despacho" }, { id: 3 }, "x"],
           },
-          { ...base, id: "3", lembrete: { em: "2026-10-05", texto: "ligar" }, local: { lat: -15.8, lng: -47.9 } },
+          { ...base, id: "3", lembrete: { em: "2026-10-05", texto: "ligar" }, local: { lat: -15.8, lng: -47.9 }, fixado: true },
         ],
         pastas: [],
         etiquetas: [],
@@ -47,4 +55,5 @@ export function verificarValidacaoCampos(): void {
     f2!.documentos,
   );
   checar("validos ficam como estao", f3!.lembrete?.texto === "ligar" && f3!.local?.lat === -15.8);
+  checar("fixado so vale como true", (f1 as { fixado?: unknown }).fixado === undefined && f3!.fixado === true);
 }

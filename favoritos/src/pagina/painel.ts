@@ -38,6 +38,24 @@ export function inserirNaOrdem(container: Element, painel: Element, ordem: numbe
   container.append(painel);
 }
 
+/**
+ * O título "Favoritos" com a mesma letra do título da tela ("Controle de Processos"): o SEI 5 dá
+ * o tamanho ao título da tela por regras que não alcançam um painel novo, e ele saía bem menor.
+ */
+export function igualarAoTituloDoSei(doc: Document, titulo: HTMLElement): void {
+  const ref = doc.querySelector("#divInfraBarraLocalizacao");
+  const visao = doc.defaultView as (Window & { getComputedStyle?: Window["getComputedStyle"] }) | null;
+  if (!ref || !visao?.getComputedStyle) return;
+  try {
+    const c = visao.getComputedStyle(ref);
+    if (c.fontSize) titulo.style.fontSize = c.fontSize;
+    if (c.fontWeight) titulo.style.fontWeight = c.fontWeight;
+    if (c.fontFamily) titulo.style.fontFamily = c.fontFamily;
+  } catch {
+    /* sem estilo computado */
+  }
+}
+
 export interface OpcoesPainel {
   urlApp: string;
   /**
@@ -84,7 +102,7 @@ export function montarPainel(doc: Document, o: OpcoesPainel): PainelMontado | nu
     recolher.setAttribute("aria-expanded", String(!fechado));
     recolher.setAttribute("aria-label", rotulo);
     recolher.title = rotulo;
-    recolher.replaceChildren(icone(fechado ? "expandir" : "recolher", 16));
+    recolher.replaceChildren(icone(fechado ? "expandir" : "recolher", 18));
   };
   recolher.addEventListener("click", () => {
     corpo.hidden = !corpo.hidden;
@@ -92,9 +110,10 @@ export function montarPainel(doc: Document, o: OpcoesPainel): PainelMontado | nu
     o.aoRecolher(corpo.hidden);
   });
   pintar();
-  const estrela = icone("estrelaCheia", 16);
+  const estrela = icone("estrelaCheia", 20);
   estrela.setAttribute("style", "color:#e0a100");
-  const titulo = h("div", { class: "infraBarraLocalizacao titlePanelHome spro-fav-titulo" }, estrela, h("span", {}, "Favoritos"), recolher);
+  const titulo = h("div", { class: "infraBarraLocalizacao titlePanelHome spro-fav-titulo" }, estrela, "Favoritos", recolher);
+  igualarAoTituloDoSei(doc, titulo);
   const painel = h(
     "div",
     {

@@ -398,6 +398,39 @@ export async function verificarApp(): Promise<void> {
   await tique(80);
   checar("leitura nova (outro contexto) aparece sozinha", selo() === "1 documento novo", selo());
 
+  secao("app: fixar no topo");
+  const fx = montar();
+  await fx.repos.unidade.adicionar({ id: "71", protocolo: "50300.000071/2026-71" });
+  await fx.repos.unidade.adicionar({ id: "72", protocolo: "50300.000072/2026-72" });
+  await fx.repos.unidade.adicionar({ id: "73", protocolo: "50300.000073/2026-73" });
+  await fx.app.iniciar();
+  const ordemIds = () => [...fx.raiz.querySelectorAll<HTMLElement>("li.fav-item")].map((l) => l.dataset.id).join();
+  const fixar = (id: string) => fx.raiz.querySelector<HTMLButtonElement>(`li[data-id="${id}"] .fav-fixar`);
+  checar(
+    "botao de fixar ao lado do menu, desligado",
+    fixar("73")?.getAttribute("aria-pressed") === "false" && fixar("73")?.getAttribute("aria-label") === "Fixar no topo",
+  );
+  fixar("73")!.click();
+  await tique(80);
+  checar(
+    "fixado sobe para o topo, numa secao propria",
+    ordemIds().startsWith("73,") && !!fx.raiz.querySelector('.fav-fixados li[data-id="73"]'),
+    ordemIds(),
+  );
+  checar("grava no favorito", (await fx.repos.unidade.obter("73"))?.fixado === true);
+  checar(
+    "o pino fica marcado",
+    fixar("73")?.getAttribute("aria-pressed") === "true" && fixar("73")?.getAttribute("aria-label") === "Desafixar",
+  );
+  checar("nao repete o item na lista de baixo", fx.raiz.querySelectorAll('li[data-id="73"]').length === 1);
+  itemDoMenu(fx.raiz.querySelector('li[data-id="73"]')!, "Mais ações para 50300.000073/2026-73", "Desafixar");
+  await tique(80);
+  checar(
+    "desafixar pelo menu devolve a ordem",
+    !(await fx.repos.unidade.obter("73"))?.fixado && !fx.raiz.querySelector(".fav-fixados"),
+    ordemIds(),
+  );
+
   secao("app: menu aberto e lista redesenhada");
   const or = montar();
   await or.repos.unidade.adicionar({ id: "81", protocolo: "50300.000081/2026-81" });

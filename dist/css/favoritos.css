@@ -1538,16 +1538,27 @@ button.spro-pilula:focus-visible {
   display: flex;
   align-items: center;
   gap: 1px;
+}
+/* As ações aparecem ao passar o mouse; o pino de um item fixado fica sempre à vista. */
+.fav-acoes > * {
   opacity: 0;
   transition: opacity var(--spro-dur);
 }
-.fav-item:hover .fav-acoes,
-.fav-item:focus-within .fav-acoes,
-.fav-acoes:has([aria-expanded="true"]) {
+.fav-item:hover .fav-acoes > *,
+.fav-item:focus-within .fav-acoes > *,
+.fav-acoes > [aria-expanded="true"],
+.fav-fixar[aria-pressed="true"] {
   opacity: 1;
 }
+.fav-fixar[aria-pressed="true"] {
+  color: var(--spro-destaque);
+}
+.fav-fixar[aria-pressed="true"]:hover {
+  color: var(--spro-destaque);
+  background: var(--spro-destaque-suave);
+}
 @media (hover: none) {
-  .fav-acoes,
+  .fav-acoes > *,
   .fav-alca,
   .fav-sel {
     opacity: 1;
@@ -1632,6 +1643,17 @@ button.spro-pilula:focus-visible {
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--spro-aviso);
+}
+.fav-fixados {
+  display: grid;
+  gap: 6px;
+}
+.fav-fixados .fav-secao-titulo {
+  color: var(--spro-destaque);
+}
+.fav-fixados .fav-secao-titulo .fav-grupo-conta {
+  color: var(--spro-destaque);
+  background: var(--spro-destaque-suave);
 }
 .fav-grupos {
   display: grid;
@@ -1736,7 +1758,7 @@ button.spro-pilula:focus-visible {
   grid-template-areas: "cab princ meta acoes";
   padding-left: 12px;
 }
-.fav-item-lixeira .fav-acoes {
+.fav-item-lixeira .fav-acoes > * {
   opacity: 1;
 }
 .fav-item-lixeira .fav-cabeca-item strong {
@@ -2166,11 +2188,15 @@ dialog.spro-dialogo:has(.fav-mapa) {
   .fav-meta:empty {
     display: none;
   }
-  .fav-acoes {
+  .fav-acoes > * {
     opacity: 1;
   }
-  .fav-acoes > button:not([aria-haspopup]) {
+  /* No estreito ficam só o pino e o menu; editar é clicar no título. */
+  .fav-acoes > button:not([aria-haspopup]):not(.fav-fixar) {
     display: none;
+  }
+  .fav-fixar[aria-pressed="false"] {
+    color: var(--spro-fraco);
   }
   .fav-item-lixeira {
     grid-template-columns: minmax(0, 1fr) auto;
