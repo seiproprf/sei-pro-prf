@@ -5,17 +5,16 @@
  * filtrados", "Limpar" e "Criar “…”" quando nada bate. Teclado completo
  * (↑ ↓ Home End Enter Esc Backspace Tab) e ARIA de combobox/listbox.
  *
- * A lista flutua em `position: fixed` no `document.body`, ou na própria Shadow
- * Root quando o botão vive numa (o balão da página do SEI), para herdar o
- * estilo dela. Abre para cima quando falta espaço embaixo e avisa, pelo evento
- * `spro-popover` da janela, até onde precisa chegar: o iframe abaixo da lista
- * de processos cresce para não cortá-la.
+ * A lista é uma camada flutuante (ui/flutuante.ts): fica no diálogo aberto, na
+ * Shadow Root do balão ou no `body`, abre para cima quando falta espaço e avisa
+ * até onde desce (o iframe abaixo da lista de processos cresce para não cortá-la).
  *
  * Sem innerHTML: rótulos vêm do usuário (nome de pasta) e entram como texto.
  */
 
 import { normalizarTexto } from "../texto";
 import { h, icone, type NomeIcone } from "./dom";
+import { abrirFlutuante, type Flutuante } from "./flutuante";
 
 export interface OpcaoCombo {
   valor: string;
@@ -133,7 +132,7 @@ export function criarCombo(cfg: ConfigCombo): Combo {
   let termo = "";
   let ativo = 0;
   let visiveis: OpcaoCombo[] = [];
-  let desligar: Array<() => void> = [];
+  let flut: Flutuante | null = null;
 
   const botao = h("button", {
     type: "button",
@@ -303,43 +302,7 @@ export function criarCombo(cfg: ConfigCombo): Combo {
     marcarAtiva();
   }
 
-  function posicionar(): void {
-    if (!pop) return;
-    const r = botao.getBoundingClientRect?.();
-    if (!r) return;
-    const janela = botao.ownerDocument.defaultView;
-    const altJanela = janela?.innerHeight ?? 0;
-    const largJanela = janela?.innerWidth ?? 0;
-    const largura = Math.min(Math.max(r.width, cfg.larguraLista ?? 220), Math.max(200, largJanela - 16));
-    const esquerda = Math.max(8, Math.min(r.left, largJanela - largura - 8));
-    const desejada = Math.min(pop.scrollHeight || 320, 360);
-    const embaixo = altJanela - r.bottom - 8;
-    const emCima = r.top - 8;
-    const paraCima = embaixo < Math.min(desejada, 220) && emCima > embaixo;
-    pop.style.left = `${esquerda}px`;
-    pop.style.width = `${largura}px`;
-    pop.style.maxHeight = `${Math.max(160, Math.min(360, paraCima ? emCima : embaixo > 160 ? embaixo : 360))}px`;
-    pop.classList.toggle("spro-combo-pop-cima", paraCima);
-    if (paraCima) {
-      pop.style.top = "";
-      pop.style.bottom = `${altJanela - r.top + 4}px`;
-    } else {
-      pop.style.bottom = "";
-      pop.style.top = `${r.bottom + 4}px`;
-    }
-    // Quem vive num iframe que cresce com o conteúdo precisa saber até onde a lista desce.
-    const fundo = paraCima ? 0 : Math.ceil(r.bottom + 4 + desejada + 12);
-    anunciar(fundo);
-  }
-
-  function anunciar(fundo: number): void {
-    const janela = botao.ownerDocument.defaultView as (Window & { CustomEvent?: typeof CustomEvent }) | null;
-    try {
-      if (janela?.CustomEvent) janela.dispatchEvent(new janela.CustomEvent("spro-popover", { detail: { fundo } }));
-    } catch {
-      /* sem janela de verdade (testes) */
-    }
-  }
+  const posicionar = () => flut?.posicionar();
 
   function teclado(ev: KeyboardEvent): void {
     const n = visiveis.length;
@@ -390,10 +353,6 @@ export function criarCombo(cfg: ConfigCombo): Combo {
 
   function abrir(semente = ""): void {
     if (pop) return;
-    const raizNo = botao.getRootNode?.();
-    const doc = botao.ownerDocument;
-    const destino: ParentNode =
-      raizNo && raizNo !== doc && (raizNo as ShadowRoot).host ? (raizNo as ShadowRoot) : (doc.body ?? doc.documentElement);
     termo = semente;
     const lerIndice = () => {
       const i = filtrarOpcoes(lerOpcoes(), termo).findIndex((o) => o.valor === escolhidos[escolhidos.length - 1]);
@@ -438,7 +397,11 @@ export function criarCombo(cfg: ConfigCombo): Combo {
       cfg.multiplo ? h("div", { class: "spro-combo-rodape" }) : null,
     );
     pop.addEventListener("keydown", teclado);
-    destino.append(pop);
+    flut = abrirFlutuante(botao, pop, {
+      larguraMinima: cfg.larguraLista ?? 220,
+      alturaMaxima: 360,
+      aoFechar: () => fechar(false),
+    });
     botao.setAttribute("aria-expanded", "true");
     botao.setAttribute("aria-controls", `${id}-lista`);
     botao.classList.add("spro-combo-aberto");
@@ -447,51 +410,28 @@ export function criarCombo(cfg: ConfigCombo): Combo {
     const foco = busca ?? pop.querySelector<HTMLElement>('[role="listbox"]');
     foco?.focus?.({ preventScroll: true });
     if (busca && semente) busca.setSelectionRange?.(semente.length, semente.length);
-
-    const docRaiz = doc;
-    const fora = (ev: Event) => {
-      const caminho = (ev.composedPath?.() ?? []) as EventTarget[];
-      const alvo = ev.target as Node | null;
-      const dentro = (no: Node) => caminho.includes(no) || (!!alvo && no.contains?.(alvo));
-      if (pop && (dentro(pop) || dentro(botao))) return;
-      fechar(false);
-    };
-    const rolou = (ev: Event) => {
-      if (pop && ev.target instanceof Node && pop.contains(ev.target)) return;
-      posicionar();
-    };
-    docRaiz.addEventListener("pointerdown", fora, true);
-    const janela = doc.defaultView;
-    janela?.addEventListener("scroll", rolou, true);
-    janela?.addEventListener("resize", posicionar);
-    desligar = [
-      () => docRaiz.removeEventListener("pointerdown", fora, true),
-      () => janela?.removeEventListener("scroll", rolou, true),
-      () => janela?.removeEventListener("resize", posicionar),
-    ];
   }
 
   function fechar(devolverFoco = false): void {
     if (!pop) return;
-    for (const d of desligar) d();
-    desligar = [];
-    pop.remove();
+    flut?.fechar();
+    flut = null;
     pop = null;
     termo = "";
     botao.setAttribute("aria-expanded", "false");
     botao.removeAttribute("aria-controls");
     botao.classList.remove("spro-combo-aberto");
-    anunciar(0);
     if (devolverFoco) botao.focus?.({ preventScroll: true });
   }
 
   botao.addEventListener("click", () => (pop ? fechar(true) : abrir()));
   botao.addEventListener("keydown", (ev) => {
     if (pop) return;
-    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(ev.key)) {
+    // Enter e Espaço ficam com o clique nativo do botão (que abre).
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
       ev.preventDefault();
       abrir();
-    } else if (ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey && !ev.altKey && temBusca()) {
+    } else if (ev.key.length === 1 && ev.key !== " " && !ev.ctrlKey && !ev.metaKey && !ev.altKey && temBusca()) {
       ev.preventDefault();
       abrir(ev.key);
     }

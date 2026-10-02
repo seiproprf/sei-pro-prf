@@ -126,3 +126,13 @@ export async function verificarCombobox(): Promise<void> {
   await tique(20);
   checar("criar chama o criador e ja escolhe", criados.join() === "Convênios" && simples.join() === "novo");
 }
+
+export async function verificarComboboxNoDialogo(): Promise<void> {
+  secao("combobox: dentro de um dialogo, a lista fica no dialogo");
+  const doc = instalarDom('<html><body><dialog id="d" open><div id="dentro"></div></dialog></body></html>');
+  const c = criarCombo({ rotulo: "Pasta", opcoes: PASTAS });
+  doc.getElementById("dentro")!.append(c.el);
+  c.el.click();
+  await tique();
+  checar("lista anexada ao dialogo aberto", doc.querySelector(".spro-combo-pop")?.parentElement?.id === "d");
+}
