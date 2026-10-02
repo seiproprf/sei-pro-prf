@@ -63,4 +63,38 @@ export async function verificarDocumentosFavoritos(): Promise<void> {
   checar("clique alterna aquele documento", cliques.join() === "160288");
   checar("nao e a estrela do processo (delegacao separada)", !estrelas[0]!.classList.contains("spro-fav-estrela"));
   parar();
+
+  secao("documentos favoritos: convivencia com os icones do SEI Pro antigo na arvore");
+  const docL = instalarDom(
+    '<html><body><div id="divArvore"><a id="anchor7">Despacho 7</a><span class="action-doc action-copy"></span><span class="action-doc action-link"></span><a class="infraArvoreInformacao">GPF</a><a id="anchor8">Nota 8</a></div></body></html>',
+  );
+  const MO = (docL.defaultView as unknown as { MutationObserver?: typeof MutationObserver }).MutationObserver;
+  const antes = (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver;
+  (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver = MO;
+  const estrelasL = instalarEstrelasDocumentos(
+    docL,
+    [
+      { id: "7", numero: "0000007", titulo: "Despacho 7" },
+      { id: "8", numero: "0000008", titulo: "Nota 8" },
+    ],
+    { marcado: () => false, alternar: async () => undefined },
+  );
+  const da = (id: string) => [...docL.querySelectorAll<HTMLElement>(".spro-fav-doc")].filter((b) => b.dataset.doc === id);
+  checar(
+    "com os icones do legado ja na linha, a estrela vai depois deles",
+    da("7")[0]?.previousElementSibling?.classList.contains("action-link") === true,
+    da("7")[0]?.previousElementSibling?.className,
+  );
+  // O legado insere os icones dele colados ao nome (`$(ancora).after(...)`), empurrando a estrela.
+  const icone8 = docL.createElement("span");
+  icone8.className = "action-doc action-copy";
+  docL.getElementById("anchor8")!.after(icone8);
+  await tique(250);
+  checar("icones que chegam depois nao duplicam a estrela", MO === undefined || (da("7").length === 1 && da("8").length === 1), {
+    sete: da("7").length,
+    oito: da("8").length,
+    comObservador: MO !== undefined,
+  });
+  estrelasL.parar();
+  (globalThis as { MutationObserver?: typeof MutationObserver }).MutationObserver = antes;
 }

@@ -13,9 +13,9 @@ const CSS = `.spro-fav-estrela{background:none;border:0;padding:0 3px;margin:0 2
 .spro-fav-abrir{background:none;border:0;padding:0 3px;margin:0 2px;cursor:pointer;color:#8a8a8a;vertical-align:middle;line-height:0}
 .spro-fav-abrir:hover{color:#5f5f5f}
 .spro-fav-abrir:focus-visible{outline:2px solid #1a73e8;outline-offset:1px;border-radius:3px}
-.spro-fav-doc{background:none;border:0;padding:0 2px;margin:0 0 0 2px;cursor:pointer;color:#a0a0a0;vertical-align:middle;line-height:0}
-.spro-fav-doc:hover{color:#5f5f5f}
+.spro-fav-doc{background:none;border:0;padding:3px;margin:0;border-radius:5px;cursor:pointer;color:#a0a0a0;vertical-align:super;line-height:0}
 .spro-fav-doc[aria-pressed="true"]{color:#e0a100}
+.spro-fav-doc:hover{color:#fff;background:#017fff}
 .spro-fav-doc[aria-busy="true"]{opacity:.5}
 .spro-fav-doc:focus-visible{outline:2px solid #1a73e8;outline-offset:1px;border-radius:3px}
 #topmenu .spro-fav-estrela,#topmenu .spro-fav-abrir{display:inline-block;width:27px;height:24px;padding:0;margin:0;line-height:0;vertical-align:baseline}

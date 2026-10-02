@@ -47,7 +47,7 @@ function pintar(b: HTMLElement, ligado: boolean): void {
   b.setAttribute("aria-pressed", String(ligado));
   b.setAttribute("aria-label", rotulo);
   b.title = rotulo;
-  b.replaceChildren(icone(ligado ? "estrelaCheia" : "estrela", 13));
+  b.replaceChildren(icone(ligado ? "estrelaCheia" : "estrela", 15));
 }
 
 /** Põe as estrelas e as mantém (a árvore se redesenha); `repintar` acompanha mudanças feitas em outro lugar. */
@@ -58,12 +58,18 @@ export function instalarEstrelasDocumentos(
 ): { parar(): void; repintar(): void } {
   const porId = new Map(docs.map((d) => [d.id, d]));
   const colocar = () => {
+    // Uma por documento, onde quer que esteja: o SEI Pro antigo cola os ícones dele (copiar, link,
+    // clonar) logo depois do nome e empurra a estrela; procurá-la só ao lado do nome a duplicava.
+    const jaTem = new Set([...doc.querySelectorAll<HTMLElement>(".spro-fav-doc")].map((b) => b.dataset.doc));
     for (const d of docs) {
       const ancora = doc.getElementById(`anchor${d.id}`);
-      if (!ancora || ancora.nextElementSibling?.classList.contains("spro-fav-doc")) continue;
+      if (!ancora || jaTem.has(d.id)) continue;
+      // Depois dos ícones do legado, para ficar sempre no mesmo lugar da linha.
+      let antes: Element = ancora;
+      while (antes.nextElementSibling?.classList.contains("action-doc")) antes = antes.nextElementSibling;
       const b = h("button", { type: "button", class: "spro-fav-doc", "data-doc": d.id });
       pintar(b, o.marcado(d.id));
-      ancora.after(b);
+      antes.after(b);
     }
   };
   const repintar = () => {
