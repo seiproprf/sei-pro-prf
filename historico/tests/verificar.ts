@@ -1,4 +1,5 @@
 import { resumo } from "./util";
+import { verificarApp } from "./verificar-app";
 import { verificarCaptura } from "./verificar-captura";
 import { verificarComponentes } from "./verificar-componentes";
 import { verificarDias } from "./verificar-dias";
@@ -14,4 +15,5 @@ await verificarRepositorio();
 verificarMigracao();
 await verificarCaptura();
 verificarComponentes();
+await verificarApp();
 resumo();
