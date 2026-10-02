@@ -91,6 +91,10 @@ export function verificarComponentes(): void {
   pedidos.length = 0;
   botao(barra.ativos, "Limpar filtros")!.click();
   checar("limpar filtros mantem a busca", pedidos[0] === 'f:{"busca":"x"}', pedidos);
+  barra.atualizar(estado({ filtro: { tipos: ["Licitação"], periodos: ["hoje"] } }));
+  pedidos.length = 0;
+  botao(barra.ativos, "Limpar filtros")!.click();
+  checar("limpar sem busca nao deixa chave busca", pedidos[0] === "f:{}", pedidos);
   escolherCombo(barra.el, "Ordem", "visitados");
   const ag = botao(barra.el, "Agrupar por dia")!;
   checar("agrupar tem aria-pressed", ag.getAttribute("aria-pressed") === "true");
@@ -171,6 +175,7 @@ export function verificarComponentes(): void {
   document.body.append(li2);
   checar("sem estrela com favorito null", !li2.querySelector(".spro-lista-estrela"));
   checar("selo sigiloso", li2.querySelector(".spro-lista-selo")?.textContent?.includes("sigiloso") === true);
+  checar("caixa marcada quando selecionado", li2.querySelector("input.spro-lista-sel")?.hasAttribute("checked") === true);
   checar("selecionado", li2.classList.contains("spro-lista-item-selecionado"));
   checar("sem 'visitas' com 1 so", !(li2.querySelector(".spro-lista-apoio")?.textContent ?? "").includes("visita"));
   checar("sigiloso mostra so o tipo", !(li2.textContent ?? "").includes("segredo"));
@@ -208,4 +213,16 @@ export function verificarComponentes(): void {
   checar("mostrar mais chama", mais === 1);
   const g = renderLista(muitas, { ...base, agrupar: true, visiveis: 200 });
   checar("agrupado tambem limita em 200", g.querySelectorAll("li.spro-lista-item").length === 200);
+  const todas = Array.from({ length: 250 }, (_, i) => visita({ id: `h${i}` }));
+  const gt = renderLista(todas, { ...base, agrupar: true, visiveis: 200 });
+  checar(
+    "cabecalho conta o grupo todo",
+    gt.querySelector(".spro-lista-grupo")?.textContent?.includes("250") === true &&
+      gt.querySelectorAll("li.spro-lista-item").length === 200,
+    gt.querySelector(".spro-lista-grupo")?.textContent,
+  );
+  const dois = [...todas.slice(0, 2), visita({ id: "velho", ultima: AGORA - 2 * dia })];
+  const g2 = renderLista(dois, { ...base, agrupar: true, visiveis: 2 });
+  const cab2 = [...g2.querySelectorAll(".spro-lista-grupo")].map((e) => e.textContent);
+  checar("grupo sem linha desenhada nao tem cabecalho", cab2.length === 1 && cab2[0] === "Hoje · 2", cab2);
 }

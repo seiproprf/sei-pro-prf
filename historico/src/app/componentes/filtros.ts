@@ -158,7 +158,11 @@ export function criarFiltros(inicial: EstadoFiltros, a: AcoesFiltros): BarraFilt
     ativos.hidden = !fichas.length;
     if (fichas.length > 1)
       fichas.push(
-        h("button", { type: "button", class: "spro-lista-limpar", onclick: () => a.filtrar({ busca: e.filtro.busca }) }, "Limpar filtros"),
+        h(
+          "button",
+          { type: "button", class: "spro-lista-limpar", onclick: () => a.filtrar(e.filtro.busca ? { busca: e.filtro.busca } : {}) },
+          "Limpar filtros",
+        ),
       );
     ativos.replaceChildren(...fichas);
   };
