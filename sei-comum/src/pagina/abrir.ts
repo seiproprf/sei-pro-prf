@@ -1,11 +1,11 @@
 /**
- * Abrir um favorito SEM montar link. Montar a URL do SEI à mão derruba a
+ * Abrir um processo SEM montar link. Montar a URL do SEI à mão derruba a
  * sessão (SEI 5), porque o `infra_hash` assina os parâmetros. Há dois caminhos
  * seguros: o link que a própria página já tem na linha da caixa, ou a pesquisa
  * rápida do cabeçalho, o mesmo que o usuário faria digitando o número.
  */
 
-import { ErroRpc } from "@comum/ponte/rpc";
+import { ErroRpc } from "../ponte/rpc";
 
 export type Abertura = { tipo: "linha"; link: HTMLAnchorElement } | { tipo: "pesquisa"; form: HTMLFormElement; campo: HTMLInputElement };
 

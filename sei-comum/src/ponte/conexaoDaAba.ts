@@ -1,7 +1,7 @@
 /**
  * O app (iframe abaixo da lista) aceita a porta do content script da PRÓPRIA
  * aba, do frame de topo. O `onConnect` chega a todas as páginas da extensão
- * (os iframes do favoritos em outras abas e o painel lateral também), e cada
+ * (os iframes do painel em outras abas e o painel lateral também), e cada
  * uma recusa o que não é seu. Uma porta `chrome.runtime` não pode ser forjada
  * pela página do SEI, ao contrário de um `postMessage` com token na URL do iframe.
  *
@@ -9,10 +9,9 @@
  * a origem do pai (`document.referrer`), aceitando a primeira porta dessa origem.
  */
 
-import { criarRpc, type Rpc } from "@comum/ponte/rpc";
-import { CANAL_FAVORITOS } from "../modelo/constantes";
+import { criarRpc, type Rpc } from "./rpc";
 
-export function esperarConexaoDaAba(): Promise<Rpc> {
+export function esperarConexaoDaAba(canal: string): Promise<Rpc> {
   const minhaAba = (async () => {
     try {
       return (await chrome.tabs?.getCurrent?.())?.id;
@@ -30,7 +29,7 @@ export function esperarConexaoDaAba(): Promise<Rpc> {
   return new Promise((ok) => {
     let aceita = false;
     chrome.runtime.onConnect.addListener((porta) => {
-      if (porta.name !== CANAL_FAVORITOS || aceita) return;
+      if (porta.name !== canal || aceita) return;
       void minhaAba.then((aba) => {
         const s = porta.sender;
         const daAba = aba !== undefined ? s?.tab?.id === aba : !!origemPai && !!s?.url && new URL(s.url).origin === origemPai;
@@ -39,7 +38,7 @@ export function esperarConexaoDaAba(): Promise<Rpc> {
           return;
         }
         aceita = true;
-        console.info("[SEI Pro] favoritos conectado", aba !== undefined ? "pela aba" : "pela origem");
+        console.info(`[SEI Pro] ${canal} conectado`, aba !== undefined ? "pela aba" : "pela origem");
         ok(criarRpc(porta));
       });
     });

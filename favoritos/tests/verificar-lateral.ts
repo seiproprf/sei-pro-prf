@@ -1,10 +1,10 @@
 import { areaMemoria } from "@comum/armazenamento/area";
+import { ligarLadoAba, PonteLateral, type Remetente } from "@comum/ponte/lateral";
 import { parDePortas } from "@comum/ponte/parDePortas";
 import type { PortaRpc } from "@comum/ponte/rpc";
 import { criarRpc } from "@comum/ponte/rpc";
-import { chaveDoContexto, PonteLateral, type Remetente } from "../src/app/lateral";
 import { CHAVE_LATERAL } from "../src/modelo/constantes";
-import { ligarLadoAba } from "../src/pagina/lateral";
+import { chaveDoContexto } from "../src/modelo/escopo";
 import { checar, secao, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
@@ -27,6 +27,7 @@ export async function verificarLateralAba(): Promise<void> {
   const app = appFalso();
   let pedidos = 0;
   const lado = ligarLadoAba({
+    chave: CHAVE_LATERAL,
     area,
     conectar: app.conectar,
     tratadores: {
@@ -75,6 +76,7 @@ export async function verificarLateralApp(): Promise<void> {
   const area = areaMemoria();
   let conectar: ((p: PortaRpc, r: Remetente) => void) | null = null;
   const ponte = new PonteLateral({
+    chave: CHAVE_LATERAL,
     area,
     janela: 10,
     novoId: () => "inst-1",

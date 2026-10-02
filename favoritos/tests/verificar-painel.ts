@@ -1,6 +1,6 @@
+import { abrirProcesso, localizarAbertura } from "@comum/pagina/abrir";
 import { parDePortas } from "@comum/ponte/parDePortas";
 import { criarRpc } from "@comum/ponte/rpc";
-import { abrirProcesso, localizarAbertura } from "../src/pagina/abrir";
 import { avisoNaPagina } from "../src/pagina/aviso";
 import { instalarEstilo } from "../src/pagina/estilo";
 import { tratadoresDaAba } from "../src/pagina/executor";

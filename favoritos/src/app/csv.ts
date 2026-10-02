@@ -1,19 +1,10 @@
-/**
- * CSV para planilha brasileira: separador ";", BOM para o Excel ler UTF-8 e
- * aspas quando preciso. Célula que começa com = + - @ é neutralizada com
- * apóstrofo: uma nota digitada como fórmula não pode virar fórmula na planilha.
- */
+/** CSV da lista de favoritos; o gerador genérico vive em `@comum/csv`. */
 
+import { gerarCsv } from "@comum/csv";
 import { formatarData } from "@comum/datas/dias";
 import type { Etiqueta, Favorito, Pasta, ResumoPrazo } from "../modelo/tipos";
 
-export function gerarCsv(linhas: string[][]): string {
-  const campo = (bruto: string) => {
-    const v = /^[=+\-@\t\r]/.test(bruto) ? `'${bruto}` : bruto;
-    return /[;"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-  };
-  return `\uFEFF${linhas.map((l) => l.map(campo).join(";")).join("\r\n")}`;
-}
+export { gerarCsv };
 
 export interface ApoioCsv {
   pastas: ReadonlyMap<string, Pasta>;

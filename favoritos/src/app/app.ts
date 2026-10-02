@@ -5,8 +5,10 @@
  */
 
 import type { Area } from "@comum/armazenamento/area";
+import { gerarCsv } from "@comum/csv";
 import type { DataISO } from "@comum/datas/dias";
 import type { Rpc } from "@comum/ponte/rpc";
+import { avisar } from "@comum/ui/aviso";
 import { h, icone, type NomeIcone } from "@comum/ui/dom";
 import { fecharOrfaos } from "@comum/ui/flutuante";
 import { criarMenu } from "@comum/ui/menu";
@@ -42,7 +44,6 @@ import type { ControleArquivo } from "../sincronia/arquivoSync";
 import { type ArmazemCopias, fazerCopiaDoDia, restaurarCopia } from "../sincronia/copias";
 import type { StatusSync } from "../sincronia/motor";
 import { nomeDoTexto } from "../sincronia/textoPadrao";
-import { avisar } from "./aviso";
 import { montarEditor } from "./componentes/editor";
 import { type BarraFiltros, criarFiltros, type EstadoFiltros, renderLote } from "./componentes/filtros";
 import { montarGerenciar } from "./componentes/gerenciar";
@@ -52,7 +53,7 @@ import { renderLista, vizinhosAoMover } from "./componentes/lista";
 import { montarLixeira, naLixeira } from "./componentes/lixeira";
 import { montarMigracao } from "./componentes/migracao";
 import { montarSincronizacao } from "./componentes/sincronizacao";
-import { gerarCsv, linhasCsv } from "./csv";
+import { linhasCsv } from "./csv";
 import { type LeafletMinimo, montarMapaFavorito, montarMapaGeral, pontosDoMapa } from "./mapa";
 
 export type AbrirModal = (o: { titulo: string; conteudo: HTMLElement; icone?: NomeIcone; aoFechar?: () => void }) => { fechar(): void };

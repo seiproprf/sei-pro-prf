@@ -1,20 +1,16 @@
 /**
- * Lado do app na ponte do painel lateral. O painel é um só por janela e não
+ * Ponte do painel lateral (genérica: a chave do anúncio vem por parâmetro).
+ * Lado do app: o painel é um só por janela e não
  * pertence a aba nenhuma: ele anuncia que abriu, as abas do SEI conectam
- * (`pagina/lateral.ts`) e se apresentam, e o painel usa a aba visível mais
+ * (`ligarLadoAba`) e se apresentam, e o painel usa a aba visível mais
  * recente DESTA janela. As portas chegam a todas as páginas da extensão que
  * escutam `onConnect`; as de outra janela e as de frames internos são
  * recusadas aqui, como faz o app embutido com as portas de outras abas.
  */
 
-import type { Area } from "@comum/armazenamento/area";
-import { type AbaCandidata, abridorDe, escolherAba } from "@comum/ponte/abertura";
-import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
-import { CHAVE_LATERAL } from "../modelo/constantes";
-
-export { chaveDoContexto } from "../modelo/escopo";
-
-import type { EstadoAba } from "../pagina/lateral";
+import type { Area } from "../armazenamento/area";
+import { type AbaCandidata, abridorDe, escolherAba, precisaConectar } from "./abertura";
+import { criarRpc, type PortaRpc, type Rpc, type Tratador } from "./rpc";
 
 export interface AbaLateral extends AbaCandidata {
   rpc: Rpc;
@@ -29,6 +25,8 @@ export interface Remetente {
 
 export interface DepsLadoApp {
   area: Area;
+  /** Chave do anúncio no storage: cada painel (favoritos, histórico) usa a sua. */
+  chave: string;
   ouvirConexoes(cb: (porta: PortaRpc, remetente: Remetente) => void): void;
   /** Janela deste painel; -1 quando o navegador não informa (aceita todas). */
   janela: number;
@@ -53,7 +51,7 @@ export class PonteLateral {
   }
 
   private anunciar(): Promise<void> {
-    return this.d.area.gravar({ [CHAVE_LATERAL]: { id: this.id, quando: Date.now() } }).catch(() => undefined);
+    return this.d.area.gravar({ [this.d.chave]: { id: this.id, quando: Date.now() } }).catch(() => undefined);
   }
 
   private aceitar(porta: PortaRpc, r: Remetente): void {
@@ -116,9 +114,86 @@ export class PonteLateral {
 
   async encerrar(): Promise<void> {
     clearInterval(this.renovacao);
-    const lido: Record<string, unknown> = await this.d.area.obter(CHAVE_LATERAL).catch(() => ({}));
-    const atual = lido[CHAVE_LATERAL];
+    const lido: Record<string, unknown> = await this.d.area.obter(this.d.chave).catch(() => ({}));
+    const atual = lido[this.d.chave];
     // Outro painel (outra janela) pode ter anunciado depois: só retira o próprio anúncio.
-    if (abridorDe(atual) === this.id) await this.d.area.remover(CHAVE_LATERAL).catch(() => undefined);
+    if (abridorDe(atual) === this.id) await this.d.area.remover(this.d.chave).catch(() => undefined);
   }
+}
+
+/*
+ * Lado da aba do SEI na ponte com o app do painel lateral. O app não pode abrir
+ * porta para a aba sem a permissão `tabs`; então ele anuncia que abriu (`chave`
+ * no storage) e a aba conecta. A aba se apresenta (visível, foco, chave do
+ * contexto) ao conectar e quando ganha foco.
+ */
+
+export interface EstadoAba {
+  visivel: boolean;
+  foco: number;
+  /** host|login|id da unidade: o painel remonta a lista quando muda. */
+  chave: string;
+}
+
+export interface DepsLadoAba {
+  area: Area;
+  /** Chave do anúncio do painel no storage. */
+  chave: string;
+  conectar(): PortaRpc;
+  tratadores: Record<string, Tratador>;
+  estado(): EstadoAba;
+}
+
+export function ligarLadoAba(d: DepsLadoAba): { apresentar(): void; verificar(): void; parar(): void } {
+  let rpc: Rpc | null = null;
+  let parado = false;
+  const servidos = new Set<string>();
+
+  const apresentar = () => {
+    if (rpc?.aberta) void rpc.chamar("ola", d.estado(), 5000).catch(() => undefined);
+  };
+
+  const atender = (valor: unknown) => {
+    if (parado || !precisaConectar(valor, Boolean(rpc?.aberta), servidos)) return;
+    rpc?.fechar();
+    let novo: Rpc;
+    try {
+      novo = criarRpc(d.conectar(), d.tratadores);
+    } catch {
+      // Extensão recarregada: o contexto do content script morreu, nada a fazer.
+      rpc = null;
+      return;
+    }
+    rpc = novo;
+    novo.aoFechar(() => {
+      if (rpc === novo) rpc = null;
+    });
+    const quem = abridorDe(valor);
+    if (quem) servidos.add(quem);
+    apresentar();
+  };
+
+  const verificar = () => {
+    if (parado) return;
+    void d.area
+      .obter(d.chave)
+      .then((v) => atender(v[d.chave]))
+      .catch(() => undefined);
+  };
+
+  const pararDeOuvir = d.area.aoMudar((m) => {
+    if (d.chave in m) atender(m[d.chave]?.novo);
+  });
+  verificar();
+
+  return {
+    apresentar,
+    verificar,
+    parar() {
+      parado = true;
+      pararDeOuvir();
+      rpc?.fechar();
+      rpc = null;
+    },
+  };
 }

@@ -13,10 +13,13 @@ import { areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { hojeISO } from "@comum/datas/dias";
 import { novoId } from "@comum/id";
+import { esperarConexaoDaAba } from "@comum/ponte/conexaoDaAba";
+import { PonteLateral } from "@comum/ponte/lateral";
 import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
+import { definirEmissorDeAviso, mostrarAviso } from "@comum/ui/aviso";
 import { h, icone } from "@comum/ui/dom";
 import { definirJanelaQueCresce } from "@comum/ui/flutuante";
-import { CANAL_LATERAL } from "../modelo/constantes";
+import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_LATERAL } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import { temPainelLateral } from "../modelo/exibicao";
 import type { Carimbo, ContextoAba } from "../modelo/tipos";
@@ -26,17 +29,14 @@ import { ControleArquivo, type HandleArquivo, handlesNoIndexedDB, temSeletorDeAr
 import { copiasNoIndexedDB } from "../sincronia/copias";
 import { observarAltura } from "./altura";
 import { type AbrirModal, AppFavoritos } from "./app";
-import { definirEmissorDeAviso, mostrarAviso } from "./aviso";
-import { PonteLateral } from "./lateral";
 import { carregarLeaflet } from "./mapa";
-import { esperarConexaoDaAba } from "./ponte";
 
 const lateral = new URLSearchParams(location.hash.slice(1)).get("modo") === "lateral";
 document.documentElement.dataset.modo = lateral ? "lateral" : "embutido";
 const raiz = document.getElementById("app")!;
 
 // Embutido: o ouvinte da porta é registrado já, antes do `load` do iframe, que é quando o content script conecta.
-const conexao = lateral ? null : esperarConexaoDaAba();
+const conexao = lateral ? null : esperarConexaoDaAba(CANAL_FAVORITOS);
 
 const mostrarErro = (e: unknown) =>
   raiz.replaceChildren(h("p", { class: "fav-erro" }, `Não foi possível abrir os favoritos: ${e instanceof Error ? e.message : String(e)}`));
@@ -100,6 +100,7 @@ async function iniciarLateral(): Promise<void> {
   }
   const ponte = new PonteLateral({
     area: b.area,
+    chave: CHAVE_LATERAL,
     janela,
     novoId: () => novoId(),
     ouvirConexoes: (cb) =>

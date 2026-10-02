@@ -1,6 +1,5 @@
 import { lerContexto } from "@nucleo/sei";
 import type { Pagina } from "@nucleo/sessao/http";
-import { destaqueDaCorSei } from "../modelo/cores";
 import type { ContextoAba } from "../modelo/tipos";
 
 /** A tela que o usuário já tem aberta, no formato que o núcleo lê, sem requisição. */
@@ -37,27 +36,4 @@ export function contextoDe(doc: Document, temaEscuro: boolean, url?: string): Co
   };
 }
 
-/** Modo noturno do SEI Pro: o legado guarda no localStorage da origem do SEI. */
-export function temaEscuroLegado(armazenamento: Pick<Storage, "getItem">): boolean {
-  try {
-    return !!armazenamento.getItem("darkModePro");
-  } catch {
-    return false;
-  }
-}
-
-/** Cor do tema do SEI (a barra do sistema): SEI 4+ marca com `infraCorBarraSistema`, o 3.x usa a barra direto. */
-export function corDoTemaSei(doc: Document): string | undefined {
-  const visao = doc.defaultView;
-  for (const seletor of [".infraCorBarraSistema", "#divInfraBarraSistema", "#divInfraBarraSistemaE"]) {
-    const el = doc.querySelector(seletor);
-    if (!el) continue;
-    try {
-      const cor = destaqueDaCorSei(visao?.getComputedStyle?.(el).backgroundColor ?? "");
-      if (cor) return cor;
-    } catch {
-      /* sem estilo computado */
-    }
-  }
-  return undefined;
-}
+export { corDoTemaSei, temaEscuroLegado } from "@comum/pagina/tema";

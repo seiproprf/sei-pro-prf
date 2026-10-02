@@ -1,4 +1,4 @@
-import { h, icone } from "@comum/ui/dom";
+import { h, icone } from "./dom";
 
 export interface AcaoAviso {
   rotulo: string;

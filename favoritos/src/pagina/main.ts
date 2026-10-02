@@ -10,6 +10,8 @@ import { type Area, areaChrome } from "@comum/armazenamento/area";
 import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { hojeISO } from "@comum/datas/dias";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
+import { corDoTemaSei, temaEscuroLegado } from "@comum/pagina/tema";
+import { ligarLadoAba } from "@comum/ponte/lateral";
 import { criarRpc, ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import cssBase from "@comum/ui/base.css";
 import { acaoNaArvore, lerArvore } from "@nucleo/dominio/arvore";
@@ -19,7 +21,7 @@ import { criarArmazemTextoPadrao } from "@nucleo/dominio/textoPadrao";
 import { Sei } from "@nucleo/sei";
 import { criarHttp } from "@nucleo/sessao/http";
 import { lerArquivoAntigo } from "../migracao/fontes";
-import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_PREFERENCIAS } from "../modelo/constantes";
+import { CANAL_FAVORITOS, CANAL_LATERAL, CHAVE_LATERAL, CHAVE_PREFERENCIAS } from "../modelo/constantes";
 import { chaveDoContexto, escoposDoContexto } from "../modelo/escopo";
 import { ondeMostrar, temPainelLateral } from "../modelo/exibicao";
 import type { ContextoAba, Favorito, TipoLista } from "../modelo/tipos";
@@ -30,7 +32,7 @@ import { ControleAtualizar, chaveProgresso } from "./atualizar";
 import { avisoNaPagina } from "./aviso";
 import { abrirBalao } from "./balao";
 import { contarPendencias, instalarBotaoArvore, instalarBotaoCaixa, pedirPainelLateral, pintarContador } from "./botao";
-import { contextoDe, corDoTemaSei, documentoTopo, paginaDe, temaEscuroLegado } from "./contexto";
+import { contextoDe, documentoTopo, paginaDe } from "./contexto";
 import { alternarDocumento, instalarEstrelasDocumentos } from "./documentosArvore";
 import { instalarManterNoEnvio } from "./enviar";
 import { instalarEstilo } from "./estilo";
@@ -40,7 +42,6 @@ import { instalarEstrelasListas } from "./estrelasListas";
 import { instalarEstrelasPesquisa } from "./estrelasPesquisa";
 import { tratadoresDaAba } from "./executor";
 import { filtroAtivoNaCaixa } from "./filtroCaixa";
-import { ligarLadoAba } from "./lateral";
 import { marcarAtivo } from "./marca";
 import { capturarDaArvore, capturarDaCaixa } from "./novidades";
 import { montarPainel, ordemLegada } from "./painel";
@@ -176,6 +177,7 @@ function ligarPainelLateral(ctx: ContextoAba, area: Area, sincronia: ControleSin
   let foco = document.hasFocus() ? Date.now() : 0;
   const lado = ligarLadoAba({
     area,
+    chave: CHAVE_LATERAL,
     conectar: () => chrome.runtime.connect({ name: CANAL_LATERAL }) as unknown as PortaRpc,
     tratadores: tratadoresDaAba({
       doc: document,
@@ -304,7 +306,7 @@ function montarEmbutido(
     avisar: avisoNaPagina(document, ctx.temaEscuro),
   });
   let rpc: Rpc | null = null;
-  // A cada carga do iframe, uma porta nova: o app só aceita a porta da própria aba (app/ponte.ts).
+  // A cada carga do iframe, uma porta nova: o app só aceita a porta da própria aba (@comum/ponte/conexaoDaAba).
   montado.iframe.addEventListener("load", () => {
     rpc?.fechar();
     rpc = criarRpc(chrome.runtime.connect({ name: CANAL_FAVORITOS }), tratadores);

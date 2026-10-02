@@ -4,12 +4,12 @@
  * localStorage antigo. As operações são poucas e não escrevem nada no SEI.
  */
 
+import { abrirProcesso } from "@comum/pagina/abrir";
 import { ErroRpc, type Tratador } from "@comum/ponte/rpc";
 import { acaoNaArvore, lerArvore } from "@nucleo/dominio/arvore";
 import { Sei } from "@nucleo/sei";
 import { lerLegadoLocal } from "../migracao/fontes";
 import type { ContextoAba } from "../modelo/tipos";
-import { abrirProcesso } from "./abrir";
 import type { AvisarNaPagina } from "./aviso";
 import { paginaDe } from "./contexto";
 import { buscarDocumentosAssinados, type DepsDocumentos } from "./documentos";
