@@ -5,7 +5,7 @@ import { avisoNaPagina } from "../src/pagina/aviso";
 import { tratadoresDaAba } from "../src/pagina/executor";
 import { inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
 import { criarSobreposicao } from "../src/pagina/sobreposicao";
-import { botao, checar, instalarDom, lanca, secao, telaSei, tique } from "./util";
+import { botao, checar, disparar, instalarDom, lanca, secao, telaSei, tique } from "./util";
 import { CTX } from "./verificar-modelo";
 
 export async function verificarPainel(): Promise<void> {
@@ -125,6 +125,13 @@ export async function verificarPainel(): Promise<void> {
     fr.getAttribute("style"),
   );
   checar("sem sobreposicao (lateral), nega", (await app.chamar("sobrepor", { ativo: true })) === false);
+  await appS.chamar("sobrepor", { ativo: true });
+  disparar(fr, "load");
+  checar(
+    "iframe recarregado com dialogo aberto: a pagina destrava sozinha",
+    fr.style.position === "" && docS.documentElement.style.overflow === "",
+    fr.getAttribute("style"),
+  );
 
   secao("aviso do painel embutido no rodape da tela");
   const docA = instalarDom("<html><body></body></html>");

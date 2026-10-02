@@ -41,7 +41,7 @@ export function criarSobreposicao(doc: Document, iframe: HTMLIFrameElement, rese
     return lista;
   };
 
-  return {
+  const api: Sobreposicao = {
     ligar(ativo) {
       if (ativo && !salvo) {
         const alturaAtual = iframe.getBoundingClientRect?.().height || Number.parseFloat(iframe.style.height) || 0;
@@ -66,4 +66,7 @@ export function criarSobreposicao(doc: Document, iframe: HTMLIFrameElement, rese
       else aplicarAltura(px);
     },
   };
+  // O app recarregou (extensão atualizada, por exemplo) com um diálogo aberto: ninguém mais vai pedir para desligar.
+  iframe.addEventListener("load", () => api.ligar(false));
+  return api;
 }
