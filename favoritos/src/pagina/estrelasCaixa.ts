@@ -43,7 +43,7 @@ export function instalarEstrelasCaixa(doc: Document, servico: ServicoFavoritosPa
       const dados = dadosDaLinhaCaixa(tr);
       const td = tr.querySelectorAll("td")[1];
       if (!dados || !td) continue;
-      td.prepend(criarEstrela(servico.ativo(dados.id)));
+      td.prepend(criarEstrela(servico.ativo(dados.id), true));
     }
   };
   let pendente = false;

@@ -29,6 +29,7 @@ export async function verificarPesquisa(): Promise<void> {
   await servico.carregar();
   instalarEstrelasPesquisa(doc, servico);
   const estrelas = doc.querySelectorAll("table.pesquisaResultado .spro-fav-estrela");
+  checar("na pesquisa a estrela segue o texto (sem a classe de icone)", ![...estrelas].some((e) => e.classList.contains("spro-fav-icone")));
   const linhas = doc.querySelectorAll("table.pesquisaResultado tr.pesquisaTituloRegistro").length;
   checar("uma estrela por resultado", estrelas.length === linhas && linhas > 0, { estrelas: estrelas.length, linhas });
   (estrelas[0] as HTMLElement).click();

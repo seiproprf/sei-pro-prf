@@ -69,6 +69,10 @@ export async function verificarPagina(): Promise<void> {
     linhas.length,
     comEstrela.length,
   ]);
+  checar(
+    "na caixa a estrela tem o tamanho dos icones de status do SEI (classe de icone)",
+    comEstrela.every((tr) => tr.querySelector(".spro-fav-estrela")?.classList.contains("spro-fav-icone")),
+  );
   const estrelaSigilosa = caixa.querySelector("tr#P157584 .spro-fav-estrela") as HTMLButtonElement;
   estrelaSigilosa.click();
   await tique();
@@ -130,6 +134,7 @@ export async function verificarPagina(): Promise<void> {
   checar("dados da linha do bloco", dl?.id === "4321" && dl.protocolo === "50300.000001/2026-01" && dl.sigiloso === false, dl);
   instalarEstrelasListas(docLista, servicoCaixa).atualizar();
   checar("estrela na 3a coluna", !!linhaBloco.querySelectorAll("td")[2]?.querySelector(".spro-fav-estrela"));
+  checar("nas listas tambem, ao lado dos icones do SEI", !!linhaBloco.querySelector(".spro-fav-estrela.spro-fav-icone"));
 
   secao("pagina: estrela na arvore");
   const urlArvore = "https://treinamento.sei.sp.gov.br/sei/controlador.php?acao=procedimento_visualizar&id_procedimento=148265";

@@ -5,8 +5,12 @@ import { h, icone } from "@comum/ui/dom";
  * Sem ouvinte próprio: o clique é delegado ao documento (cliques.ts), para a
  * estrela continuar funcionando quando o legado clona a linha.
  */
-export function criarEstrela(ativo: boolean): HTMLButtonElement {
-  const b = h("button", { type: "button", class: "spro-fav-estrela" });
+/**
+ * `comoIcone`: a estrela fica entre os ícones de status do SEI (caixa, blocos, acompanhamento),
+ * e então tem o tamanho e o alinhamento deles. Sem isso (pesquisa), acompanha o texto.
+ */
+export function criarEstrela(ativo: boolean, comoIcone = false): HTMLButtonElement {
+  const b = h("button", { type: "button", class: comoIcone ? "spro-fav-estrela spro-fav-icone" : "spro-fav-estrela" });
   atualizarEstrela(b, ativo);
   return b;
 }

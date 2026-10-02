@@ -33,7 +33,7 @@ export function instalarEstrelasListas(doc: Document, servico: ServicoFavoritosP
         if (!dados || !td) continue;
         const existente = td.querySelector<HTMLButtonElement>(".spro-fav-estrela");
         if (existente) atualizarEstrela(existente, servico.ativo(dados.id));
-        else td.prepend(criarEstrela(servico.ativo(dados.id)));
+        else td.prepend(criarEstrela(servico.ativo(dados.id), true));
       }
     }
   };

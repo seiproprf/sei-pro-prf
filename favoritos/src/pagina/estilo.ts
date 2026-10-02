@@ -18,6 +18,8 @@ const CSS = `.spro-fav-estrela{background:none;border:0;padding:0 3px;margin:0 2
 .spro-fav-doc:hover{color:#fff;background:#017fff}
 .spro-fav-doc[aria-busy="true"]{opacity:.5}
 .spro-fav-doc:focus-visible{outline:2px solid #1a73e8;outline-offset:1px;border-radius:3px}
+.spro-fav-icone{display:inline-block;width:28px;height:24px;padding:0;margin:0;line-height:0;vertical-align:baseline}
+.spro-fav-icone svg{display:block;width:20px;height:20px;margin:2px auto}
 #topmenu .spro-fav-estrela,#topmenu .spro-fav-abrir{display:inline-block;width:27px;height:24px;padding:0;margin:0;line-height:0;vertical-align:baseline}
 #topmenu .spro-fav-estrela svg,#topmenu .spro-fav-abrir svg{display:block;width:20px;height:20px;margin:2px auto}
 .spro-fav-botao{position:relative}
