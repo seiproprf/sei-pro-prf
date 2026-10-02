@@ -1,6 +1,6 @@
 # Política de Privacidade — SEI Pro ![SEI Pro](/img/icon-32.png)
 
-**Versão:** 3.1  
+**Versão:** 3.2  
 **Data de Vigência:** 1º de outubro de 2026  
 **Última Atualização:** 1º de outubro de 2026
 
@@ -33,7 +33,9 @@ Algumas **funções opcionais** enviam dados a serviços fora do SEI. Elas só f
 
 O SEI Pro **não tem servidor de coleta de dados**. Não há banco de dados remoto com informações de usuários nem serviço de análise ou perfilamento.
 
-O único serviço mantido pelo projeto é a **busca de normas** (`seipro.io`), usada pelas funções Legística e Link Legis. Ela recebe apenas o tipo e o número da norma, ou os termos pesquisados, e responde com os dados da legislação correspondente. **As consultas não são guardadas.** O site de documentação (`seipro.app`) é um site comum e não usa ferramentas de estatística.
+O projeto mantém a **busca de normas** (`seipro.io`), usada pelas funções Legística e Link Legis. Ela recebe apenas o tipo e o número da norma, ou os termos pesquisados, e responde com os dados da legislação correspondente. **As consultas não são guardadas.** O site de documentação (`seipro.app`) é um site comum e não usa ferramentas de estatística.
+
+O site também oferece a **lista de novidades por e-mail**, opcional e independente da extensão (seção 2.5). Para quem se inscreve, o projeto guarda o endereço de e-mail.
 
 ### 2.4. Fundamentação legal
 
@@ -45,6 +47,22 @@ O único serviço mantido pelo projeto é a **busca de normas** (`seipro.io`), u
 | **Transparência** | Esta política lista cada função, o dado enviado e o destinatário |
 | **Segurança** | Armazenamento no navegador, conexões cifradas e proteções específicas no Agente de IA (seção 4.2) |
 | **Prevenção** | Documentos sigilosos não são lidos pelo Agente de IA, e toda ação no SEI exige aprovação do usuário |
+
+<a id="novidades-por-e-mail"></a>
+
+### 2.5. Novidades por e-mail
+
+A inscrição é opcional e acontece no site (`seipro.app` e `novidades.seipro.app`), nunca pela extensão. A extensão não sabe se você está inscrito.
+
+| Item | Como funciona |
+|---|---|
+| **Dados guardados** | Endereço de e-mail, data da inscrição e a página em que ela foi feita |
+| **Finalidade** | Enviar um aviso a cada versão nova do SEI Pro, com dicas de uso, e comunicados sobre o projeto. A lista não é vendida nem compartilhada, e não recebe publicidade de terceiros |
+| **Base legal** | Consentimento (art. 7º, I, da LGPD). O endereço só entra na lista depois que a pessoa clica em "Confirmar inscrição" no e-mail de confirmação, e um pedido não confirmado em 7 dias perde o efeito |
+| **Proteção contra abuso** | As páginas que exibem o formulário carregam o Cloudflare Turnstile, que verifica se quem envia é uma pessoa. O serviço conta os pedidos por endereço IP e por e-mail apenas na memória, por até 24 horas, sem gravar |
+| **Medição** | Os e-mails não levam rastreamento de abertura nem de cliques |
+| **Operador** | O Resend (Resend, Inc., Estados Unidos) guarda a lista e envia as mensagens, nos termos da [política de privacidade do Resend](https://resend.com/legal/privacy-policy) |
+| **Saída** | O link "Cancelar inscrição", no rodapé de qualquer e-mail, tira o endereço da lista na hora. Também é possível pedir pelos canais da seção 10.2. Depois do cancelamento, o endereço fica marcado como descadastrado e não recebe mais mensagens, a menos que a pessoa se inscreva e confirme de novo |
 
 ---
 
@@ -335,6 +353,7 @@ As alterações relevantes são comunicadas:
 
 | Versão | Data | Principais alterações |
 |---|---|---|
+| 3.2 | 01/10/2026 | Lista de novidades por e-mail (seção 2.5): inscrição opcional no site com confirmação por e-mail, dados guardados, operador (Resend) e cancelamento |
 | 3.1 | 01/10/2026 | Conectores (servidores MCP) configurados pelo usuário; sincronização da configuração do Agente de IA entre dispositivos, com a lista do que viaja e do que fica no aparelho; declaração de que as credenciais da função Base de Dados acompanham a conta do navegador; verificação local do conteúdo dos documentos contra instruções dirigidas a sistemas de IA; rotinas do Agente de IA; permissões `alarms` e `notifications` |
 | 3.0 | 28/09/2026 | Revisão completa. Inventário de todas as funções que se comunicam com serviços externos (Agente de IA, módulo de Atividades, busca de normas, equações, ditado, Estúdio de Fluxo e demais), com o dado enviado, a condição e o destinatário; correção da declaração de que a extensão não transmite dados; tabela de permissões atualizada; orientação de controle institucional por bloqueio de rede |
 | 2.0 | 14/01/2026 | Reformulação para adequação à LGPD; detalhamento das integrações externas |

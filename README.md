@@ -174,7 +174,7 @@ Participe do laboratorio de ideias sobre inovações para o SEI, automações e 
 
 Receba em primeira mão sobre novidades e atualizações do SEI Pro. 
 
-Inscreva-se na nossa Lista de e-mail: [http://eepurl.com/hjHh45](http://eepurl.com/hjHh45)
+Inscreva-se na lista de e-mail: [novidades.seipro.app](https://novidades.seipro.app). Um aviso a cada versão, com dicas de uso das funções novas.
 
 ## Histórico de versões
 

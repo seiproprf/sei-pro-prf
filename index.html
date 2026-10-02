@@ -238,11 +238,7 @@ layout: null
 <h2>Novidades</h2>
 <p>A extensão se atualiza sozinha. Aqui está o que mudou nas últimas versões.</p>
 <a class="seta" href="{{ site.baseurl }}/pages/HISTORICO.html">Histórico completo de versões</a>
-<div class="caixa-escura">
-<strong>Novidades por e-mail</strong>
-<p>Um aviso a cada versão, com dicas de uso das funções novas.</p>
-<a class="btn btn-claro" href="http://eepurl.com/hjHh45">Inscrever-se</a>
-</div>
+{% include novidades-email.html origem="site" %}
 </div>
 <ol class="versoes">
 {%- for v in versoes offset: 1 limit: 3 -%}
