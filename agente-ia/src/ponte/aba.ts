@@ -258,6 +258,33 @@ function iniciarEditor(): void {
   });
 }
 
+/**
+ * Ícone do item no menu do SEI 4/5, no padrão dos nativos (24×24, desenho do
+ * Material Design Icons — "robot"). A cor vem do link (`currentColor`), que o
+ * SEI pinta de #E7E7E7, a mesma dos SVGs nativos. O SEI 3 não tem ícones no menu.
+ */
+function iconeDoMenu(): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  const path = document.createElementNS(ns, "path");
+  svg.setAttribute("width", "24");
+  svg.setAttribute("height", "24");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("iconMenuPro");
+  // Inline porque o sei-pro.css não vem em todo host em que este script roda;
+  // a margem é a do `div.infraSidebarMenu img` nativo.
+  svg.style.flex = "none";
+  svg.style.marginRight = "5px";
+  path.setAttribute("fill", "currentColor");
+  path.setAttribute(
+    "d",
+    "M12,2A2,2 0 0,1 14,4C14,4.74 13.6,5.39 13,5.73V7H14A7,7 0 0,1 21,14H22A1,1 0 0,1 23,15V18A1,1 0 0,1 22,19H21V20A2,2 0 0,1 19,22H5A2,2 0 0,1 3,20V19H2A1,1 0 0,1 1,18V15A1,1 0 0,1 2,14H3A7,7 0 0,1 10,7H11V5.73C10.4,5.39 10,4.74 10,4A2,2 0 0,1 12,2M7.5,13A2.5,2.5 0 0,0 5,15.5A2.5,2.5 0 0,0 7.5,18A2.5,2.5 0 0,0 10,15.5A2.5,2.5 0 0,0 7.5,13M16.5,13A2.5,2.5 0 0,0 14,15.5A2.5,2.5 0 0,0 16.5,18A2.5,2.5 0 0,0 19,15.5A2.5,2.5 0 0,0 16.5,13Z",
+  );
+  svg.append(path);
+  return svg;
+}
+
 /** Item "Agente de IA" no menu do SEI; o clique pede ao service worker que abra o painel. */
 function instalarEntradaNoMenu(): void {
   // Mesmo lugar em que o legado põe os itens do SEI Pro (`idMenu` em sei-functions-pro.js):
@@ -275,6 +302,7 @@ function instalarEntradaNoMenu(): void {
   a.className = "newLinksMenuPro";
   a.title = "Abrir o Agente de IA do SEI Pro no painel lateral";
   rotulo.textContent = "Agente de IA";
+  if (menu.id === "infraMenu") a.append(iconeDoMenu());
   a.append(rotulo);
   // Firefox (manifest v2, sem service worker): o item é um link comum para a
   // página do painel (web_accessible_resource) — o Firefox recusa window.open

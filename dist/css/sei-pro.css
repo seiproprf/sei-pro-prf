@@ -3629,6 +3629,12 @@ td.prazoBoxDisplay {
 .newSEI a.newLinksMenuPro {
     padding-left: 5px !important;
 }
+/* Icone SVG inline dos itens do SEI Pro no menu (iconeMenuPro, sei-pro-all.js): mesma margem
+   do "div.infraSidebarMenu img" nativo, e sem encolher quando o texto quebra em duas linhas. */
+.newSEI a.newLinksMenuPro > svg.iconMenuPro {
+    flex: none;
+    margin-right: 5px;
+}
 .newSEI .botaoSEI.iconReaberturaPro i,
 .newSEI .botaoSEI.iconPro_Observe i {
     color: var(--color-primary-default) !important;

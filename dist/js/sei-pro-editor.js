@@ -222,7 +222,7 @@ function htmlButton(status) {
         ? htmlButtonPro(
             'getLinkSeiLoteButtom',
             'linkseilote_pro',
-            'Converter os n\u00FAmeros SEI do texto em links',
+            'Converter os n\u00FAmeros de documentos e processos do texto em links',
             'fab fa-magic azulColor'
           )
         : '';

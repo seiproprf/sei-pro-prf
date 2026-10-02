@@ -791,6 +791,7 @@ a.newLink.iconBoxSlim .newIconTitle,
     padding: 0 !important;
 }
 .seiSlim #divInfraAreaTelaE ul li a span[data-img="/infra_css/svg/vazio.svg"],
+.seiSlim #divInfraAreaTelaE ul li a svg.iconMenuPro,
 .seiSlim #divInfraAreaTelaE ul li a img {
     display: none;
 }
@@ -3584,6 +3585,22 @@ a[data-shadow="true"]:before {
 }
 .seiSlim #divInfraAreaTelaE ul li a[href*="?acao=unidade_migrar"]:before {
     content: "\f074";
+}
+/* Itens que o SEI Pro poe no menu (o SVG deles fica escondido acima, como os img nativos) */
+.seiSlim #divInfraAreaTelaE ul li a#seiProAgenteMenu:before {
+    content: "\f544";
+}
+.seiSlim #divInfraAreaTelaE ul li a#pesquisaLinkPermanentePro:before {
+    content: "\f0c1";
+}
+.seiSlim #divInfraAreaTelaE ul li a#historicoProcessosPro:before {
+    content: "\f1da";
+}
+.seiSlim #divInfraAreaTelaE ul li a#ferramentasPdfPro:before {
+    content: "\f1c1";
+}
+.seiSlim #divInfraAreaTelaE ul li a#processosLotePro:before {
+    content: "\f660";
 }
 .fixed {
     position: fixed; 
