@@ -4,11 +4,13 @@
  * sei-comum/src/ui/lista.css e os tokens de sei-comum/src/ui/base.css.
  *
  * Tema: nada aqui. O escuro e a cor do SEI vêm de base.css, como no embutido do
- * Favoritos: o app põe html[data-tema="escuro"] (modal, seguindo o SEI) ou não
- * põe nada (lateral, seguindo o sistema), e html[data-cor-sei] com --spro-cor-sei.
+ * Favoritos: no modal o app põe html[data-tema] "claro" ou "escuro" (segue o SEI;
+ * sem o atributo valeria o tema do sistema), na lateral não põe nada (segue o
+ * sistema), e html[data-cor-sei] com --spro-cor-sei.
  *
- * Largura: abaixo de 560 px de app (e, portanto, de 520 px de janela) a busca
- * ocupa a linha inteira e os seletores quebram em duas colunas (lista.css).
+ * Largura: com a janela abaixo de 520 px, o app tem menos de 560 px, e então a
+ * busca ocupa a linha inteira e os seletores quebram em duas colunas (lista.css,
+ * @container de 560 px, a medida do Favoritos).
  */
 html,
 body {
@@ -29,13 +31,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Janela muito baixa (modal ou lateral): a lista guarda um mínimo e o app inteiro rola. */
+  overflow-y: auto;
 }
 #app > * {
   flex: none;
 }
 #app > .spro-lista-corpo {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 120px;
   padding-bottom: 2px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -52,11 +56,6 @@ html[data-modo="lateral"] body {
 html[data-modo="lateral"] #app {
   height: 100%;
   padding: 10px;
-  /* Painel muito baixo: a lista guarda um mínimo e o app inteiro rola. */
-  overflow-y: auto;
-}
-html[data-modo="lateral"] #app > .spro-lista-corpo {
-  min-height: 120px;
 }
 /* A barra de seleção vai para o fim, presa ao rodapé, enquanto a lista rola (como no Favoritos). */
 html[data-modo="lateral"] .spro-lista-lote-lugar {

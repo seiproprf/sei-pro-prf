@@ -338,16 +338,25 @@
   box-shadow: var(--spro-sombra-1);
 }
 /*
- * Colunas iguais em todos os itens da lista (subgrid): a descrição começa no mesmo
- * ponto mesmo com números de tamanhos diferentes (o SP usa 99906.713-630.000032/2025-82)
- * e com ou sem o selo de restrito/sigiloso.
+ * Uma grade só para a lista inteira (todos os dias e o "Mostrar mais"), com as listas e
+ * os itens em subgrid: as colunas são as mesmas em todos os dias, e a descrição começa no
+ * mesmo ponto com números de tamanhos diferentes (o SP usa 99906.713-630.000032/2025-82).
+ *
+ * A descrição tem a prioridade: a linha de apoio fica embaixo do número, e só sobe para a
+ * mesma linha (o lugar do .fav-meta) quando o app é largo o bastante (@container no fim).
  */
 @supports (grid-template-columns: subgrid) {
+  .spro-lista-tudo {
+    grid-template-columns: 18px auto max-content auto minmax(0, 1fr) auto;
+    /* O espaço entre colunas é o da grade: o dos itens (subgrid) não alarga as colunas. */
+    column-gap: 10px;
+  }
+  .spro-lista-tudo > * {
+    grid-column: 1 / -1;
+  }
   .spro-lista {
     display: grid;
-    grid-template-columns: 18px auto max-content auto minmax(0, 1fr) auto auto;
-    /* O espaço entre colunas é o da lista: o do item (subgrid) não alarga as colunas da mãe. */
-    column-gap: 10px;
+    grid-template-columns: subgrid;
   }
   .spro-lista > .spro-lista-item {
     grid-column: 1 / -1;
@@ -357,11 +366,13 @@
 .spro-lista-item {
   position: relative;
   display: grid;
-  grid-template-columns: 18px auto 14rem auto minmax(0, 1fr) auto auto;
-  grid-template-areas: "sel estrela proto selo princ apoio acao";
+  grid-template-columns: 18px auto 14rem auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "sel estrela proto selo princ acao"
+    ". . apoio apoio apoio .";
   align-items: center;
   column-gap: 10px;
-  row-gap: 3px;
+  row-gap: 1px;
   min-height: 42px;
   padding: 6px 8px 6px 13px;
   transition: background var(--spro-dur);
@@ -394,10 +405,11 @@
   height: 15px;
   margin: 0;
   cursor: pointer;
-  opacity: 0.45;
+  /* 0,8: contraste de 3:1 ou mais com o fundo da linha nos dois temas (a caixa nativa e a estrela). */
+  opacity: 0.8;
   transition: opacity var(--spro-dur);
 }
-/* Estrela: um .spro-botao-icone.pequeno. Apagada como a caixa de seleção até o item ganhar o mouse. */
+/* Estrela: um .spro-botao-icone.pequeno. Mais apagada, como a caixa de seleção, até o item ganhar o mouse. */
 .spro-lista-estrela {
   grid-area: estrela;
   display: inline-flex;
@@ -412,7 +424,7 @@
   border: 0;
   border-radius: var(--spro-raio);
   cursor: pointer;
-  opacity: 0.45;
+  opacity: 0.8;
   transition:
     background var(--spro-dur),
     color var(--spro-dur),
@@ -462,10 +474,15 @@
 }
 .spro-lista-principal {
   grid-area: princ;
+  /* Sem selo, a descrição ocupa também a coluna dele: a largura do selo só pesa nas linhas que o têm. */
+  grid-column: selo-start / princ-end;
   display: flex;
   align-items: center;
   gap: 2px 8px;
   min-width: 0;
+}
+.spro-lista-selo + .spro-lista-principal {
+  grid-column: princ;
 }
 .spro-lista-tipo {
   flex: 0 1 auto;
@@ -488,12 +505,10 @@
   font-weight: 500;
   color: var(--spro-texto);
 }
-/* Linha de apoio: quando, quantas vezes, unidade e interessados (o lugar do .fav-meta). */
+/* Linha de apoio: quando, quantas vezes, unidade e interessados (embaixo do número). */
 .spro-lista-apoio {
   grid-area: apoio;
-  justify-self: end;
   min-width: 0;
-  max-width: 30cqi;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -691,8 +706,27 @@
   border-radius: var(--spro-raio);
 }
 
+/* ---------- Largo: o apoio sobe para a linha do número (a descrição ainda fica com 450 px ou mais) ---------- */
+@supports (grid-template-columns: subgrid) {
+  @container (min-width: 1200px) {
+    .spro-lista-tudo {
+      grid-template-columns: 18px auto max-content auto minmax(0, 1fr) fit-content(18rem) auto;
+    }
+    .spro-lista-item {
+      grid-template-areas: "sel estrela proto selo princ apoio acao";
+    }
+    /* Ocupa a coluna inteira (e não só o texto): assim as reticências respeitam o teto da coluna. */
+    .spro-lista-apoio {
+      text-align: right;
+    }
+  }
+}
+
 /* ---------- Estreito (barra lateral, telas pequenas) ---------- */
 @container (max-width: 720px) {
+  .spro-lista-tudo {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .spro-lista {
     display: block;
   }
@@ -705,7 +739,12 @@
       ". . princ princ princ"
       ". . apoio apoio apoio";
     align-items: start;
+    row-gap: 3px;
     padding: 9px 8px 9px 12px;
+  }
+  .spro-lista-principal,
+  .spro-lista-selo + .spro-lista-principal {
+    grid-column: princ;
   }
   .spro-lista-sel-caixa {
     min-height: 26px;
@@ -733,10 +772,6 @@
   }
   .spro-lista-tipo {
     margin-right: 6px;
-  }
-  .spro-lista-apoio {
-    justify-self: stretch;
-    max-width: none;
   }
   .spro-lista-acao {
     opacity: 1;

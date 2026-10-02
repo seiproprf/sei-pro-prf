@@ -1219,16 +1219,25 @@ dialog.spro-dialogo > header h2 {
   box-shadow: var(--spro-sombra-1);
 }
 /*
- * Colunas iguais em todos os itens da lista (subgrid): a descrição começa no mesmo
- * ponto mesmo com números de tamanhos diferentes (o SP usa 99906.713-630.000032/2025-82)
- * e com ou sem o selo de restrito/sigiloso.
+ * Uma grade só para a lista inteira (todos os dias e o "Mostrar mais"), com as listas e
+ * os itens em subgrid: as colunas são as mesmas em todos os dias, e a descrição começa no
+ * mesmo ponto com números de tamanhos diferentes (o SP usa 99906.713-630.000032/2025-82).
+ *
+ * A descrição tem a prioridade: a linha de apoio fica embaixo do número, e só sobe para a
+ * mesma linha (o lugar do .fav-meta) quando o app é largo o bastante (@container no fim).
  */
 @supports (grid-template-columns: subgrid) {
+  .spro-lista-tudo {
+    grid-template-columns: 18px auto max-content auto minmax(0, 1fr) auto;
+    /* O espaço entre colunas é o da grade: o dos itens (subgrid) não alarga as colunas. */
+    column-gap: 10px;
+  }
+  .spro-lista-tudo > * {
+    grid-column: 1 / -1;
+  }
   .spro-lista {
     display: grid;
-    grid-template-columns: 18px auto max-content auto minmax(0, 1fr) auto auto;
-    /* O espaço entre colunas é o da lista: o do item (subgrid) não alarga as colunas da mãe. */
-    column-gap: 10px;
+    grid-template-columns: subgrid;
   }
   .spro-lista > .spro-lista-item {
     grid-column: 1 / -1;
@@ -1238,11 +1247,13 @@ dialog.spro-dialogo > header h2 {
 .spro-lista-item {
   position: relative;
   display: grid;
-  grid-template-columns: 18px auto 14rem auto minmax(0, 1fr) auto auto;
-  grid-template-areas: "sel estrela proto selo princ apoio acao";
+  grid-template-columns: 18px auto 14rem auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "sel estrela proto selo princ acao"
+    ". . apoio apoio apoio .";
   align-items: center;
   column-gap: 10px;
-  row-gap: 3px;
+  row-gap: 1px;
   min-height: 42px;
   padding: 6px 8px 6px 13px;
   transition: background var(--spro-dur);
@@ -1275,10 +1286,11 @@ dialog.spro-dialogo > header h2 {
   height: 15px;
   margin: 0;
   cursor: pointer;
-  opacity: 0.45;
+  /* 0,8: contraste de 3:1 ou mais com o fundo da linha nos dois temas (a caixa nativa e a estrela). */
+  opacity: 0.8;
   transition: opacity var(--spro-dur);
 }
-/* Estrela: um .spro-botao-icone.pequeno. Apagada como a caixa de seleção até o item ganhar o mouse. */
+/* Estrela: um .spro-botao-icone.pequeno. Mais apagada, como a caixa de seleção, até o item ganhar o mouse. */
 .spro-lista-estrela {
   grid-area: estrela;
   display: inline-flex;
@@ -1293,7 +1305,7 @@ dialog.spro-dialogo > header h2 {
   border: 0;
   border-radius: var(--spro-raio);
   cursor: pointer;
-  opacity: 0.45;
+  opacity: 0.8;
   transition:
     background var(--spro-dur),
     color var(--spro-dur),
@@ -1343,10 +1355,15 @@ dialog.spro-dialogo > header h2 {
 }
 .spro-lista-principal {
   grid-area: princ;
+  /* Sem selo, a descrição ocupa também a coluna dele: a largura do selo só pesa nas linhas que o têm. */
+  grid-column: selo-start / princ-end;
   display: flex;
   align-items: center;
   gap: 2px 8px;
   min-width: 0;
+}
+.spro-lista-selo + .spro-lista-principal {
+  grid-column: princ;
 }
 .spro-lista-tipo {
   flex: 0 1 auto;
@@ -1369,12 +1386,10 @@ dialog.spro-dialogo > header h2 {
   font-weight: 500;
   color: var(--spro-texto);
 }
-/* Linha de apoio: quando, quantas vezes, unidade e interessados (o lugar do .fav-meta). */
+/* Linha de apoio: quando, quantas vezes, unidade e interessados (embaixo do número). */
 .spro-lista-apoio {
   grid-area: apoio;
-  justify-self: end;
   min-width: 0;
-  max-width: 30cqi;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1572,8 +1587,27 @@ dialog.spro-dialogo > header h2 {
   border-radius: var(--spro-raio);
 }
 
+/* ---------- Largo: o apoio sobe para a linha do número (a descrição ainda fica com 450 px ou mais) ---------- */
+@supports (grid-template-columns: subgrid) {
+  @container (min-width: 1200px) {
+    .spro-lista-tudo {
+      grid-template-columns: 18px auto max-content auto minmax(0, 1fr) fit-content(18rem) auto;
+    }
+    .spro-lista-item {
+      grid-template-areas: "sel estrela proto selo princ apoio acao";
+    }
+    /* Ocupa a coluna inteira (e não só o texto): assim as reticências respeitam o teto da coluna. */
+    .spro-lista-apoio {
+      text-align: right;
+    }
+  }
+}
+
 /* ---------- Estreito (barra lateral, telas pequenas) ---------- */
 @container (max-width: 720px) {
+  .spro-lista-tudo {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .spro-lista {
     display: block;
   }
@@ -1586,7 +1620,12 @@ dialog.spro-dialogo > header h2 {
       ". . princ princ princ"
       ". . apoio apoio apoio";
     align-items: start;
+    row-gap: 3px;
     padding: 9px 8px 9px 12px;
+  }
+  .spro-lista-principal,
+  .spro-lista-selo + .spro-lista-principal {
+    grid-column: princ;
   }
   .spro-lista-sel-caixa {
     min-height: 26px;
@@ -1614,10 +1653,6 @@ dialog.spro-dialogo > header h2 {
   }
   .spro-lista-tipo {
     margin-right: 6px;
-  }
-  .spro-lista-apoio {
-    justify-self: stretch;
-    max-width: none;
   }
   .spro-lista-acao {
     opacity: 1;
@@ -1674,11 +1709,13 @@ dialog.spro-dialogo > header h2 {
  * sei-comum/src/ui/lista.css e os tokens de sei-comum/src/ui/base.css.
  *
  * Tema: nada aqui. O escuro e a cor do SEI vêm de base.css, como no embutido do
- * Favoritos: o app põe html[data-tema="escuro"] (modal, seguindo o SEI) ou não
- * põe nada (lateral, seguindo o sistema), e html[data-cor-sei] com --spro-cor-sei.
+ * Favoritos: no modal o app põe html[data-tema] "claro" ou "escuro" (segue o SEI;
+ * sem o atributo valeria o tema do sistema), na lateral não põe nada (segue o
+ * sistema), e html[data-cor-sei] com --spro-cor-sei.
  *
- * Largura: abaixo de 560 px de app (e, portanto, de 520 px de janela) a busca
- * ocupa a linha inteira e os seletores quebram em duas colunas (lista.css).
+ * Largura: com a janela abaixo de 520 px, o app tem menos de 560 px, e então a
+ * busca ocupa a linha inteira e os seletores quebram em duas colunas (lista.css,
+ * @container de 560 px, a medida do Favoritos).
  */
 html,
 body {
@@ -1699,13 +1736,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Janela muito baixa (modal ou lateral): a lista guarda um mínimo e o app inteiro rola. */
+  overflow-y: auto;
 }
 #app > * {
   flex: none;
 }
 #app > .spro-lista-corpo {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 120px;
   padding-bottom: 2px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -1722,11 +1761,6 @@ html[data-modo="lateral"] body {
 html[data-modo="lateral"] #app {
   height: 100%;
   padding: 10px;
-  /* Painel muito baixo: a lista guarda um mínimo e o app inteiro rola. */
-  overflow-y: auto;
-}
-html[data-modo="lateral"] #app > .spro-lista-corpo {
-  min-height: 120px;
 }
 /* A barra de seleção vai para o fim, presa ao rodapé, enquanto a lista rola (como no Favoritos). */
 html[data-modo="lateral"] .spro-lista-lote-lugar {
