@@ -70,7 +70,7 @@ layout: null
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ site.baseurl }}/assets/css/seipro.css">
+<link rel="stylesheet" href="{{ site.baseurl }}/assets/css/seipro.css?v={{ site.time | date: "%s" }}">
 </head>
 <body class="home">
 {% include icones.svg %}
@@ -271,6 +271,6 @@ layout: null
 </main>
 
 {% include rodape.html %}
-<script src="{{ site.baseurl }}/assets/js/seipro.js" defer></script>
+<script src="{{ site.baseurl }}/assets/js/seipro.js?v={{ site.time | date: "%s" }}" defer></script>
 </body>
 </html>

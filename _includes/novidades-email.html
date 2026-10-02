@@ -22,4 +22,4 @@ Parâmetro: origem = "site" (home) ou "historico". Sem JavaScript, o formulário
 </form>
 </div>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script src="{{ site.baseurl }}/assets/js/novidades.js" defer></script>
+<script src="{{ site.baseurl }}/assets/js/novidades.js?v={{ site.time | date: "%s" }}" defer></script>
