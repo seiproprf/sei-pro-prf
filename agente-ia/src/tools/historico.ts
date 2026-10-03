@@ -7,6 +7,7 @@
  */
 
 import { type Area, areaChrome } from "@comum/armazenamento/area";
+import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { normalizarTexto } from "@comum/texto";
 import { chaveEscopo } from "@historico/modelo/constantes";
 import { dataHora } from "@historico/modelo/dias";
@@ -14,13 +15,21 @@ import { filtrar, ordenar } from "@historico/modelo/operacoes";
 import type { Periodo } from "@historico/modelo/tipos";
 import { RepositorioHistorico } from "@historico/repositorio";
 import { s } from "../motor/esquema";
+import { varrerCamposLivres } from "../seguranca/injecao";
 import { definirTool, type DefTool } from "../motor/tools";
 
 let fonteArea: () => Area = () => areaChrome(chrome.storage.local, "local");
+// Mesma regra do content script e do app: a opção ausente (ou ilegível) conta como ligada.
+let opcaoLigada: () => Promise<boolean> = () => lerOpcaoLegada("historicoproc").catch(() => true);
 
 /** Para os testes: a área em memória no lugar do chrome.storage. */
 export function definirAreaHistorico(f: () => Area): void {
   fonteArea = f;
+}
+
+/** Para os testes: a opção historicoproc no lugar do chrome.storage.sync. */
+export function definirOpcaoHistorico(f: () => Promise<boolean>): void {
+  opcaoLigada = f;
 }
 
 /** O manifest da extensão traz o histórico (false sem `chrome`, como nos testes). */
@@ -50,6 +59,14 @@ export const TOOL_HISTORICO: DefTool = definirTool({
   efeito: "leitura",
   rotulo: () => "Ler o histórico de processos",
   executar: async (a, ctx) => {
+    // Desligado nas opções: o agente não lê nada (nem a aba, nem o armazenamento).
+    if (!(await opcaoLigada()))
+      return {
+        total: 0,
+        itens: [],
+        desligado: true,
+        mensagem: "O hist\u00F3rico de processos est\u00E1 desligado nas op\u00E7\u00F5es do SEI Pro.",
+      };
     const e = await ctx.sei<{ host: string; login: string }>("favoritos.escopo");
     const todas = await new RepositorioHistorico(fonteArea(), chaveEscopo(e.host, e.login)).listar();
     // Sigiloso sai antes de qualquer outra coisa: só entra na contagem.
@@ -71,21 +88,33 @@ export const TOOL_HISTORICO: DefTool = definirTool({
     lista = ordenar(lista, a.ordem === "visitados" ? "visitados" : "recentes");
     const pedido = Number(a.limite);
     const limite = Number.isFinite(pedido) ? Math.min(LIMITE_MAX, Math.max(1, Math.floor(pedido))) : LIMITE_PADRAO;
-    const itens = lista.slice(0, limite).map((v) => ({
-      protocolo: v.protocolo,
-      ...(v.tipo ? { tipo: v.tipo } : {}),
-      ...(v.especificacao ? { especificacao: v.especificacao } : {}),
-      ...(v.interessados?.length ? { interessados: v.interessados } : {}),
-      ...(v.assuntos?.length ? { assuntos: v.assuntos } : {}),
-      ultimaVisita: dataHora(v.ultima),
-      vezes: v.vezes,
-      unidade: v.unidades.length ? v.unidades.map((u) => u.sigla).join(", ") : "",
-    }));
+    const escolhidas = lista.slice(0, limite);
+    // Como processo_consultar: os interessados entram no dicionário da anonimização (o motor troca
+    // os nomes por pseudônimos antes de mandar ao modelo).
+    ctx.pessoasVistas(escolhidas.flatMap((v) => v.interessados ?? []));
+    const itens = escolhidas.map((v) => {
+      const item = {
+        protocolo: v.protocolo,
+        ...(v.tipo ? { tipo: v.tipo } : {}),
+        ...(v.especificacao ? { especificacao: v.especificacao } : {}),
+        ...(v.interessados?.length ? { interessados: v.interessados } : {}),
+        ...(v.assuntos?.length ? { assuntos: v.assuntos } : {}),
+        ultimaVisita: dataHora(v.ultima),
+        vezes: v.vezes,
+        unidade: v.unidades.length ? v.unidades.map((u) => u.sigla).join(", ") : "",
+      };
+      // Especificação, interessado e assunto são texto livre digitado por gente (inclusive por quem
+      // protocola de fora): a mesma marcação do conteúdo dos documentos (ver seguranca/injecao.ts).
+      const varrido = varrerCamposLivres(item);
+      if (varrido.achados.length) ctx.registrarAchados(v.protocolo, varrido.achados);
+      return varrido.valor;
+    });
+    // Os contadores ANTES da lista: o motor corta o resultado em ~12 mil caracteres, e no fim eles sumiam.
     return {
       total: lista.length,
-      itens,
-      ...(lista.length > limite ? { cortados: lista.length - limite } : {}),
       sigilososOmitidos: sigilosos,
+      ...(lista.length > limite ? { cortados: lista.length - limite } : {}),
+      itens,
     };
   },
 });

@@ -90,11 +90,12 @@ export const TOOL_FAVORITOS = definirTool({
         });
       }
     }
+    // Os contadores ANTES da lista: o motor corta o resultado em ~12 mil caracteres, e no fim eles sumiam.
     return {
       total: itens.length,
-      itens: itens.slice(0, MAX_ITENS),
-      ...(itens.length > MAX_ITENS ? { cortados: itens.length - MAX_ITENS } : {}),
       sigilososOmitidos: sigilosos,
+      ...(itens.length > MAX_ITENS ? { cortados: itens.length - MAX_ITENS } : {}),
+      itens: itens.slice(0, MAX_ITENS),
     };
   },
 });

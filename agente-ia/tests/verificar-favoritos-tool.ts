@@ -43,6 +43,13 @@ export async function verificarFavoritosTool(): Promise<void> {
     tudo.itens.length === 2 && tudo.sigilososOmitidos === 2 && !JSON.stringify(tudo).includes("50300.000002") && !JSON.stringify(tudo).includes("50300.000005"),
     tudo,
   );
+  // Os contadores antes da lista: o motor corta o resultado em ~12 mil caracteres e eles sumiam no fim.
+  checar(
+    "total e sigilososOmitidos antes de itens",
+    Object.keys(tudo).indexOf("total") < Object.keys(tudo).indexOf("itens") &&
+      Object.keys(tudo).indexOf("sigilososOmitidos") < Object.keys(tudo).indexOf("itens"),
+    Object.keys(tudo),
+  );
   const i1 = tudo.itens.find((x) => x.protocolo === "50300.000001/2026-01")!;
   checar("traz nota, lembrete e o que mudou", i1.lista === "GPF" && i1.nota === "cobrar a SFC" && (i1.lembrete as { em: string }).em === "2026-01-01" && i1.novidade === "2 documentos novos", i1);
   const nov = (await TOOL_FAVORITOS.executar({ filtro: "novidades" }, ctx)) as { itens: unknown[] };
