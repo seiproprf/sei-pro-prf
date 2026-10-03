@@ -11,6 +11,7 @@
  */
 
 import { areaChrome } from "@comum/armazenamento/area";
+import { idDispositivo } from "@comum/armazenamento/dispositivo";
 import { novoId } from "@comum/id";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { esperarConexaoDaAba } from "@comum/ponte/conexaoDaAba";
@@ -21,6 +22,7 @@ import { CANAL_HISTORICO, CANAL_LATERAL, CHAVE_LATERAL, chaveEscopo } from "../m
 import type { ContextoHistorico } from "../modelo/tipos";
 import { RepositorioHistorico } from "../repositorio";
 import { type AbrirModal, AppHistorico } from "./app";
+import { favoritosDoApp } from "./favoritos";
 
 const parametros = new URLSearchParams(location.hash.slice(1));
 const lateral = parametros.get("modo") === "lateral";
@@ -43,14 +45,14 @@ if (lateral)
 else void iniciarModal();
 
 /** O que o app precisa do navegador, igual nos dois modos. */
-function depsComuns(ctx: ContextoHistorico, area: ReturnType<typeof areaChrome>, rpc: Pick<Rpc, "chamar">) {
+function depsComuns(ctx: ContextoHistorico, area: ReturnType<typeof areaChrome>, rpc: Pick<Rpc, "chamar">, dispositivo: string) {
   return {
     ctx,
     area,
     repo: new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login)),
     rpc,
-    // Task 15: a ponte com os Favoritos.
-    favoritos: null,
+    // null (sem estrela, filtro nem "Favoritar") quando o Favoritos novo não está ativo.
+    favoritos: favoritosDoApp(area, ctx, () => ({ agora: Date.now(), dispositivo })),
     historicoLigado: () => lerOpcaoLegada("historicoproc"),
     abrirModal,
     confirmar,
@@ -76,11 +78,12 @@ async function iniciarLateral(): Promise<void> {
       lateralDisponivel: true,
     };
     await new AppHistorico(raiz, {
-      ...depsComuns(vazio, area, { chamar: () => Promise.reject(new ErroRpc("SEM_ABA", "O histórico está desligado.")) }),
+      ...depsComuns(vazio, area, { chamar: () => Promise.reject(new ErroRpc("SEM_ABA", "O histórico está desligado.")) }, ""),
       modo: "lateral",
     }).iniciar();
     return;
   }
+  const dispositivo = await idDispositivo(area);
   let janela = -1;
   try {
     janela = (await chrome.windows.getCurrent()).id ?? -1;
@@ -134,7 +137,7 @@ async function iniciarLateral(): Promise<void> {
         const ctx = await a.rpc.chamar<ContextoHistorico>("contexto");
         // A aba pode ter mudado enquanto o contexto chegava: a próxima volta da fila corrige.
         if (chaveEscopo(ctx.host, ctx.login) !== chave) return;
-        const app = new AppHistorico(raiz, { ...depsComuns(ctx, area, rpc), modo: "lateral" });
+        const app = new AppHistorico(raiz, { ...depsComuns(ctx, area, rpc, dispositivo), modo: "lateral" });
         montado = { chave, app };
         await app.iniciar();
       })
@@ -195,7 +198,7 @@ async function iniciarModal(): Promise<void> {
     }
     const area = areaChrome(chrome.storage.local, "local");
     app = new AppHistorico(raiz, {
-      ...depsComuns(ctx, area, rpc),
+      ...depsComuns(ctx, area, rpc, await idDispositivo(area)),
       modo: "modal",
       fechar: () => dlg.close(),
       abrirLateral: ctx.lateralDisponivel ? () => abrirLateral(dlg) : undefined,
