@@ -59,5 +59,28 @@ export async function verificarHistoricoTool(): Promise<void> {
   checar("limite 1: cortados 2", um.itens.length === 1 && um.cortados === 2 && um.total === 3, um);
   checar("sem cortados quando cabe", !("cortados" in tudo));
   const mil = await rodar({ limite: 999 });
-  checar("limite maximo 200", mil.itens.length <= 200 && mil.itens.length === 3);
+  checar("limite 999 com poucas visitas: nada cortado", mil.itens.length === 3 && !("cortados" in mil));
+
+  // Escopo novo: 205 visitas exercitam o teto de 200, e a borda do periodo "7dias" (n <= 6 dias).
+  const area2 = areaMemoria();
+  const repo2 = new RepositorioHistorico(area2, chaveEscopo("sei.exemplo.gov.br", "Ana.Souza"));
+  const DIA = 86_400_000;
+  for (let n = 1; n <= 205; n++)
+    await repo2.registrarVisita({ id: String(n), protocolo: `50300.${String(n).padStart(6, "0")}/2026-01`, tipo: "Contrato", unidade: un }, agora - n * 1000);
+  definirAreaHistorico(() => area2);
+  const teto = await rodar({ limite: 999 });
+  checar("limite maximo 200: 205 visitas, 200 itens", teto.total === 205 && teto.itens.length === 200, [teto.total, teto.itens.length]);
+  checar("limite maximo 200: cortados = 5", teto.cortados === 5, teto.cortados);
+  const area3 = areaMemoria();
+  const repo3 = new RepositorioHistorico(area3, chaveEscopo("sei.exemplo.gov.br", "Ana.Souza"));
+  await repo3.registrarVisita({ id: "a", protocolo: "50300.000101/2026-01", tipo: "Contrato", unidade: un }, agora - 6 * DIA);
+  await repo3.registrarVisita({ id: "b", protocolo: "50300.000102/2026-01", tipo: "Contrato", unidade: un }, agora - 7 * DIA);
+  definirAreaHistorico(() => area3);
+  const borda = await rodar({ periodo: "7dias" });
+  checar(
+    "periodo 7dias: 6 dias atras entra, exatamente 7 dias atras nao",
+    borda.itens.length === 1 && borda.itens[0]!.protocolo === "50300.000101/2026-01",
+    borda.itens,
+  );
+  definirAreaHistorico(() => area);
 }

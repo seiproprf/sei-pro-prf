@@ -102,8 +102,8 @@ async function iniciarLateral(): Promise<void> {
       }),
   });
   let montado: { chave: string; unidadeId: string; app: AppHistorico } | null = null;
-  // O rpc fala com uma aba do mesmo SEI e login da lista montada: trocar de aba ou de unidade
-  // não remonta nada, e um pedido nunca vai para outro SEI ou outro usuário.
+  // O rpc fala com uma aba do mesmo SEI e login da lista montada: trocar de aba não remonta nada
+  // (trocar de unidade remonta, via precisaRemontar), e um pedido nunca vai para outro SEI ou outro usuário.
   const rpc: Pick<Rpc, "chamar"> = {
     chamar: <T>(op: string, args?: unknown, prazo?: number) => {
       const a = ponte.daChave(montado?.chave ?? "");
@@ -212,6 +212,7 @@ async function iniciarModal(): Promise<void> {
     app = new AppHistorico(raiz, {
       ...depsComuns(ctx, area, rpc, await idDispositivo(area)),
       modo: "modal",
+      focarBusca: true,
       fechar: () => dlg.close(),
       abrirLateral: ctx.lateralDisponivel ? () => abrirLateral(dlg) : undefined,
     });

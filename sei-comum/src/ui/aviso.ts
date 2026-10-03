@@ -6,10 +6,11 @@ export interface AcaoAviso {
 }
 
 /**
- * Quem mostra o aviso fora do app. No painel abaixo da lista, o iframe cresce
- * com o conteúdo e um aviso preso ao rodapé dele ficaria fora da vista: a aba
- * do SEI o mostra no rodapé da tela visível (pagina/aviso.ts). Devolve false
- * para o app mostrar ele mesmo.
+ * Quem mostra o aviso fora do app, quando o app mora num iframe que não é o
+ * lugar certo para ele (por exemplo, um iframe que cresce com o conteúdo: um
+ * aviso preso ao rodapé dele ficaria fora da vista). O emissor mostra o aviso
+ * na tela visível da página hospedeira. Devolve false para o app mostrar ele
+ * mesmo.
  */
 export type EmissorAviso = (texto: string, acao: AcaoAviso | undefined, ms: number) => boolean;
 

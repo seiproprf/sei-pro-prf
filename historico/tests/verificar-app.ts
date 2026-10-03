@@ -245,6 +245,28 @@ const qtdLote = (raiz: ParentNode): string | null => {
 const textoAviso = (doc: Document): string => doc.body.querySelector(".spro-aviso")?.textContent ?? "";
 
 export async function verificarApp(): Promise<void> {
+  secao("historico app: foco inicial");
+  // O linkedom nao implementa foco: a prova espia o focus() da busca (como a do atalho "/").
+  const espiar = (raiz: HTMLElement) => {
+    const busca = raiz.querySelector<HTMLInputElement>('input[aria-label="Buscar no histórico"]')!;
+    const chamadas: unknown[] = [];
+    busca.focus = (o?: unknown) => {
+      chamadas.push(o);
+    };
+    return chamadas;
+  };
+  const foco = await montar({ focarBusca: true });
+  const focoChamadas = espiar(foco.raiz);
+  await foco.app.iniciar();
+  checar(
+    "modal (focarBusca): foca a busca sem rolar a pagina",
+    focoChamadas.length === 1 && (focoChamadas[0] as { preventScroll?: boolean })?.preventScroll === true,
+    focoChamadas,
+  );
+  const semFoco = await montar({}, { lateral: true });
+  const semFocoChamadas = espiar(semFoco.raiz);
+  await semFoco.app.iniciar();
+  checar("lateral: o painel nao rouba o foco", semFocoChamadas.length === 0);
   secao("historico app: montagem (modal e lateral)");
   const a = await montar({}, { lateral: true });
   await a.app.iniciar();

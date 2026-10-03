@@ -1,11 +1,10 @@
 /**
  * Ponte do painel lateral (genérica: a chave do anúncio vem por parâmetro).
- * Lado do app: o painel é um só por janela e não
- * pertence a aba nenhuma: ele anuncia que abriu, as abas do SEI conectam
- * (`ligarLadoAba`) e se apresentam, e o painel usa a aba visível mais
- * recente DESTA janela. As portas chegam a todas as páginas da extensão que
- * escutam `onConnect`; as de outra janela e as de frames internos são
- * recusadas aqui, como faz o app embutido com as portas de outras abas.
+ * Lado do app: o painel é um só por janela e não pertence a aba nenhuma. Ele
+ * anuncia que abriu, as abas do SEI conectam (`ligarLadoAba`) e se apresentam,
+ * e o painel usa a aba visível mais recente DESTA janela. As portas chegam a
+ * todas as páginas da extensão que escutam `onConnect`; as de outra janela e
+ * as de frames internos são recusadas aqui.
  */
 
 import type { Area } from "../armazenamento/area";

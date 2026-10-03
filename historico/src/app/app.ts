@@ -60,6 +60,8 @@ export interface DepsApp {
   baixar(nome: string, conteudo: string, tipo: string): void;
   copiar(texto: string): Promise<void>;
   agora(): number;
+  /** Só no modal: ao iniciar, o foco vai para a busca. O painel lateral não rouba o foco ao trocar de aba. */
+  focarBusca?: boolean;
   /** Só no modal. */
   fechar?(): void;
   /** Só no modal, quando o pacote tem barra lateral. */
@@ -231,6 +233,7 @@ export class AppHistorico {
     );
     if (this.d.favoritos) this.parar.push(this.d.favoritos.aoMudar(() => this.agendarRecarga()));
     await this.recarregar();
+    if (this.d.focarBusca && !this.destruido) this.el.busca.focus({ preventScroll: true });
   }
 
   /** O painel lateral troca de app quando a aba da frente é de outro SEI ou outro usuário. */
