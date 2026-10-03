@@ -29,6 +29,31 @@ export function verificarVisita(): void {
     "completar grava texto e limpa lista",
     completa.especificacao === "Pregão 12" && completa.interessados?.join() === "ACME" && completa.completadoEm === 2_001 * MIN,
   );
+  // Cota do storage.local (10 MB divididos com Favoritos e Agente, até 5.000 visitas): listas e textos curtos.
+  const longa = completar(
+    v4,
+    {
+      especificacao: "e".repeat(700),
+      interessados: Array.from({ length: 15 }, (_, i) => `Interessado ${i + 1}`),
+      assuntos: ["a".repeat(200), "Compras"],
+    },
+    2_001 * MIN,
+  );
+  checar(
+    "lista com mais de 10: guarda as 10 primeiras",
+    longa.interessados?.length === 10 && longa.interessados[9] === "Interessado 10",
+    longa.interessados,
+  );
+  checar(
+    "assunto com mais de 120 caracteres: corta em 120",
+    longa.assuntos?.[0]?.length === 120 && longa.assuntos[1] === "Compras",
+    longa.assuntos?.map((a) => a.length),
+  );
+  checar("especificacao com mais de 500: corta em 500", longa.especificacao?.length === 500, longa.especificacao?.length);
+  checar(
+    "interessado longo tambem corta em 120",
+    completar(v4, { interessados: ["i".repeat(130)] }, 2_001 * MIN).interessados?.[0]?.length === 120,
+  );
   const virou = registrar(completa, { ...D, nivel: "sigiloso" }, 2_002 * MIN);
   checar(
     "virou sigiloso: perde especificacao, interessados e assuntos",

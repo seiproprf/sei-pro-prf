@@ -32,6 +32,18 @@ export function verificarMigracao(): void {
   checar("observacoes nao aparece em lugar nenhum", !JSON.stringify(a).includes("anotacao interna"));
   checar("total e ignorados", a.total === 1 && a.ignorados === 0);
 
+  secao("historico: migracao, cota (listas e textos curtos)");
+  const grande = converterLegado([
+    item("17", "2024-03-05 14:07:09", {
+      descricao: "d".repeat(700),
+      assuntos: [...Array.from({ length: 14 }, (_, i) => `Assunto ${i + 1}`), "x".repeat(200)],
+    }),
+  ]).visitas[0];
+  checar("assuntos: no maximo 10", grande?.assuntos?.length === 10 && grande.assuntos[9] === "Assunto 10", grande?.assuntos);
+  checar("descricao (especificacao) corta em 500", grande?.especificacao?.length === 500, grande?.especificacao?.length);
+  const assuntoLongo = converterLegado([item("18", "2024-03-05 14:07:09", { assuntos: ["y".repeat(200)] })]).visitas[0];
+  checar("assunto longo corta em 120", assuntoLongo?.assuntos?.[0]?.length === 120, assuntoLongo?.assuntos?.[0]?.length);
+
   secao("historico: migracao, nivel de acesso");
   const sig = converterLegado([item("12", "2024-03-05 14:07:09", { nivel_acesso: "2" })]).visitas[0];
   checar(

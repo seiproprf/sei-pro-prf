@@ -1,5 +1,6 @@
+import { MAX_ESPECIFICACAO } from "../modelo/constantes";
 import type { Nivel, Visita } from "../modelo/tipos";
-import { semDadosSensiveis } from "../modelo/visita";
+import { cortar, limparLista, semDadosSensiveis } from "../modelo/visita";
 
 export interface ResultadoMigracao {
   visitas: Visita[];
@@ -47,9 +48,10 @@ export function converterLegado(bruto: unknown): ResultadoMigracao {
     if (tipo) v.tipo = tipo;
     if (nivel) v.nivel = nivel;
     const esp = typeof o.descricao === "string" ? o.descricao.trim() : "";
-    if (esp) v.especificacao = esp;
-    const assuntos = Array.isArray(o.assuntos) ? o.assuntos.map((a) => String(a).trim()).filter(Boolean) : [];
-    if (assuntos.length) v.assuntos = [...new Set(assuntos)];
+    if (esp) v.especificacao = cortar(esp, MAX_ESPECIFICACAO);
+    // Mesma regra do completar: sem vazios nem repetidos, textos e lista curtos (cota do storage).
+    const assuntos = limparLista(Array.isArray(o.assuntos) ? o.assuntos.map((a) => String(a)) : []);
+    if (assuntos) v.assuntos = assuntos;
     if (nivel === "sigiloso") v = semDadosSensiveis(v);
     const ja = porId.get(id);
     porId.set(

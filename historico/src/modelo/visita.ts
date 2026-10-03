@@ -1,4 +1,12 @@
-import { ESPERA_TENTATIVA_MS, INTERVALO_VISITA_MS, MAX_LISTA, MAX_UNIDADES, VALIDADE_COMPLETAR_MS } from "./constantes";
+import {
+  ESPERA_TENTATIVA_MS,
+  INTERVALO_VISITA_MS,
+  MAX_ESPECIFICACAO,
+  MAX_LISTA,
+  MAX_TEXTO,
+  MAX_UNIDADES,
+  VALIDADE_COMPLETAR_MS,
+} from "./constantes";
 import type { DadosCompletos, DadosVisita, UnidadeVisita, Visita } from "./tipos";
 
 export function semDadosSensiveis(v: Visita): Visita {
@@ -27,8 +35,12 @@ export function registrar(anterior: Visita | undefined, d: DadosVisita, agora: n
   return v.nivel === "sigiloso" ? semDadosSensiveis(v) : v;
 }
 
-const limparLista = (l?: string[]): string[] | undefined => {
-  const r = [...new Set((l ?? []).map((s) => s.trim()).filter(Boolean))].slice(0, MAX_LISTA);
+/** Corta em `max` caracteres sem partir um caractere fora do plano básico (emoji, por exemplo). */
+export const cortar = (s: string, max: number): string => (s.length <= max ? s : Array.from(s).slice(0, max).join("").trimEnd());
+
+/** Sem vazios nem repetidos, cada item com até MAX_TEXTO caracteres e no máximo MAX_LISTA itens. */
+export const limparLista = (l?: string[]): string[] | undefined => {
+  const r = [...new Set((l ?? []).map((s) => cortar(s.trim(), MAX_TEXTO)).filter(Boolean))].slice(0, MAX_LISTA);
   return r.length ? r : undefined;
 };
 
@@ -40,7 +52,7 @@ export function completar(v: Visita, c: DadosCompletos, agora: number): Visita {
   if (c.tipo?.trim()) base.tipo = c.tipo.trim();
   if (nivel === "sigiloso") return base;
   const esp = c.especificacao?.trim();
-  if (esp) base.especificacao = esp;
+  if (esp) base.especificacao = cortar(esp, MAX_ESPECIFICACAO);
   const i = limparLista(c.interessados);
   if (i) base.interessados = i;
   const a = limparLista(c.assuntos);
