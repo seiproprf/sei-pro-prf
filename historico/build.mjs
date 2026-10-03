@@ -3,9 +3,10 @@
  * Build do Historico.
  *
  *   dist/js/init_historico.js  content script (IIFE, mundo isolado, todos os frames)
+ *   dist/js/historico/app.js   app de html/historico.html (ESM): modal sobre o SEI ou aba da barra lateral
  *   dist/html/historico.html   copia de estatico/ (modal e aba da barra lateral)
  *   dist/css/historico.css     sei-comum/src/ui/base.css + sei-comum/src/ui/lista.css + estatico/historico.css
- * A entrada do app (dist/js/historico/app.js) entra na Task 13. JS todo ASCII (portao de bytes abaixo).
+ * JS todo ASCII (portao de bytes abaixo).
  */
 import { build } from "esbuild";
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
@@ -31,9 +32,10 @@ const comum = {
 await rm(join(DIST, "js", "historico"), { recursive: true, force: true });
 await mkdir(join(DIST, "js", "historico"), { recursive: true });
 
+await build({ ...comum, entryPoints: [resolve(AQUI, "src/app/main.ts")], outfile: join(DIST, "js", "historico", "app.js"), format: "esm" });
 await build({ ...comum, entryPoints: [resolve(AQUI, "src/pagina/main.ts")], outfile: join(DIST, "js", "init_historico.js"), format: "iife" });
 
-const SAIDAS = ["js/init_historico.js"];
+const SAIDAS = ["js/init_historico.js", "js/historico/app.js"];
 
 // Pagina do app e CSS: base + lista (sei-comum, o desenho do Favoritos) + o do historico.
 await mkdir(join(DIST, "html"), { recursive: true });

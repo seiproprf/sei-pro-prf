@@ -9032,6 +9032,11 @@ function getListDocumentosArvore(ifrArvore) {
 }
 function getHistoryProcessosPro() {
     $(infraBarraS+'.barSuspenso').trigger('click');
+    // Historico novo (js/init_historico.js, SEI Pro Lab): o modal e dele.
+    if (document.documentElement.hasAttribute('data-seipro-historico')) {
+        document.dispatchEvent(new CustomEvent('spro-historico-abrir'));
+        return;
+    }
     var dadosHistoricoProcessoPro = localStorageRestorePro('dadosHistoricoProcessoPro');
         var htmlBox =       '<div id="boxHistory" class="tabelaPanelScroll" style="margin-top: 10px;height: 400px;">'+
                             '   <table id="historyTablePro" style="margin-top: 35px; font-size: 8pt !important;width: 100%;" class="seiProForm tableAtividades tableDialog tableInfo tableZebra">'+
@@ -10894,6 +10899,8 @@ function filterTablePro(this_) {
     }
 }
 function setHistoryProcessosPro(dadosProcessoPro) {
+    // Historico novo (js/init_historico.js): a captura e dele, pela arvore.
+    if (document.documentElement.hasAttribute('data-seipro-historico')) return;
     var prop = dadosProcessoPro.propProcesso;
     var dadosProcessoPro_push = {
             datetime: moment().format('YYYY-MM-DD HH:mm:ss'),
