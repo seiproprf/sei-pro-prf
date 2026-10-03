@@ -130,7 +130,11 @@ export class PonteLateral {
 export interface EstadoAba {
   visivel: boolean;
   foco: number;
-  /** host|login|id da unidade: o painel remonta a lista quando muda. */
+  /**
+   * Chave de roteamento do contexto da aba; o painel remonta a lista quando ela muda. Favoritos:
+   * host|login|id da unidade. Histórico: host|login (ao trocar de unidade, o painel relê o
+   * contexto e remonta, para os Favoritos irem para a lista da unidade certa).
+   */
   chave: string;
 }
 

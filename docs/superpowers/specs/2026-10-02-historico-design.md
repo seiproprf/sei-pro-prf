@@ -84,8 +84,10 @@ visual sem ganho para o usuário. Fica anotado como adoção futura.
   agora com o canal `seipro-historico`. O app aceita só a porta da própria aba, do frame de topo
   (`app/ponte.ts` do Favoritos, generalizado com o nome do canal).
 - **Lateral ⇄ aba do SEI:** a ponte lateral generalizada, com o canal
-  `seipro-historico-lateral` e o anúncio em `historico/lateralAberto`. A chave da aba é
-  `host|login`, sem a unidade. Por isso trocar de unidade não remonta a lista.
+  `seipro-historico-lateral` e o anúncio em `historico/lateralAberto`. A chave de roteamento da
+  aba é `host|login`, sem a unidade. Ao trocar de unidade, o painel relê o contexto e remonta a
+  lista, para os Favoritos (estrela, filtro, "Favoritar") irem para a lista da unidade certa; as
+  visitas são as mesmas.
 - **Pedidos do app à aba:** `contexto`, `abrirProcesso`, `fechar` (só no modal), `aviso`,
   `apagarLegado`.
 - **Dados não passam pela ponte.**
@@ -99,6 +101,7 @@ visual sem ganho para o usuário. Fica anotado como adoção futura.
 | `historico/<host>\|<login>/v/<idProcedimento>` | `Visita` |
 | `historico/<host>\|<login>/meta` | `{ migradoEm?, migrados?, avisoMigracao?, apagarLegado? }` |
 | `historico/preferencias` | `Preferencias` |
+| `historico/migracao/<host>` | `{ em, login }`: o histórico antigo deste SEI já foi trazido (5.4) |
 | `historico/lateralAberto` | anúncio do painel lateral (`Abertura` da sei-comum) |
 
 O login vai em minúsculas, lido do título do usuário (`lerContexto`), e não do cookie.
@@ -149,11 +152,15 @@ interface Preferencias {
   processos cuja `ultima` cai no período. O diálogo avisa que um processo visto há 20 dias e de
   novo hoje sai inteiro em "hoje", porque cada visita não fica guardada separada.
 - **Observações** do processo nunca são guardadas.
+- **Cota** (`storage.local` de 10 MB dividido com Favoritos e Agente, até 5.000 visitas):
+  interessados e assuntos guardam até 10 itens de até 120 caracteres; a especificação, até 500.
 
 ### 5.4 Migração do legado
 
 - **Quando:** na janela de topo, a primeira vez que o content script roda num host com
-  `dadosHistoricoProcessoPro` no `localStorage` e sem `meta.migradoEm` para aquele login.
+  `dadosHistoricoProcessoPro` no `localStorage` e sem `meta.migradoEm` para aquele login. Com
+  o registro pausado não roda (fica para quando retomar). A marca `historico/migracao/<host>`
+  faz a importação acontecer uma vez por SEI: o segundo login só grava `migradoEm`.
 - **Conversão:**
 
   | Legado | Novo |
@@ -228,6 +235,10 @@ interface Preferencias {
   recarregue a página dele (F5).", como no Favoritos.
 - **Tema:** segue o sistema (`prefers-color-scheme`), como a aba Favoritos.
 - **Ao vivo:** abrir um processo no SEI põe a visita no topo da lista na hora (`onChanged`).
+- **Trocar de unidade:** a chave de roteamento é `host|login`, mas o painel relê o contexto e
+  remonta a lista, para os Favoritos irem para a lista da unidade certa.
+- **Desligado nas opções:** o painel mostra o estado "desligado" sem esperar aba; sem SEI nem
+  login, o menu só oferece "Opções do SEI Pro" (não há o que apagar).
 - O modal tem o botão **"Abrir na barra lateral"** onde o pacote tem barra lateral. Ele usa
   `{tipo:"abrirPainel", aba:"historico"}`, e o modal fecha.
 
@@ -390,7 +401,7 @@ São scripts `tests/verificar-*.ts` (tsx + linkedom), como no Favoritos:
 | modelo | mesclar visita (30 min, unidades, sigiloso), retenção, faixas de dia nas viradas de dia e de fuso, busca (acento, dígitos), filtros (OU/E), contagens, ordens, CSV |
 | repositório | registrar, completar, podar, apagar por período, meta, `aoMudar` |
 | migração | conversão, itens com defeito, mesclagem, sigilosos, observações fora |
-| captura | fixture de árvore SEI 4.1.5 e SEI 5; GET só quando precisa; sigiloso sem GET; pausado sem gravar |
+| captura | fixture de árvore SEI 4.1.5; GET só quando precisa; sigiloso sem GET; pausado sem gravar |
 | núcleo | `consultarDaArvore` com o formulário real (fixture) |
 | app | modal e lateral, busca, seletores, fichas, grupos, "mostrar mais", lote só com os visíveis, estrela, diálogos, desligado, pausado |
 | página | modal abre pelo evento, trava e destrava a rolagem, fecha por RPC e quando a porta cai |
@@ -408,7 +419,8 @@ As suítes atuais não podem regredir: Favoritos 572, `sei-comum` 163, `sei-nucl
 - migração do histórico antigo;
 - claro e escuro.
 
-SEI 5 quando houver acesso de teste.
+SEI 5 quando houver acesso de teste. Não há fixture de árvore do SEI 5 no repositório: as provas
+automáticas de captura usam o SEI 4.1, e o SEI 5 fica para a prova ao vivo.
 
 ## 13. Fases
 

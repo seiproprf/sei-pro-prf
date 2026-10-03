@@ -1,10 +1,15 @@
 # Histórico do SEI Pro
 
-Histórico de processos visitados: registra cada processo aberto, por usuário e
-host, em `chrome.storage.local` (uma chave por visita). Preferências em
+Histórico de processos visitados: registra cada processo aberto, por SEI e login
+(`host|login`), em `chrome.storage.local` (uma chave por visita). Preferências em
 `historico/preferencias`. Sigiloso nunca guarda especificação, interessados nem assuntos.
 
-- `src/modelo/` tipos, constantes e dias de calendário, sem DOM, cobertos por `tests/`.
-- Entradas de app e página entram nas próximas tarefas (`build.mjs`).
+- `src/modelo/` tipos, constantes, regras e dias de calendário, sem DOM;
+- `src/pagina/` content script (captura da visita, modal sobre o SEI, migração do histórico antigo);
+- `src/app/` a lista, igual no modal e na aba da barra lateral. Na lateral, a chave de roteamento
+  da ponte é `host|login`; ao trocar de unidade, o painel relê o contexto e remonta, para os
+  Favoritos (estrela, filtro, "Favoritar") irem para a lista da unidade certa.
+
+Provas em `tests/` (tsx + linkedom). Os bundles saem em `dist/js` pelo `build.mjs`.
 
     npm install && npm run tipos && npm run checar && npm run build

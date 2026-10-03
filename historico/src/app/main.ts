@@ -7,7 +7,9 @@
  *   a tela do SEI, ligado à PRÓPRIA aba (pagina/modal.ts); o app mora num
  *   <dialog> com véu;
  * - lateral (`#modo=lateral`): dentro do painel lateral, ligado à aba do SEI que está na frente
- *   nesta janela (ponte por host|login) e remontado só quando muda o SEI ou o login.
+ *   nesta janela (a chave de roteamento da ponte é host|login). Remonta quando muda o SEI ou o
+ *   login e, ao trocar de unidade, relê o contexto e remonta, para os Favoritos irem para a lista
+ *   da unidade certa (as visitas são as mesmas).
  */
 
 import { areaChrome } from "@comum/armazenamento/area";

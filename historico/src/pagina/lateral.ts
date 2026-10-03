@@ -1,7 +1,9 @@
 /**
  * Lado da aba do SEI na barra lateral: a aba conecta ao app do painel quando ele anuncia
- * que abriu e se apresenta (visível, foco, chave). A chave é host|login, SEM a unidade:
- * o histórico é da pessoa, então trocar de unidade no mesmo SEI não remonta a lista.
+ * que abriu e se apresenta (visível, foco, chave). A chave de roteamento é host|login, SEM a
+ * unidade: o histórico é da pessoa. Ao trocar de unidade (o SEI recarrega a página e a aba se
+ * reapresenta), o painel relê o contexto e remonta, para os Favoritos irem para a lista da
+ * unidade certa.
  */
 import type { Area } from "@comum/armazenamento/area";
 import { ligarLadoAba } from "@comum/ponte/lateral";
