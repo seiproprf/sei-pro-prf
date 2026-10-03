@@ -2,6 +2,19 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.5
+02/10/2026
+
+O histórico de processos visitados foi refeito do zero, por enquanto no SEI Pro Lab. Ele abre numa janela no meio da tela e ganha uma aba própria no painel lateral, ao lado dos favoritos e do Agente de IA.
+
+- **Novo — o [histórico de processos visitados](../pages/HISTORICOPROC.md) foi reescrito e chega primeiro ao *SEI Pro Lab*, no Chrome e no Edge.** Quem usa a versão da loja continua com o histórico de sempre e recebe o novo depois dessa validação. O item *Histórico de Processos Visitados* do menu abre uma janela no meio da tela, e o painel lateral ganha a aba **Histórico**, ao lado de *Favoritos* e *Agente de IA*. Com o painel aberto, cada processo que você abre no SEI aparece no topo da lista na mesma hora
+- **Busca e filtros como os dos favoritos.** A busca acha o processo pelo número, com ou sem pontuação, e também pelo tipo, pela especificação, pelo interessado ou pelo assunto, sem diferenciar acento. Os filtros de *Período*, *Tipo*, *Unidade*, *Interessado*, *Assunto* e *Situação* aceitam várias escolhas e mostram quantos processos há em cada opção. A lista é agrupada por dia (*Hoje*, *Ontem*, *Últimos 7 dias*…), mostra quantas vezes você abriu cada processo e pode ser ordenada por *Mais visitados*
+- **Cada pessoa tem o seu histórico.** Antes, dois logins no mesmo navegador dividiam a mesma lista. Agora o histórico fica guardado na própria extensão, e limpar o cache do navegador não o apaga. O processo abre pela pesquisa do SEI, sem montar link à mão, que no SEI 5 derrubava a sessão. Na primeira vez, o histórico antigo é trazido para a lista nova, e nada é apagado
+- **Uma estrela em cada linha favorita o processo ali mesmo**, um de cada vez ou vários de uma vez, sempre com *Desfazer*. O filtro *Situação* separa os que já estão nos favoritos
+- **Privacidade:** você pode pausar o registro, apagar o que viu na última hora, hoje, nos últimos 7 ou 30 dias ou tudo, e escolher quantos processos guardar (de 500 a 5.000). De processo sigiloso, o histórico guarda só o número e o tipo. As observações do processo nunca são guardadas
+- **O Agente de IA lê o seu histórico.** Pergunte *"que processos eu vi ontem?"* ou use a sugestão *Processos que vi esta semana*. Os sigilosos ficam de fora, e os nomes dos interessados são mascarados antes de sair do navegador
+- **Nos favoritos novos:** a estrela dos documentos na árvore não se repete mais (chegava a aparecer três vezes no mesmo documento); as estrelas da caixa e das listas ficam no tamanho e na altura dos ícones do SEI; e o título do painel mantém o mesmo peso do título da tela no SEI 5
+
 ### Versão 2.4
 02/10/2026
 
