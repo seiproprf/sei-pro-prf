@@ -43,10 +43,15 @@ async function iniciarModal(): Promise<void> {
   document.body.append(dlg);
   let rpc: Rpc | null = null;
   let app: AppHistorico | null = null;
-  // Fechar o diálogo (X, Esc, véu, processo aberto) pede à aba que tire o iframe.
+  // Fechar o diálogo (X, Esc, véu, processo aberto) pede à aba que tire o iframe. O pedido vai PRIMEIRO:
+  // sem ele, a tela do SEI fica presa sob o iframe transparente até o F5.
   dlg.addEventListener("close", () => {
-    app?.destruir();
     void rpc?.chamar("fechar", undefined, 3000).catch(() => undefined);
+    try {
+      app?.destruir();
+    } catch (e) {
+      console.warn("[SEI Pro] histórico: falha ao desmontar o app", e);
+    }
   });
   // Véu: o clique cai no próprio <dialog>, fora do retângulo dele. Começo e fim no véu,
   // para uma seleção de texto que termina fora não fechar a janela.

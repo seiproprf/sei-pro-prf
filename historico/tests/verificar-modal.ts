@@ -3,7 +3,7 @@ import { criarRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { EVENTO_ABRIR, LEGADO_CHAVE } from "../src/modelo/constantes";
 import type { ContextoHistorico } from "../src/modelo/tipos";
 import { tratadoresHistorico } from "../src/pagina/executor";
-import { criarControleModal, montarModal } from "../src/pagina/modal";
+import { criarControleModal, ligarAvisoSemModal, montarModal, PRAZO_CONTATO_MS, TEXTO_SEM_MODAL } from "../src/pagina/modal";
 import { checar, instalarDom, lanca, secao, telaSei, tique } from "./util";
 
 const CTX: ContextoHistorico = {
@@ -47,6 +47,27 @@ function avisosDoConsole(fazer: () => unknown): string[] {
   }
   return avisos;
 }
+
+/** Relógio falso do prazo de contato: nada vence sozinho (a prova não depende da carga da máquina). */
+function relogioFalso() {
+  const pendentes: Array<{ fazer: () => void; ms: number; cancelado: boolean }> = [];
+  return {
+    agendar: (fazer: () => void, ms: number) => {
+      const p = { fazer, ms, cancelado: false };
+      pendentes.push(p);
+      return () => {
+        p.cancelado = true;
+      };
+    },
+    ativos: () => pendentes.filter((p) => !p.cancelado),
+    /** Vence tudo o que não foi cancelado. */
+    vencer: () => {
+      for (const p of pendentes.splice(0)) if (!p.cancelado) p.fazer();
+    },
+  };
+}
+
+const evento = (doc: Document, tipo: string) => new (doc.defaultView as unknown as { Event: typeof Event }).Event(tipo);
 
 const iframes = (doc: Document) => doc.querySelectorAll("iframe[data-spro-historico-modal]");
 
@@ -96,11 +117,17 @@ export async function verificarModal(): Promise<void> {
   claro.fechar();
 
   secao("historico: modal pelo item do menu (content script do topo)");
-  const docT = instalarDom('<html><body><ul id="infraMenu"><li><a id="historicoProcessosPro">Histórico</a></li></ul></body></html>');
+  const docT = instalarDom(
+    '<html><body><ul id="infraMenu"><li><a id="historicoProcessosPro" class="newLinksMenuPro" onclick="getHistoryProcessosPro()">Histórico</a></li></ul></body></html>',
+  );
+  const item = docT.getElementById("historicoProcessosPro") as HTMLElement;
   let focos = 0;
-  (docT.getElementById("historicoProcessosPro") as HTMLElement).focus = () => {
+  let tabindexNoFoco: string | null = null;
+  item.focus = () => {
     focos++;
+    tabindexNoFoco = item.getAttribute("tabindex");
   };
+  const relogio = relogioFalso();
   const loja = armazenamentoFalso({ [LEGADO_CHAVE]: "[]" });
   let ladoApp: PortaRpc | null = null;
   let conexoes = 0;
@@ -120,13 +147,13 @@ export async function verificarModal(): Promise<void> {
       return aba;
     },
     tratadores: (fechar) => tratadoresHistorico({ doc: docT, ctx: CTX, armazenamento: loja, fechar }),
-    prazoContatoMs: 40,
+    agendar: relogio.agendar,
   });
   /** O app conecta como o html/historico.html: na carga do iframe, pede o contexto. */
   const carregar = async (): Promise<Rpc> => {
     const f = iframes(docT)[0];
     if (!f) throw new Error("sem iframe");
-    f.dispatchEvent(new (docT.defaultView as unknown as { Event: typeof Event }).Event("load"));
+    f.dispatchEvent(evento(docT, "load"));
     const app = criarRpc(ladoApp!);
     await app.chamar<ContextoHistorico>("contexto");
     return app;
@@ -135,14 +162,27 @@ export async function verificarModal(): Promise<void> {
   pedirAbertura(docT);
   checar("o evento do menu abre o modal", iframes(docT).length === 1 && controle.aberto);
   checar("pagina travada", docT.documentElement.style.overflow === "hidden" && docT.body.style.overflow === "hidden");
+  checar(
+    "prazo de contato de 8 s armado na abertura",
+    PRAZO_CONTATO_MS === 8000 && relogio.ativos().length === 1 && relogio.ativos()[0]?.ms === 8000,
+  );
   pedirAbertura(docT);
   checar("o evento de novo, com o modal aberto, nao cria um segundo iframe", iframes(docT).length === 1);
   const app1 = await carregar();
   checar("na carga do iframe, uma porta nova que atende o app", conexoes === 1 && app1.aberta);
+  checar("o primeiro pedido do app desarma o prazo", relogio.ativos().length === 0);
   tecla(docT.body, "Escape");
   checar("Esc na pagina fecha o modal", iframes(docT).length === 0 && !controle.aberto);
   checar("Esc destrava a rolagem", docT.documentElement.style.overflow === "" && docT.body.style.overflow === "");
   checar("fechar devolve o foco ao item do menu", focos === 1);
+  checar(
+    "o item do legado (a sem href) ganha tabindex=-1 antes do foco, sem mexer no resto",
+    tabindexNoFoco === "-1" &&
+      item.getAttribute("class") === "newLinksMenuPro" &&
+      item.getAttribute("onclick") === "getHistoryProcessosPro()" &&
+      !item.hasAttribute("href"),
+    item.outerHTML,
+  );
   await tique();
   checar("fechar derruba a porta do app", !app1.aberta);
   tecla(docT.body, "Escape");
@@ -163,15 +203,17 @@ export async function verificarModal(): Promise<void> {
   checar("o app pede fechar (X, Esc ou veu do dialogo): o modal sai", iframes(docT).length === 0 && !controle.aberto, pedido);
   checar("fechar pelo app destrava e devolve o foco", docT.body.style.overflow === "" && focos === 3);
 
+  checar("fechar cancela o prazo", relogio.ativos().length === 0);
+
   pedirAbertura(docT);
-  const f4 = iframes(docT)[0];
-  f4?.dispatchEvent(new (docT.defaultView as unknown as { Event: typeof Event }).Event("load"));
-  await tique(80);
+  iframes(docT)[0]?.dispatchEvent(evento(docT, "load"));
+  checar("a carga do iframe rearma o prazo", relogio.ativos().length === 1);
+  relogio.vencer();
   checar("o app nao responde no prazo: o modal sai (nao prende a tela)", iframes(docT).length === 0 && !controle.aberto);
 
   pedirAbertura(docT);
   await carregar();
-  await tique(80);
+  relogio.vencer();
   checar("com o app conversando, o prazo nao fecha", iframes(docT).length === 1 && controle.aberto);
   controle.fechar();
   controle.fechar();
@@ -179,9 +221,7 @@ export async function verificarModal(): Promise<void> {
 
   pedirAbertura(docT);
   conectarFalha = true;
-  const avisosConectar = avisosDoConsole(() =>
-    iframes(docT)[0]?.dispatchEvent(new (docT.defaultView as unknown as { Event: typeof Event }).Event("load")),
-  );
+  const avisosConectar = avisosDoConsole(() => iframes(docT)[0]?.dispatchEvent(evento(docT, "load")));
   checar(
     "sem como conectar (extensao recarregada): o modal sai na hora e avisa no console",
     iframes(docT).length === 0 && !controle.aberto && avisosConectar.length === 1,
@@ -205,6 +245,55 @@ export async function verificarModal(): Promise<void> {
   controle.desligar();
   pedirAbertura(docT);
   checar("desligado, o evento nao abre", iframes(docT).length === 0);
+
+  const docF = instalarDom('<html><body><a id="historicoProcessosPro" href="#menu">Histórico</a></body></html>');
+  const itemF = docF.getElementById("historicoProcessosPro") as HTMLElement;
+  let focadoF = false;
+  itemF.focus = () => {
+    focadoF = true;
+  };
+  const relogioF = relogioFalso();
+  const controleF = criarControleModal(docF, {
+    urlApp: () => URL_APP,
+    temaEscuro: false,
+    conectar: () => parDePortas()[1],
+    tratadores: () => ({}),
+    agendar: relogioF.agendar,
+  });
+  pedirAbertura(docF);
+  controleF.fechar();
+  checar("item ja focavel (com href): foca sem tabindex", focadoF && !itemF.hasAttribute("tabindex"));
+  controleF.desligar();
+
+  secao("historico: sem contexto no topo, o item do menu avisa na pagina");
+  const docS = instalarDom("<html><body><p>SEI</p></body></html>");
+  const desligarAviso = ligarAvisoSemModal(docS, 60);
+  pedirAbertura(docS);
+  const avisos = () => [...docS.querySelectorAll<HTMLElement>(".spro-historico-aviso")];
+  checar(
+    "o clique no item do menu mostra o aviso na pagina, sem modal",
+    avisos().length === 1 &&
+      avisos()[0]?.textContent === TEXTO_SEM_MODAL &&
+      avisos()[0]?.getAttribute("role") === "status" &&
+      iframes(docS).length === 0,
+    avisos()[0]?.textContent,
+  );
+  checar(
+    "o texto manda recarregar a pagina",
+    TEXTO_SEM_MODAL === "Não foi possível abrir o histórico nesta tela. Recarregue a página (F5) e tente de novo.",
+  );
+  checar(
+    "aviso com estilo em linha, fixo no rodape e por cima da tela",
+    avisos()[0]?.style.position === "fixed" && avisos()[0]?.style.zIndex === "2147483646",
+    avisos()[0]?.getAttribute("style"),
+  );
+  pedirAbertura(docS);
+  checar("um aviso por vez", avisos().length === 1);
+  await tique(300);
+  checar("o aviso some sozinho", avisos().length === 0);
+  desligarAviso();
+  pedirAbertura(docS);
+  checar("desligado, nao avisa", avisos().length === 0);
 
   secao("historico: pedidos do app a aba (tratadoresHistorico)");
   const docE = instalarDom(

@@ -23,14 +23,28 @@ import { contextoHistorico } from "./contexto";
 import { tratadoresHistorico } from "./executor";
 import { marcarAtivo } from "./marca";
 import { migrarSeNecessario } from "./migrar";
-import { criarControleModal } from "./modal";
+import { criarControleModal, ligarAvisoSemModal } from "./modal";
 
 marcarAtivo(document);
+
+// Janela de topo: o modal só liga com o contexto. Sem ele (ou com o principal interrompido antes), o legado
+// cede ao evento do mesmo jeito, porque o marcador existe; então o clique no item do menu mostra um aviso.
+let modalLigado = false;
+let avisoLigado = false;
+function semModal(): void {
+  if (window !== window.top || modalLigado || avisoLigado) return;
+  avisoLigado = true;
+  ligarAvisoSemModal(document);
+}
 
 const global = window as unknown as { __seiProHistorico?: boolean };
 if (!global.__seiProHistorico) {
   global.__seiProHistorico = true;
-  const iniciar = () => void principal().catch((e) => console.warn("[SEI Pro] histórico:", e));
+  const iniciar = () =>
+    void principal().catch((e) => {
+      console.warn("[SEI Pro] histórico:", e);
+      semModal();
+    });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar, { once: true });
   else iniciar();
 }
@@ -55,7 +69,10 @@ async function principal(): Promise<void> {
     },
     topo.location?.href,
   );
-  if (!ctx) return;
+  if (!ctx) {
+    semModal();
+    return;
+  }
   if (noTopo) ligarModal(ctx);
   const area = areaChrome(chrome.storage.local, "local");
   const repo = new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login));
@@ -86,6 +103,7 @@ async function principal(): Promise<void> {
 
 /** O item "Histórico de Processos Visitados" do menu (legado) dispara o evento; o modal é daqui. */
 function ligarModal(ctx: ContextoHistorico): void {
+  modalLigado = true;
   criarControleModal(document, {
     // O tema vai no endereço: o app já nasce com o esquema de cores do iframe (sem fundo opaco).
     urlApp: () => chrome.runtime.getURL(`html/historico.html#modo=modal&tema=${ctx.temaEscuro ? "escuro" : "claro"}`),
