@@ -15,8 +15,8 @@ import { filtrar, ordenar } from "@historico/modelo/operacoes";
 import type { Periodo } from "@historico/modelo/tipos";
 import { RepositorioHistorico } from "@historico/repositorio";
 import { s } from "../motor/esquema";
-import { varrerCamposLivres } from "../seguranca/injecao";
 import { definirTool, type DefTool } from "../motor/tools";
+import { varrerCamposLivres } from "../seguranca/injecao";
 
 let fonteArea: () => Area = () => areaChrome(chrome.storage.local, "local");
 // Mesma regra do content script e do app: a opção ausente (ou ilegível) conta como ligada.
