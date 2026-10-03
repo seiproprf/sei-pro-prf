@@ -649,6 +649,20 @@ export async function verificarApp(): Promise<void> {
   await tique();
   checar("'Copiar número' da linha", rm.copiados.at(-1) === "50300.000001/2026-01");
 
+  secao("historico app: no modal (app dentro do <dialog> aberto), o aviso mora no dialogo");
+  // Com showModal(), o que fica fora do diálogo é inerte: no body, o "Desfazer" não receberia o clique.
+  const rmd = await montar({}, { html: '<html><body><dialog open class="hist-modal"><div id="app"></div></dialog></body></html>' });
+  await rmd.app.iniciar();
+  const antesD = await rmd.repo.obter("2");
+  itemDoMenu(rmd.raiz.querySelector('li[data-id="2"]')!, "Mais ações para 50300.000002/2026-02", "Remover do histórico");
+  await tique(60);
+  const dlgModal = rmd.doc.querySelector("dialog.hist-modal")!;
+  const avisoD = rmd.doc.querySelector(".spro-aviso");
+  checar("aviso dentro do dialogo do app, nao no body", !!avisoD && dlgModal.contains(avisoD) && avisoD.parentElement !== rmd.doc.body);
+  botao(dlgModal, "Desfazer")!.click();
+  await tique(60);
+  checar("o Desfazer de dentro do dialogo devolve a visita", JSON.stringify(await rmd.repo.obter("2")) === JSON.stringify(antesD));
+
   secao("historico app: com Favoritos");
   const fv = favoritosFalsos(["1"]);
   const f = await montar({ favoritos: fv.f });

@@ -1,6 +1,7 @@
 import { resumo } from "./util";
 import { verificarAbertura } from "./verificar-abertura";
 import { verificarArmazenamento } from "./verificar-armazenamento";
+import { verificarAviso } from "./verificar-aviso";
 import { verificarCodec } from "./verificar-codec";
 import { verificarCombobox, verificarComboboxNoDialogo } from "./verificar-combobox";
 import { verificarDatas } from "./verificar-datas";
@@ -15,6 +16,7 @@ import { verificarUi } from "./verificar-ui";
 
 verificarDatas();
 verificarUi();
+verificarAviso();
 await verificarArmazenamento();
 verificarEntidade();
 await verificarOpcoes();

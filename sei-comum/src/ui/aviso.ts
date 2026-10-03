@@ -26,9 +26,34 @@ export function avisar(texto: string, acao?: AcaoAviso, ms = 7000): void {
   mostrarAviso(document, texto, acao, ms);
 }
 
+/**
+ * Onde o aviso mora: dentro do `<dialog>` modal aberto de cima, quando há um.
+ * Com `showModal()`, tudo fora do diálogo fica inerte: preso ao `body`, o
+ * "Desfazer" não recebe o clique (que atravessa para a linha de baixo ou cai
+ * no véu e fecha o modal). Mesma regra das listas flutuantes (flutuante.ts).
+ * Diálogo aberto com `show()` não torna nada inerte: aí o aviso fica no `body`.
+ * Sem `:modal` no navegador, vale o último `dialog[open]`.
+ */
+export function destinoDoAviso(doc: Document): HTMLElement {
+  const abertos = [...doc.querySelectorAll<HTMLDialogElement>("dialog[open]")];
+  let conheceModal = true;
+  const modais = abertos.filter((d) => {
+    try {
+      return d.matches(":modal");
+    } catch {
+      conheceModal = false;
+      return false;
+    }
+  });
+  const dialogo = modais.at(-1) ?? (conheceModal ? undefined : abertos.at(-1));
+  return dialogo ?? doc.body ?? doc.documentElement;
+}
+
 export function mostrarAviso(doc: Document, texto: string, acao: AcaoAviso | undefined, ms: number): HTMLElement {
-  const raiz = doc.body ?? doc.documentElement;
-  for (const velho of [...raiz.children]) if (velho.classList.contains("spro-aviso")) velho.remove();
+  const fundo = doc.body ?? doc.documentElement;
+  // Um aviso por vez, esteja o anterior no body ou num diálogo.
+  for (const lugar of [fundo, ...doc.querySelectorAll("dialog")])
+    for (const velho of [...lugar.children]) if (velho.classList.contains("spro-aviso")) velho.remove();
   const el: HTMLElement = h(
     "div",
     { class: "spro-aviso", role: "status" },
@@ -50,12 +75,32 @@ export function mostrarAviso(doc: Document, texto: string, acao: AcaoAviso | und
   );
   // Camada de cima (popover): por cima do véu de um diálogo aberto, e não escondido atrás dele.
   el.setAttribute("popover", "manual");
-  raiz.append(el);
-  try {
-    (el as HTMLElement & { showPopover?: () => void }).showPopover?.();
-  } catch {
-    /* navegador sem popover: fica como elemento fixo comum */
-  }
-  setTimeout(() => el.remove(), ms);
+  const mostrar = () => {
+    try {
+      (el as HTMLElement & { showPopover?: () => void }).showPopover?.();
+    } catch {
+      /* navegador sem popover: fica como elemento fixo comum */
+    }
+  };
+  const anexar = () => {
+    const destino = destinoDoAviso(doc);
+    destino.append(el);
+    mostrar();
+    // O diálogo fecha com o aviso na tela (o "Desfazer" ainda vale): o aviso desce para o próximo lugar.
+    if (destino.localName === "dialog")
+      destino.addEventListener(
+        "close",
+        () => {
+          if (vivo && destino.contains(el)) anexar();
+        },
+        { once: true },
+      );
+  };
+  let vivo = true;
+  anexar();
+  setTimeout(() => {
+    vivo = false;
+    el.remove();
+  }, ms);
   return el;
 }
