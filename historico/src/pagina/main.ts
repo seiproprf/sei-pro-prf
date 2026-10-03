@@ -21,6 +21,7 @@ import { RepositorioHistorico } from "../repositorio";
 import { capturarVisita } from "./captura";
 import { contextoHistorico } from "./contexto";
 import { tratadoresHistorico } from "./executor";
+import { ligarPainelLateral } from "./lateral";
 import { marcarAtivo } from "./marca";
 import { migrarSeNecessario } from "./migrar";
 import { criarControleModal, ligarAvisoSemModal } from "./modal";
@@ -75,6 +76,7 @@ async function principal(): Promise<void> {
   }
   if (noTopo) ligarModal(ctx);
   const area = areaChrome(chrome.storage.local, "local");
+  if (noTopo) ligarPainelLateral(ctx, area, tratadoresHistorico({ doc: document, ctx, armazenamento: localStorage }));
   const repo = new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login));
   if (arvore) {
     let arv: Arvore | null;

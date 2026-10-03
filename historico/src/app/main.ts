@@ -6,15 +6,18 @@
  * - modal (padrão, `#modo=modal&tema=claro|escuro`): iframe transparente sobre
  *   a tela do SEI, ligado à PRÓPRIA aba (pagina/modal.ts); o app mora num
  *   <dialog> com véu;
- * - lateral (`#modo=lateral`): dentro do painel lateral (Task 14).
+ * - lateral (`#modo=lateral`): dentro do painel lateral, ligado à aba do SEI que está na frente
+ *   nesta janela (ponte por host|login) e remontado só quando muda o SEI ou o login.
  */
 
 import { areaChrome } from "@comum/armazenamento/area";
+import { novoId } from "@comum/id";
 import { lerOpcaoLegada } from "@comum/opcoes/legadas";
 import { esperarConexaoDaAba } from "@comum/ponte/conexaoDaAba";
-import type { Rpc } from "@comum/ponte/rpc";
+import { PonteLateral } from "@comum/ponte/lateral";
+import { ErroRpc, type PortaRpc, type Rpc } from "@comum/ponte/rpc";
 import { h, icone } from "@comum/ui/dom";
-import { CANAL_HISTORICO, chaveEscopo } from "../modelo/constantes";
+import { CANAL_HISTORICO, CANAL_LATERAL, CHAVE_LATERAL, chaveEscopo } from "../modelo/constantes";
 import type { ContextoHistorico } from "../modelo/tipos";
 import { RepositorioHistorico } from "../repositorio";
 import { type AbrirModal, AppHistorico } from "./app";
@@ -33,8 +36,117 @@ const conexao = lateral ? null : esperarConexaoDaAba(CANAL_HISTORICO);
 
 const mensagem = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-if (lateral) raiz.replaceChildren(h("p", { class: "spro-lista-erro" }, "A barra lateral do histórico ainda não está disponível."));
+if (lateral)
+  void iniciarLateral().catch((e) =>
+    raiz.replaceChildren(h("p", { class: "spro-lista-erro" }, `Não foi possível abrir o histórico: ${mensagem(e)}`)),
+  );
 else void iniciarModal();
+
+/** O que o app precisa do navegador, igual nos dois modos. */
+function depsComuns(ctx: ContextoHistorico, area: ReturnType<typeof areaChrome>, rpc: Pick<Rpc, "chamar">) {
+  return {
+    ctx,
+    area,
+    repo: new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login)),
+    rpc,
+    // Task 15: a ponte com os Favoritos.
+    favoritos: null,
+    historicoLigado: () => lerOpcaoLegada("historicoproc"),
+    abrirModal,
+    confirmar,
+    baixar,
+    copiar: (texto: string) => navigator.clipboard.writeText(texto),
+    agora: () => Date.now(),
+    abrirOpcoes,
+  };
+}
+
+async function iniciarLateral(): Promise<void> {
+  const area = areaChrome(chrome.storage.local, "local");
+  // Opção desligada: o estado "desligado" direto, sem esperar aba (o app nem lê o repositório).
+  if (!(await lerOpcaoLegada("historicoproc"))) {
+    const vazio: ContextoHistorico = {
+      host: "",
+      login: "",
+      nome: "",
+      unidade: null,
+      versao: "",
+      temaEscuro: false,
+      favoritosAtivo: false,
+      lateralDisponivel: true,
+    };
+    await new AppHistorico(raiz, {
+      ...depsComuns(vazio, area, { chamar: () => Promise.reject(new ErroRpc("SEM_ABA", "O histórico está desligado.")) }),
+      modo: "lateral",
+    }).iniciar();
+    return;
+  }
+  let janela = -1;
+  try {
+    janela = (await chrome.windows.getCurrent()).id ?? -1;
+  } catch {
+    /* sidebar do Firefox: sem API de janelas, aceita qualquer aba */
+  }
+  const ponte = new PonteLateral({
+    area,
+    chave: CHAVE_LATERAL,
+    janela,
+    novoId: () => novoId(),
+    ouvirConexoes: (cb) =>
+      chrome.runtime.onConnect.addListener((porta) => {
+        // Portas de outros canais (o modal, o agente) não são deste painel.
+        if (porta.name === CANAL_LATERAL) cb(porta as unknown as PortaRpc, porta.sender ?? {});
+      }),
+  });
+  let montado: { chave: string; app: AppHistorico } | null = null;
+  // O rpc fala com uma aba do mesmo SEI e login da lista montada: trocar de aba ou de unidade
+  // não remonta nada, e um pedido nunca vai para outro SEI ou outro usuário.
+  const rpc: Pick<Rpc, "chamar"> = {
+    chamar: <T>(op: string, args?: unknown, prazo?: number) => {
+      const a = ponte.daChave(montado?.chave ?? "");
+      return a
+        ? a.rpc.chamar<T>(op, args, prazo)
+        : Promise.reject(
+            new ErroRpc("SEM_ABA", "A aba do SEI deste histórico não está mais aberta nesta janela. Abra o SEI e tente de novo."),
+          );
+    },
+  };
+  const semAba = h(
+    "div",
+    { class: "spro-lista-sem-aba" },
+    icone("historico", 28),
+    h("p", {}, "Abra o SEI nesta janela para ver seu histórico."),
+    h("p", { class: "spro-lista-dica" }, "Se o SEI já está aberto e nada aparece, recarregue a página dele (F5)."),
+  );
+  let fila = Promise.resolve();
+  const reagir = () => {
+    fila = fila
+      .then(async () => {
+        const a = ponte.atual();
+        const chave = a?.chave ?? "";
+        if (montado && montado.chave === chave) return;
+        montado?.app.destruir();
+        montado = null;
+        if (!a) {
+          raiz.replaceChildren(semAba);
+          return;
+        }
+        const ctx = await a.rpc.chamar<ContextoHistorico>("contexto");
+        // A aba pode ter mudado enquanto o contexto chegava: a próxima volta da fila corrige.
+        if (chaveEscopo(ctx.host, ctx.login) !== chave) return;
+        const app = new AppHistorico(raiz, { ...depsComuns(ctx, area, rpc), modo: "lateral" });
+        montado = { chave, app };
+        await app.iniciar();
+      })
+      .catch((e) => raiz.replaceChildren(h("p", { class: "spro-lista-erro" }, `Não foi possível abrir o histórico: ${mensagem(e)}`)));
+  };
+  raiz.replaceChildren(h("p", { class: "spro-lista-dica" }, "Procurando o SEI nesta janela…"));
+  ponte.aoMudar(reagir);
+  await ponte.iniciar();
+  addEventListener("pagehide", () => void ponte.encerrar());
+  // As abas que já estão abertas conectam ao ver o anúncio; se nenhuma vier, avisa.
+  setTimeout(reagir, 1500);
+}
 
 async function iniciarModal(): Promise<void> {
   const dlg = h("dialog", { class: "spro-dialogo hist-modal", "aria-label": "Histórico de processos visitados" });
@@ -83,22 +195,10 @@ async function iniciarModal(): Promise<void> {
     }
     const area = areaChrome(chrome.storage.local, "local");
     app = new AppHistorico(raiz, {
+      ...depsComuns(ctx, area, rpc),
       modo: "modal",
-      ctx,
-      area,
-      repo: new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login)),
-      rpc,
-      // Task 15: a ponte com os Favoritos.
-      favoritos: null,
-      historicoLigado: () => lerOpcaoLegada("historicoproc"),
-      abrirModal,
-      confirmar,
-      baixar,
-      copiar: (texto) => navigator.clipboard.writeText(texto),
-      agora: () => Date.now(),
       fechar: () => dlg.close(),
       abrirLateral: ctx.lateralDisponivel ? () => abrirLateral(dlg) : undefined,
-      abrirOpcoes,
     });
     // Avisos: os do próprio app (sem emissor). O iframe cobre a tela, então já ficam no rodapé dela.
     mostrar();
