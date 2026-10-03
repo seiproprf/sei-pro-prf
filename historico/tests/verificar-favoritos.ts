@@ -1,7 +1,7 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { escoposDoContexto } from "@favoritos/modelo/escopo";
 import { RepositorioFavoritos } from "@favoritos/repositorio";
-import { favoritosDoApp } from "../src/app/favoritos";
+import { favoritosDoApp, precisaRemontar } from "../src/app/favoritos";
 import type { ContextoHistorico, Visita } from "../src/modelo/tipos";
 import { checar, secao } from "./util";
 
@@ -81,4 +81,41 @@ export async function verificarFavoritos(): Promise<void> {
   const semUnidade = favoritosDoApp(area, ctx({ unidade: null }), carimbo)!;
   const p = await semUnidade.favoritar(visita("7"));
   checar("sem unidade grava na Pessoal", p.lista === "Pessoal" && (await pessoal.contem("7")));
+
+  secao("historico: favoritos nas duas listas, lixeira e silencio");
+  const a2 = areaMemoria();
+  const f2 = favoritosDoApp(a2, ctx(), carimbo)!;
+  const e2 = escoposDoContexto({ ...ctx(), login: "ana" });
+  const g2 = new RepositorioFavoritos(a2, e2.unidade!, carimbo);
+  const p2 = new RepositorioFavoritos(a2, e2.pessoal, carimbo);
+  await g2.adicionar({ id: "9", protocolo: "9" });
+  await p2.adicionar({ id: "9", protocolo: "9" });
+  const tt = await f2.tirar("9");
+  checar(
+    "tirar de quem esta nas duas listas apaga a estrela",
+    !!tt && !(await f2.ids()).has("9") && !(await g2.contem("9")) && !(await p2.contem("9")),
+  );
+  await tt!.desfazer();
+  checar("desfazer restaura nas duas listas", (await g2.contem("9")) && (await p2.contem("9")));
+
+  await g2.adicionar({ id: "10", protocolo: "10" });
+  await g2.remover(["10"]);
+  checar("na lixeira nao conta em ids", !(await f2.ids()).has("10"));
+  const rf = await f2.favoritar(visita("10"));
+  checar("re-favoritar o que estava na lixeira volta a ids", (await f2.ids()).has("10"));
+  await rf.desfazer();
+  checar("desfazer devolve para a lixeira", !(await f2.ids()).has("10") && (await g2.obter("10")) !== undefined);
+
+  const a3 = areaMemoria();
+  const f3 = favoritosDoApp(a3, ctx(), carimbo)!;
+  await f3.ids();
+  f3.aoMudar(() => undefined)();
+  checar("nada e gravado antes da primeira acao do usuario", Object.keys(await a3.obter(null)).length === 0);
+
+  secao("historico: remontar a lateral");
+  const m = { chave: "h|ana", unidadeId: "u1" };
+  checar("sem nada montado remonta", precisaRemontar(null, "h|ana", "u1"));
+  checar("mesma chave e unidade nao remonta", !precisaRemontar(m, "h|ana", "u1"));
+  checar("outra unidade remonta", precisaRemontar(m, "h|ana", "u2"));
+  checar("outro login remonta", precisaRemontar(m, "h|bia", "u1"));
 }

@@ -22,7 +22,7 @@ import { CANAL_HISTORICO, CANAL_LATERAL, CHAVE_LATERAL, chaveEscopo } from "../m
 import type { ContextoHistorico } from "../modelo/tipos";
 import { RepositorioHistorico } from "../repositorio";
 import { type AbrirModal, AppHistorico } from "./app";
-import { favoritosDoApp } from "./favoritos";
+import { favoritosDoApp, precisaRemontar } from "./favoritos";
 
 const parametros = new URLSearchParams(location.hash.slice(1));
 const lateral = parametros.get("modo") === "lateral";
@@ -101,7 +101,7 @@ async function iniciarLateral(): Promise<void> {
         if (porta.name === CANAL_LATERAL) cb(porta as unknown as PortaRpc, porta.sender ?? {});
       }),
   });
-  let montado: { chave: string; app: AppHistorico } | null = null;
+  let montado: { chave: string; unidadeId: string; app: AppHistorico } | null = null;
   // O rpc fala com uma aba do mesmo SEI e login da lista montada: trocar de aba ou de unidade
   // não remonta nada, e um pedido nunca vai para outro SEI ou outro usuário.
   const rpc: Pick<Rpc, "chamar"> = {
@@ -127,18 +127,30 @@ async function iniciarLateral(): Promise<void> {
       .then(async () => {
         const a = ponte.atual();
         const chave = a?.chave ?? "";
-        if (montado && montado.chave === chave) return;
-        montado?.app.destruir();
-        montado = null;
+        if (montado && montado.chave !== chave) {
+          montado.app.destruir();
+          montado = null;
+        }
         if (!a) {
           raiz.replaceChildren(semAba);
           return;
         }
-        const ctx = await a.rpc.chamar<ContextoHistorico>("contexto");
+        let ctx: ContextoHistorico;
+        try {
+          ctx = await a.rpc.chamar<ContextoHistorico>("contexto");
+        } catch (e) {
+          // Mesmo SEI e login já montado: a falha não derruba a lista que está na tela.
+          if (montado) return;
+          throw e;
+        }
         // A aba pode ter mudado enquanto o contexto chegava: a próxima volta da fila corrige.
         if (chaveEscopo(ctx.host, ctx.login) !== chave) return;
+        // Mesmo SEI e login, mas outra unidade (o SEI recarrega a página): as listas dos Favoritos são da unidade.
+        const unidadeId = ctx.unidade?.id ?? "";
+        if (!precisaRemontar(montado ? { chave: montado.chave, unidadeId: montado.unidadeId } : null, chave, unidadeId)) return;
+        montado?.app.destruir();
         const app = new AppHistorico(raiz, { ...depsComuns(ctx, area, rpc, dispositivo), modo: "lateral" });
-        montado = { chave, app };
+        montado = { chave, unidadeId, app };
         await app.iniciar();
       })
       .catch((e) => raiz.replaceChildren(h("p", { class: "spro-lista-erro" }, `Não foi possível abrir o histórico: ${mensagem(e)}`)));

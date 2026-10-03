@@ -11,6 +11,11 @@ import { RepositorioFavoritos } from "@favoritos/repositorio";
 import type { ContextoHistorico } from "../modelo/tipos";
 import type { FavoritosDoApp } from "./app";
 
+/** Lateral: remonta quando muda o SEI/login (chave) ou a unidade, porque o adaptador é amarrado à lista da unidade. */
+export function precisaRemontar(montado: { chave: string; unidadeId: string } | null, chave: string, unidadeId: string): boolean {
+  return !montado || montado.chave !== chave || montado.unidadeId !== unidadeId;
+}
+
 export function favoritosDoApp(area: Area, ctx: ContextoHistorico, carimbo: () => Carimbo): FavoritosDoApp | null {
   if (!ctx.favoritosAtivo) return null;
   const ctxFav: ContextoAba = {
@@ -43,12 +48,16 @@ export function favoritosDoApp(area: Area, ctx: ContextoHistorico, carimbo: () =
       return { lista: rotuloDaLista(repo.escopo), desfazer: async () => void (await repo.remover([v.id])) };
     },
     async tirar(id) {
-      for (const repo of repos) {
-        if (!(await repo.contem(id))) continue;
-        await repo.remover([id]);
-        return { desfazer: async () => void (await repo.restaurar([id])) };
-      }
-      return null;
+      // Em uma só lista ou nas duas: a estrela apaga com um clique.
+      const onde: RepositorioFavoritos[] = [];
+      for (const repo of repos) if (await repo.contem(id)) onde.push(repo);
+      if (!onde.length) return null;
+      for (const repo of onde) await repo.remover([id]);
+      return {
+        desfazer: async () => {
+          for (const repo of onde) await repo.restaurar([id]);
+        },
+      };
     },
     aoMudar(cb) {
       const parar = repos.map((r) => r.aoMudar(cb));
