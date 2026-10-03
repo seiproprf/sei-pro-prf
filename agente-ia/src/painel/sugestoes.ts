@@ -11,6 +11,7 @@
  */
 
 import type { TelaAtual } from "../motor/motor";
+import { historicoInstalado } from "../tools/historico";
 
 export interface Sugestao {
   rotulo: string;
@@ -132,6 +133,13 @@ export const SUGESTOES: Sugestao[] = [
     cabe: naCaixa,
     prompt: () =>
       "O que mudou nos meus favoritos? Liste os que t\u00EAm novidade ou lembrete para hoje e, de cada um, diga o que mudou e o que parece pedir a\u00E7\u00E3o.",
+  },
+  {
+    rotulo: "Processos que vi esta semana",
+    descricao: "do hist\u00F3rico do SEI Pro",
+    cabe: (t) => naCaixa(t) && historicoInstalado(),
+    prompt: () =>
+      "Liste os processos que visitei nos \u00FAltimos 7 dias, do mais recente ao mais antigo, com tipo e especifica\u00E7\u00E3o, e diga quais parecem pedir a\u00E7\u00E3o minha.",
   },
   {
     rotulo: "Panorama da caixa",

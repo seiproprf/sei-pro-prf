@@ -32,10 +32,12 @@ import { verificarColecaoDeFluxos } from "./verificar-colecao-fluxos";
 import { verificarEditarConteudo } from "./verificar-editar-conteudo";
 import { verificarFaixaDeFluxo } from "./verificar-faixa";
 import { verificarFavoritosTool } from "./verificar-favoritos-tool";
+import { verificarHistoricoTool } from "./verificar-historico-tool";
 import { resumo } from "./util";
 
 await verificarMotor();
 await verificarFavoritosTool();
+await verificarHistoricoTool();
 await verificarProvedor();
 await verificarErro429();
 await verificarSkills();

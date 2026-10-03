@@ -16,6 +16,7 @@
       "@nucleo/*": ["../sei-nucleo/src/*"],
       "@comum/*": ["../sei-comum/src/*"],
       "@favoritos/*": ["../favoritos/src/*"],
+      "@historico/*": ["../historico/src/*"],
       "@tarjar/*": ["../ferramentas-pdf/src/lib/*"],
       "@/*": ["../ferramentas-pdf/src/*"]
     }
