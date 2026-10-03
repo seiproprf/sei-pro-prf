@@ -23,3 +23,5 @@ export const escopoValido = (escopo: string): boolean => {
 };
 export const prefixoVisitas = (escopo: string): string => `historico/${escopo}/v/`;
 export const chaveMeta = (escopo: string): string => `historico/${escopo}/meta`;
+/** Marca por SEI de que o histórico antigo (localStorage, um por SEI) já foi trazido: `{ em, login }`. */
+export const chaveMigracao = (host: string): string => `historico/migracao/${host}`;

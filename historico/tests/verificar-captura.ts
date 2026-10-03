@@ -1,10 +1,11 @@
 import { areaMemoria } from "@comum/armazenamento/area";
 import { type Arvore, lerArvore } from "@nucleo/dominio/arvore";
 import { DOMParser } from "linkedom";
-import { LEGADO_CHAVE } from "../src/modelo/constantes";
+import { chaveMigracao, LEGADO_CHAVE } from "../src/modelo/constantes";
 import { capturarVisita, type DepsCaptura } from "../src/pagina/captura";
 import { contextoHistorico } from "../src/pagina/contexto";
 import { migrarSeNecessario } from "../src/pagina/migrar";
+import { gravarPreferencias } from "../src/preferencias";
 import { RepositorioHistorico } from "../src/repositorio";
 import { checar, secao, telaSei } from "./util";
 
@@ -90,23 +91,79 @@ export async function verificarCaptura(): Promise<void> {
     { datetime: "2024-03-05 14:07:09", id_procedimento: "11", protocolo: "50300.000011/2024-00", nivel_acesso: "0" },
     { datetime: "2024-03-06 14:07:09", id_procedimento: "12", protocolo: "50300.000012/2024-00", nivel_acesso: "0" },
   ]);
-  let r = new RepositorioHistorico(areaMemoria(), "h|u");
+  let am = areaMemoria();
+  let r = new RepositorioHistorico(am, "h|u");
   let s = armazenamentoFalso();
+  const dm = (area = am, login = "u", host = "h") => ({ area, host, login });
   checar(
     "sem chave antiga grava migradoEm e devolve null",
-    (await migrarSeNecessario(r, s, 5)) === null && (await r.meta()).migradoEm === 5,
+    (await migrarSeNecessario(r, s, dm(), 5)) === null && (await r.meta()).migradoEm === 5,
   );
-  r = new RepositorioHistorico(areaMemoria(), "h|u");
+  am = areaMemoria();
+  r = new RepositorioHistorico(am, "h|u");
   s = armazenamentoFalso({ [LEGADO_CHAVE]: lista });
-  checar("com 2 itens importa 2", (await migrarSeNecessario(r, s, 7)) === 2 && (await r.contar()) === 2);
+  checar("com 2 itens importa 2", (await migrarSeNecessario(r, s, dm(), 7)) === 2 && (await r.contar()) === 2);
   checar(
     "grava migradoEm e migrados e mantem a chave antiga",
     (await r.meta()).migrados === 2 && (await r.meta()).migradoEm === 7 && s.tem(LEGADO_CHAVE),
   );
-  checar("segunda chamada devolve null sem reimportar", (await migrarSeNecessario(r, s, 9)) === null && (await r.meta()).migradoEm === 7);
+  checar(
+    "segunda chamada devolve null sem reimportar",
+    (await migrarSeNecessario(r, s, dm(), 9)) === null && (await r.meta()).migradoEm === 7,
+  );
   await r.gravarMeta({ apagarLegado: true });
-  await migrarSeNecessario(r, s, 9);
+  await migrarSeNecessario(r, s, dm(), 9);
   checar("apagarLegado remove a chave e limpa a flag", !s.tem(LEGADO_CHAVE) && !(await r.meta()).apagarLegado);
+
+  secao("historico: migracao, quem abrir primeiro herda tudo (marca por SEI)");
+  const ah = areaMemoria();
+  const sh = armazenamentoFalso({ [LEGADO_CHAVE]: lista });
+  const ana = new RepositorioHistorico(ah, "sei.x.gov.br|ana");
+  checar("o primeiro login importa", (await migrarSeNecessario(ana, sh, dm(ah, "ana", "sei.x.gov.br"), 10)) === 2);
+  const marca = (await ah.obter(chaveMigracao("sei.x.gov.br")))[chaveMigracao("sei.x.gov.br")] as { em?: number; login?: string };
+  checar("marca o SEI com quando e quem", marca?.em === 10 && marca.login === "ana", marca);
+  const bia = new RepositorioHistorico(ah, "sei.x.gov.br|bia");
+  checar(
+    "o segundo login do mesmo SEI nao reimporta",
+    (await migrarSeNecessario(bia, sh, dm(ah, "bia", "sei.x.gov.br"), 11)) === null && (await bia.contar()) === 0,
+  );
+  checar(
+    "mas grava migradoEm no proprio meta (sem migrados)",
+    (await bia.meta()).migradoEm === 11 && (await bia.meta()).migrados === undefined,
+    await bia.meta(),
+  );
+  checar("a lista antiga continua (so o pedido de apagar a tira)", sh.tem(LEGADO_CHAVE));
+  const outroSei = new RepositorioHistorico(ah, "sei.y.gov.br|bia");
+  checar(
+    "outro SEI (outro localStorage) importa o seu",
+    (await migrarSeNecessario(outroSei, armazenamentoFalso({ [LEGADO_CHAVE]: lista }), dm(ah, "bia", "sei.y.gov.br"), 12)) === 2,
+  );
+
+  secao("historico: migracao com o registro pausado");
+  const ap = areaMemoria();
+  await gravarPreferencias(ap, { registrar: false });
+  const sp = armazenamentoFalso({ [LEGADO_CHAVE]: lista });
+  const rp = new RepositorioHistorico(ap, "h|u");
+  checar("pausado: nao importa", (await migrarSeNecessario(rp, sp, dm(ap), 20)) === null && (await rp.contar()) === 0);
+  checar(
+    "nem marca nada (fica para quando retomar)",
+    (await rp.meta()).migradoEm === undefined && !(chaveMigracao("h") in (await ap.obter(null))) && sp.tem(LEGADO_CHAVE),
+  );
+  await gravarPreferencias(ap, { registrar: true });
+  checar("retomado: importa", (await migrarSeNecessario(rp, sp, dm(ap), 21)) === 2 && (await rp.meta()).migradoEm === 21);
+  const apg = areaMemoria();
+  await gravarPreferencias(apg, { registrar: false });
+  const spg = armazenamentoFalso({ [LEGADO_CHAVE]: lista });
+  const rpg = new RepositorioHistorico(apg, "h|u");
+  // "Apagar tudo" no painel sem a aba, com a migracao ainda adiada pela pausa: o antigo sai e nunca volta.
+  await rpg.gravarMeta({ apagarLegado: true });
+  await migrarSeNecessario(rpg, spg, dm(apg), 22);
+  checar("pausado com pedido de apagar: a chave antiga sai mesmo assim", !spg.tem(LEGADO_CHAVE) && !(await rpg.meta()).apagarLegado);
+  await gravarPreferencias(apg, { registrar: true });
+  checar(
+    "e ao retomar nada do antigo e importado",
+    (await migrarSeNecessario(rpg, spg, dm(apg), 23)) === null && (await rpg.contar()) === 0,
+  );
 
   secao("historico: contexto");
   const caixa = telaSei("sei41/caixa.html");

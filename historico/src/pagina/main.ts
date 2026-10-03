@@ -100,7 +100,10 @@ async function principal(): Promise<void> {
       }).catch((e) => console.warn("[SEI Pro] histórico: captura", e));
     }
   }
-  if (noTopo) void migrarSeNecessario(repo, localStorage).catch((e) => console.warn("[SEI Pro] histórico: migração", e));
+  if (noTopo)
+    void migrarSeNecessario(repo, localStorage, { area, host: ctx.host, login: ctx.login }).catch((e) =>
+      console.warn("[SEI Pro] histórico: migração", e),
+    );
 }
 
 /** O item "Histórico de Processos Visitados" do menu (legado) dispara o evento; o modal é daqui. */
