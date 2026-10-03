@@ -643,8 +643,9 @@ export class AppHistorico {
       itens: () => {
         const apagar = { rotulo: "Apagar histórico…", icone: "lixeira" as const, perigo: true, fazer: () => this.abrirApagar() };
         const opcoes = { rotulo: "Opções do SEI Pro", icone: "ajustes" as const, fazer: () => this.d.abrirOpcoes() };
-        // Desligado, a lista nem é lida: só apagar o que ficou e ir às opções.
-        if (!this.ligado) return [apagar, "-", opcoes];
+        // Desligado, a lista nem é lida: só apagar o que ficou e ir às opções. No painel lateral
+        // desligado não há SEI nem login (escopo "|"): não há o que apagar, só as opções.
+        if (!this.ligado) return this.d.repo.valido ? [apagar, "-", opcoes] : [opcoes];
         const filtradas = this.filtradas();
         return [
           { rotulo: "Exportar CSV", icone: "planilha", desativado: !filtradas.length, fazer: () => this.baixarCsv(filtradas) },
@@ -683,18 +684,26 @@ export class AppHistorico {
     if (p === "tudo") {
       // A chave antiga mora no localStorage da página do SEI: a aba apaga. Sem a aba (lateral
       // sem SEI, porta caída), fica a pendência na meta e o content script apaga na próxima tela.
+      let legado: "apagado" | "ausente" | "pendente" = "ausente";
       try {
-        await this.d.rpc.chamar("apagarLegado", undefined, 5000);
+        legado = (await this.d.rpc.chamar<boolean>("apagarLegado", undefined, 5000)) ? "apagado" : "ausente";
       } catch {
-        try {
-          await this.d.repo.gravarMeta({ apagarLegado: true });
-        } catch (e) {
-          console.warn("[SEI Pro] histórico: pendência de apagar o histórico antigo não gravada", e);
-          avisar("Histórico apagado, mas o histórico antigo do SEI não foi apagado.");
-          return;
+        // Sem SEI nem login não há meta onde deixar a pendência (nem histórico antigo a apagar).
+        if (this.d.repo.valido) {
+          try {
+            await this.d.repo.gravarMeta({ apagarLegado: true });
+            legado = "pendente";
+          } catch (e) {
+            console.warn("[SEI Pro] histórico: pendência de apagar o histórico antigo não gravada", e);
+            avisar(n ? "Histórico apagado, mas o histórico antigo do SEI não foi apagado." : "O histórico antigo do SEI não foi apagado.");
+            return;
+          }
         }
       }
-      avisar("Histórico apagado");
+      // "Apagado" só quando algo saiu.
+      if (n || legado === "apagado") avisar("Histórico apagado");
+      else if (legado === "pendente") avisar("O histórico antigo do SEI será apagado na próxima vez que você abrir o SEI.");
+      else avisar("Nada para apagar.");
       return;
     }
     avisar(n ? `Histórico apagado: ${processos(n)}` : "Nenhum processo nesse período");

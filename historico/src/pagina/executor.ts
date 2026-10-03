@@ -12,7 +12,7 @@ import type { ContextoHistorico } from "../modelo/tipos";
 export interface DepsExecutor {
   doc: Document;
   ctx: ContextoHistorico;
-  armazenamento: Pick<Storage, "removeItem">;
+  armazenamento: Pick<Storage, "getItem" | "removeItem">;
   /** Só no modal: tira o iframe da tela. */
   fechar?: () => void;
 }
@@ -30,9 +30,11 @@ export function tratadoresHistorico(d: DepsExecutor): Record<string, Tratador> {
       return true;
     },
     // Sem acesso ao localStorage, o erro volta ao app, que grava a pendência na meta.
+    // Devolve se havia o que apagar: sem nada, o app não diz "apagado".
     apagarLegado: () => {
+      const havia = d.armazenamento.getItem(LEGADO_CHAVE) !== null;
       d.armazenamento.removeItem(LEGADO_CHAVE);
-      return true;
+      return havia;
     },
   };
 }

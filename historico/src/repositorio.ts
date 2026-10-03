@@ -1,6 +1,6 @@
 import type { Area } from "@comum/armazenamento/area";
 import { Colecao } from "@comum/armazenamento/colecao";
-import { chaveMeta, prefixoVisitas } from "./modelo/constantes";
+import { chaveMeta, escopoValido, prefixoVisitas } from "./modelo/constantes";
 import { inicioDoDia } from "./modelo/dias";
 import type { DadosCompletos, DadosVisita, MetaHistorico, PeriodoApagar, Visita } from "./modelo/tipos";
 import { aPodar, completar, mesclarMigrada, registrar, semDadosSensiveis, visitaValida } from "./modelo/visita";
@@ -24,6 +24,10 @@ export class RepositorioHistorico {
   ) {
     this.col = new Colecao<Visita>(area, prefixoVisitas(escopo));
     this.kMeta = chaveMeta(escopo);
+  }
+  /** Escopo com SEI e login: só com ele a meta é gravada. */
+  get valido(): boolean {
+    return escopoValido(this.escopo);
   }
   async listar(): Promise<Visita[]> {
     return (await this.col.listar()).filter(visitaValida).map((v) => ({ ...v, unidades: Array.isArray(v.unidades) ? v.unidades : [] }));
@@ -85,6 +89,11 @@ export class RepositorioHistorico {
     return v && typeof v === "object" ? { ...(v as MetaHistorico) } : {};
   }
   async gravarMeta(m: Partial<MetaHistorico>): Promise<MetaHistorico> {
+    // Sem SEI ou sem login (painel com o histórico desligado), a chave seria "historico/|/meta": recusa.
+    if (!this.valido) {
+      console.warn("[SEI Pro] histórico: meta não gravada, escopo inválido", JSON.stringify(this.escopo));
+      return {};
+    }
     const nova: Record<string, unknown> = { ...(await this.meta()), ...m };
     for (const k of Object.keys(nova)) if (nova[k] === undefined) delete nova[k];
     await this.area.gravar({ [this.kMeta]: nova });

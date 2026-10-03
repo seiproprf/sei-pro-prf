@@ -137,6 +137,8 @@ interface OpcoesMontar {
   meta?: Partial<MetaHistorico>;
   lateral?: boolean;
   html?: string;
+  /** Outro contexto (o painel com o histórico desligado monta com host e login vazios). */
+  ctx?: ContextoHistorico;
 }
 
 async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
@@ -157,7 +159,8 @@ async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
       };
     },
   };
-  const repo = new RepositorioHistorico(area, chaveEscopo(CTX.host, CTX.login));
+  const ctx = o.ctx ?? CTX;
+  const repo = new RepositorioHistorico(area, chaveEscopo(ctx.host, ctx.login));
   await repo.importar(o.visitas ?? CINCO);
   if (o.meta) await repo.gravarMeta(o.meta);
   const chamadas: Array<[string, unknown]> = [];
@@ -165,7 +168,7 @@ async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
   const baixados: Array<{ nome: string; conteudo: string; tipo: string }> = [];
   const copiados: string[] = [];
   const confirmados: Array<[string, string | undefined]> = [];
-  const t = { resposta: true, rejeitar: new Set<string>(), fechou: 0, opcoes: 0, lateral: 0 };
+  const t = { resposta: true, rejeitar: new Set<string>(), respostas: new Map<string, unknown>(), fechou: 0, opcoes: 0, lateral: 0 };
   const abrirModal: AbrirModal = (m) => {
     const reg = { titulo: m.titulo, conteudo: m.conteudo, fechado: false };
     modais.push(reg);
@@ -181,14 +184,14 @@ async function montar(extra: Partial<DepsApp> = {}, o: OpcoesMontar = {}) {
   };
   const deps: DepsApp = {
     modo: "modal",
-    ctx: CTX,
+    ctx,
     area,
     repo,
     rpc: {
       chamar: (async (op: string, args?: unknown) => {
         chamadas.push([op, args]);
         if (t.rejeitar.has(op)) throw new Error(`Falhou: ${op}`);
-        return true;
+        return t.respostas.has(op) ? t.respostas.get(op) : true;
       }) as DepsApp["rpc"]["chamar"],
     },
     favoritos: null,
@@ -572,6 +575,39 @@ export async function verificarApp(): Promise<void> {
     avisosAp3,
   );
 
+  secao("historico app: 'Tudo' sem nada para apagar nao diz 'apagado'");
+  const nada = await montar({}, { visitas: [] });
+  nada.t.respostas.set("apagarLegado", false);
+  await nada.app.iniciar();
+  itemDoMenu(nada.raiz, MENU, "Apagar histórico…");
+  await tique(20);
+  marcar(nada.modais.at(-1)!.conteudo.querySelector('input[value="tudo"]'));
+  botao(nada.modais.at(-1)!.conteudo, "Apagar")!.click();
+  await tique(80);
+  checar("0 removidos e legado ausente: 'Nada para apagar.'", textoAviso(nada.doc) === "Nada para apagar.", textoAviso(nada.doc));
+  const soLegado = await montar({}, { visitas: [] });
+  await soLegado.app.iniciar();
+  itemDoMenu(soLegado.raiz, MENU, "Apagar histórico…");
+  await tique(20);
+  marcar(soLegado.modais.at(-1)!.conteudo.querySelector('input[value="tudo"]'));
+  botao(soLegado.modais.at(-1)!.conteudo, "Apagar")!.click();
+  await tique(80);
+  checar("0 removidos mas o legado saiu: 'Histórico apagado'", textoAviso(soLegado.doc) === "Histórico apagado", textoAviso(soLegado.doc));
+  const pend = await montar({}, { visitas: [] });
+  pend.t.rejeitar.add("apagarLegado");
+  await pend.app.iniciar();
+  itemDoMenu(pend.raiz, MENU, "Apagar histórico…");
+  await tique(20);
+  marcar(pend.modais.at(-1)!.conteudo.querySelector('input[value="tudo"]'));
+  botao(pend.modais.at(-1)!.conteudo, "Apagar")!.click();
+  await tique(80);
+  checar(
+    "0 removidos e sem a aba: diz que o antigo sai depois, sem 'apagado'",
+    (await pend.repo.meta()).apagarLegado === true &&
+      textoAviso(pend.doc) === "O histórico antigo do SEI será apagado na próxima vez que você abrir o SEI.",
+    textoAviso(pend.doc),
+  );
+
   secao("historico app: faixa de migracao");
   const mg = await montar({}, { meta: { migrados: 7 } });
   await mg.app.iniciar();
@@ -596,6 +632,28 @@ export async function verificarApp(): Promise<void> {
   await ds.repo.registrarVisita({ id: "9", protocolo: "9/2026" }, AGORA);
   await tique(60);
   checar("desligado nao reage ao storage", ids(ds.raiz) === "");
+  checar("desligado com o SEI e o login conhecidos (modal): ainda oferece apagar", itemDoMenu(ds.raiz, MENU, "Apagar histórico…"));
+
+  secao("historico app: painel lateral com o historico desligado (sem contexto)");
+  const VAZIO: ContextoHistorico = { ...CTX, host: "", login: "", nome: "", unidade: null, versao: "" };
+  const dl0 = await montar(
+    {
+      modo: "lateral",
+      historicoLigado: async () => false,
+      rpc: { chamar: (() => Promise.reject(new Error("O histórico está desligado."))) as DepsApp["rpc"]["chamar"] },
+    },
+    { ctx: VAZIO, visitas: [] },
+  );
+  await dl0.app.iniciar();
+  checar("escopo vazio ('|'): o menu nao oferece 'Apagar histórico…'", !itemDoMenu(dl0.raiz, MENU, "Apagar histórico…"));
+  checar("so 'Opções do SEI Pro'", itemDoMenu(dl0.raiz, MENU, "Opções do SEI Pro") && dl0.t.opcoes === 1);
+  // Defesa: mesmo chamado por fora do menu, nada é gravado nem dito "apagado".
+  const avisosDl0 = await avisosDoConsole(async () => {
+    await (dl0.app as unknown as { apagar(p: string): Promise<void> }).apagar("tudo");
+    await tique(20);
+  });
+  checar("nenhuma meta com escopo invalido", Object.keys(await dl0.area.obter(null)).length === 0, await dl0.area.obter(null));
+  checar("e o aviso e 'Nada para apagar.'", textoAviso(dl0.doc) === "Nada para apagar.", [textoAviso(dl0.doc), avisosDl0]);
 
   secao("historico app: ao vivo");
   const av = await montar();

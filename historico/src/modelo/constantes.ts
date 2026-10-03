@@ -12,5 +12,10 @@ export const MAX_UNIDADES = 10;
 export const MAX_LISTA = 50;
 export const PAGINA_LISTA = 200;
 export const chaveEscopo = (host: string, login: string): string => `${host}|${login.trim().toLowerCase()}`;
+/** host|login com as duas partes. Sem elas (o painel com o histórico desligado monta com "|"), nada é gravado. */
+export const escopoValido = (escopo: string): boolean => {
+  const i = escopo.indexOf("|");
+  return i > 0 && i < escopo.length - 1;
+};
 export const prefixoVisitas = (escopo: string): string => `historico/${escopo}/v/`;
 export const chaveMeta = (escopo: string): string => `historico/${escopo}/meta`;

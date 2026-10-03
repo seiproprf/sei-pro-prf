@@ -120,6 +120,34 @@ export async function verificarRepositorio(): Promise<void> {
   const m3 = await rm.gravarMeta({ apagarLegado: undefined });
   checar("undefined apaga o campo", !("apagarLegado" in m3) && !("apagarLegado" in (await rm.meta())) && m3.migradoEm === 1);
 
+  secao("historico: escopo invalido (host ou login vazio) nunca grava meta");
+  checar("escopo com host e login e valido", new RepositorioHistorico(areaMemoria(), ESCOPO).valido);
+  for (const ruim of ["|", "sei.x.gov.br|", "|ana", ""]) {
+    const ai = areaMemoria();
+    const ri = new RepositorioHistorico(ai, ruim);
+    const avisos: string[] = [];
+    const original = console.warn;
+    console.warn = (...a: unknown[]) => void avisos.push(a.map(String).join(" "));
+    let erro: unknown = null;
+    try {
+      await ri.gravarMeta({ apagarLegado: true });
+    } catch (e) {
+      erro = e;
+    } finally {
+      console.warn = original;
+    }
+    checar(
+      `"${ruim}": invalido, recusa em silencio (sem lancar) e nada gravado`,
+      !ri.valido && erro === null && Object.keys(await ai.obter(null)).length === 0,
+      await ai.obter(null),
+    );
+    checar(
+      `"${ruim}": deixa o motivo no console`,
+      avisos.some((a) => a.includes("escopo")),
+      avisos,
+    );
+  }
+
   secao("historico: aoMudar e valores invalidos");
   const aa = areaMemoria();
   const ra = new RepositorioHistorico(aa, ESCOPO);

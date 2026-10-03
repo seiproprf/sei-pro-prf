@@ -325,9 +325,14 @@ export async function verificarModal(): Promise<void> {
   );
   checar("fechar chama o fechar da aba", (await appE.chamar("fechar")) === true && fechados === 1);
   checar("sem fechar (barra lateral), responde false", (await appC.chamar("fechar")) === false);
-  await appE.chamar("apagarLegado");
+  const apagou = await appE.chamar("apagarLegado");
   checar("apagarLegado remove so a chave antiga", !lojaE.tem(LEGADO_CHAVE) && lojaE.tem("outra"));
+  checar("e responde true (havia o que apagar)", apagou === true, apagou);
+  checar("sem a chave antiga, responde false (o app nao diz 'apagado')", (await appE.chamar("apagarLegado")) === false);
   const quebrada = {
+    getItem: (): string | null => {
+      throw new Error("sem acesso ao localStorage");
+    },
     removeItem: (): void => {
       throw new Error("sem acesso ao localStorage");
     },
