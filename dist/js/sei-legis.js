@@ -21,7 +21,7 @@ function uniq(a) {
     })
 }
 function getATTags(inputText) {  
-    var regex = /(?:^|\s)(?:@)([a-zA-Z./#§\d]+)/gm;
+    var regex = /(?:^|\s)(?:@)([a-zA-Z./#\u00A7\d]+)/gm;
     var matches = [];
     var match;
     while ((match = regex.exec(inputText))) {
@@ -30,7 +30,7 @@ function getATTags(inputText) {
     return matches;
 }
 function getHashTags(inputText) {  
-    var regex = /(?:^|\s)(?:#)([a-zA-Z§\d]+)/gm;
+    var regex = /(?:^|\s)(?:#)([a-zA-Z\u00A7\d]+)/gm;
     var matches = [];
     var match;
     while ((match = regex.exec(inputText))) {
@@ -602,27 +602,28 @@ function getRefsTags(iframe) {
         }
     });
 }
+// A consulta mora no modulo do editor (js/modules/editor/legis.js): API de legislacao
+// do SEI Pro (legis.seipro.app).
 function getDadosNormas(iframe, arrayLegis) {
-	var url = "https://seipro.io/legis/";
-	$.ajax({
-		type: "POST",
-		url: url,
-		dataType: "json",
-		data: { norma: arrayLegis },
-		success: function(data){
-            updateRefsLegis(iframe, data);
-            getRefLegis = [];
-            getDeclaraLegis(iframe);
-		}
-	});
+    if (typeof resolverNormasLegisPro !== 'function') {
+        avisarPro('sei-legis: resolverNormasLegisPro ausente (modulo legis.js nao carregou)');
+        return;
+    }
+    resolverNormasLegisPro(arrayLegis, function(normas){
+        updateRefsLegis(iframe, normas);
+        getRefLegis = [];
+        getDeclaraLegis(iframe);
+    });
 }
 function getRefsLegis(iframe) {
     if ( getRefLegis.length > 0 ) {
         getDadosNormas(iframe, getRefLegis);
     }
 }
-function updateRefsLegis(iframe, data) {
-    iframe.find('.legis.refext').each(function(){ 
+// normas: mapa sigla pedida -> norma ({ titulo, apelido, url, ... }), vindo de
+// resolverNormasLegisPro. A chave e o mesmo dataValue empilhado em getRefLegis.
+function updateRefsLegis(iframe, normas) {
+    iframe.find('.legis.refext').each(function(){
         if ( !$(this).hasClass('refok')) {
             var this_ = $(this);
             var text = this_.html();
@@ -631,15 +632,13 @@ function updateRefsLegis(iframe, data) {
                 dataValue = ( dataValue.indexOf('#') !== -1) ? dataValue.split('#')[0] : dataValue;
                 dataValue = ( dataValue.indexOf('/') !== -1) ? dataValue.split('/')[0] : dataValue;
                 dataValue = dataValue.replace(/[\W_]+/g,"").toLowerCase();
-            var dataValue_ = capitalizeFirstLetter(dataValue);
-            var legisData = jmespath.search(data, "[?SiglaNorma=='"+dataValue_+"']");
-            console.log(dataValue_, legisData, data);
-            var nomeLegis = ( legisData.length > 0 && legisData[0].NomeNorma ) ? ' ('+legisData[0].NomeNorma+')' : '';
-            // Dado vindo do servico de legislacao (Link, DescNormaFull, NomeNorma) virando
+            var norma = ( normas && normas[dataValue] ) ? normas[dataValue] : null;
+            var nomeLegis = ( norma && norma.apelido ) ? ' ('+textoParaHtmlPro(norma.apelido)+')' : '';
+            // Dado vindo do servico de legislacao (url, titulo, apelido) virando
             // marcacao: e a unica injecao de dado externo do arquivo, e por isso vai pelo portao.
-            var htmlLegis = ( legisData.length > 0 ) ? `<a href="${legisData[0].Link}" target="_blank">${legisData[0].DescNormaFull}${nomeLegis.trim()}</a>` : text;
+            var htmlLegis = ( norma ) ? `<a href="${textoParaHtmlPro(norma.url)}" target="_blank">${textoParaHtmlPro(norma.titulo)}${nomeLegis}</a>` : text;
                 htmlPro(this_, htmlLegis);
-            if ( legisData.length > 0 ) { 
+            if ( norma ) {
                 this_.attr('data-refext',dataValue).removeClass('error').addClass('refok'); 
             } else { 
                 this_.addClass('error').removeAttr('data-refext');

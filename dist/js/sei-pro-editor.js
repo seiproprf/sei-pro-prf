@@ -1332,7 +1332,6 @@ function activeIconsSelectedText() {
 //// INSERE LINK DE NORMAS
 // sendLegisSEI() -> js/modules/editor/ (extraido para modulo)
 // insertLegisSEI() -> js/modules/editor/ (extraido para modulo)
-// uniqLinkLegisSEI() -> js/modules/editor/ (extraido para modulo)
 // getLegisSEI() -> js/modules/editor/ (extraido para modulo)
 // getSearchLegisMore() -> js/modules/editor/ (extraido para modulo)
 // getSearchLegis() -> js/modules/editor/ (extraido para modulo)

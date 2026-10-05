@@ -239,6 +239,11 @@
         // nada de eval.
         var acionar = function (attr, preventDefault) {
             return function (ev) {
+                // Com o despachante global de sei-functions-pro.js (installActionsPro)
+                // no documento, ele ja atende todo data-spro-*: atender aqui tambem
+                // rodava a acao duas vezes (toggle que nao abre, insercao repetida).
+                var raiz = this.ownerDocument && this.ownerDocument.documentElement;
+                if (raiz && raiz.getAttribute('data-spro-actions') === 'sim') return;
                 var nome = $(this).attr(attr) || '';
                 if (!/^[A-Za-z_$][\w$]*$/.test(nome)) return;
                 var fn = window[nome];

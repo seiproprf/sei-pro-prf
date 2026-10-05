@@ -1,8 +1,8 @@
 # Política de Privacidade — SEI Pro ![SEI Pro](/img/icon-32.png)
 
-**Versão:** 3.2  
-**Data de Vigência:** 1º de outubro de 2026  
-**Última Atualização:** 1º de outubro de 2026
+**Versão:** 3.3  
+**Data de Vigência:** 4 de outubro de 2026  
+**Última Atualização:** 4 de outubro de 2026
 
 ---
 
@@ -18,7 +18,7 @@ O SEI Pro é uma extensão gratuita e de código aberto, licenciada sob AGPL-3.0
 
 ### 2.1. O que o SEI Pro não faz
 
-- **Não coleta dados para o desenvolvedor.** Não há telemetria, estatística de uso, registro de atividade nem identificação de usuários.
+- **Não coleta dados para o desenvolvedor.** Não há telemetria, estatística de uso, registro de atividade nem identificação de usuários. A única ressalva são os registros técnicos de acesso da API de legislação, mantidos pela hospedagem (seção 2.3).
 - **Não rastreia a navegação.** A extensão atua apenas nas páginas do SEI e não lê outros sites.
 - **Não envia a senha nem a sessão do SEI a terceiros.** A senha digitada para assinar documentos vai apenas ao próprio SEI.
 - **Não vende, não compartilha e não usa dados para publicidade.**
@@ -33,7 +33,15 @@ Algumas **funções opcionais** enviam dados a serviços fora do SEI. Elas só f
 
 O SEI Pro **não tem servidor de coleta de dados**. Não há banco de dados remoto com informações de usuários nem serviço de análise ou perfilamento.
 
-O projeto mantém a **busca de normas** (`seipro.io`), usada pelas funções Legística e Link Legis. Ela recebe apenas o tipo e o número da norma, ou os termos pesquisados, e responde com os dados da legislação correspondente. **As consultas não são guardadas.** O site de documentação (`seipro.app`) é um site comum e não usa ferramentas de estatística.
+O projeto mantém a **API de legislação** (`legis.seipro.app`), usada pelas funções Legística e Link Legis. Ela recebe apenas o tipo, o número e o ano da norma, ou os termos pesquisados, e responde com os dados da legislação correspondente, montados a partir dos dados abertos do Senado Federal. O texto do documento nunca é enviado.
+
+A API não tem cadastro de usuários, não guarda as consultas e **não registra os termos pesquisados**. As consultas passam pela Cloudflare (Cloudflare, Inc., Estados Unidos), que protege o serviço contra ataques e as repassa à hospedagem. A API usa o endereço IP de origem apenas para limitar a quantidade de consultas por minuto, sem gravá-lo.
+
+Como qualquer servidor na internet, porém, a hospedagem (Railway, da Railway Corp., Estados Unidos) mantém **registros técnicos de acesso**: o endereço IP de origem, a identificação do navegador, o horário e o endereço consultado sem os termos da busca (por exemplo, `/v1/normas`). Esses registros servem apenas para operação e segurança do serviço, inclusive contra uso abusivo, não são usados para identificar pessoas e ficam disponíveis para consulta por 30 dias. O Railway pode conservá-los por mais tempo nos próprios sistemas. Cada empresa trata esses dados nos termos da própria política: [Cloudflare](https://www.cloudflare.com/privacypolicy/) e [Railway](https://railway.com/legal/privacy).
+
+O navegador também informa ao serviço o endereço do SEI de onde a consulta partiu, o que identifica o órgão; esse dado não fica nos registros da API nem nos da hospedagem.
+
+O site de documentação (`seipro.app`) é um site comum e não usa ferramentas de estatística.
 
 O site também oferece a **lista de novidades por e-mail**, opcional e independente da extensão (seção 2.5). Para quem se inscreve, o projeto guarda o endereço de e-mail.
 
@@ -129,7 +137,7 @@ Os dados guardados no navegador **não são criptografados pela extensão**. A s
 ### 4.1. Regras gerais
 
 - **Nenhuma dessas funções envia dados sem ação do usuário.** Elas dependem de um clique, de um botão no editor ou de uma configuração feita pelo próprio usuário.
-- **Os dados vão do navegador diretamente ao serviço indicado.** Nada passa por servidor do SEI Pro, exceto a busca de normas (seção 2.3).
+- **Os dados vão do navegador diretamente ao serviço indicado.** Nada passa por servidor do SEI Pro, exceto a consulta à API de legislação (seção 2.3).
 - **Valem as políticas de cada serviço.** Os dados enviados a terceiros seguem a política de privacidade de quem os recebe.
 - **Cabe ao usuário e ao órgão avaliar o uso.** Informações sigilosas e dados pessoais não devem ser enviados a serviços externos sem autorização institucional.
 
@@ -196,7 +204,7 @@ Os dados guardados no navegador **não são criptografados pela extensão**. A s
 
 | Função | Quando | Destinatário | O que é enviado |
 |---|---|---|---|
-| **Legística e Link Legis** (busca de normas) | Ao inserir ou atualizar referências a normas no editor | Busca de normas do SEI Pro (`seipro.io`) | Tipo e número da norma, ou os termos pesquisados. O texto do documento não é enviado, e as consultas não são guardadas |
+| **Legística e Link Legis** (busca de normas) | Ao pesquisar, inserir ou atualizar referências a normas no editor | API de legislação do SEI Pro (`legis.seipro.app`), por meio da Cloudflare | Tipo, número e ano da norma, ou os termos pesquisados. O texto do documento não é enviado, e os termos pesquisados não são registrados. A hospedagem mantém registros técnicos de acesso (seção 2.3) |
 | **Equações (LaTeX)** | Ao gerar uma equação no editor | CodeCogs (`latex.codecogs.com`) | O texto da fórmula. A imagem gerada fica gravada no documento |
 | **Link curto** | Ao pedir um link curto no editor | TinyURL (`tinyurl.com`) | O endereço a encurtar |
 | **Importar Google Docs ou Planilhas** | Ao importar um documento publicado | Google (`docs.google.com`) | O pedido do documento cujo link o usuário informou. Nada do SEI é enviado |
@@ -216,7 +224,7 @@ A extensão **ainda não oferece configuração centralizada** por política de 
   - `openrouter.ai`, `api.openai.com`, `generativelanguage.googleapis.com`, `api.anthropic.com` (Agente de IA);
   - `olinda.bcb.gov.br`, `economia.awesomeapi.com.br` (cotação do dólar);
   - `api.github.com`, `raw.githubusercontent.com` (skills e coleções de fluxos);
-  - `seipro.io` (busca de normas);
+  - `legis.seipro.app` (busca de normas);
   - `latex.codecogs.com` (equações);
   - `tinyurl.com` (link curto);
   - `docs.google.com` (importação do Google);
@@ -353,6 +361,7 @@ As alterações relevantes são comunicadas:
 
 | Versão | Data | Principais alterações |
 |---|---|---|
+| 3.3 | 04/10/2026 | Busca de normas passa a usar a API de legislação (`legis.seipro.app`); a extensão deixou de contatar `seipro.io`. A API não registra os termos pesquisados e recebe as consultas por meio da Cloudflare; a política passa a descrever os registros técnicos de acesso mantidos pela hospedagem (o que é registrado, por quem e por quanto tempo) |
 | 3.2 | 01/10/2026 | Lista de novidades por e-mail (seção 2.5): inscrição opcional no site com confirmação por e-mail, dados guardados, operador (Resend) e cancelamento |
 | 3.1 | 01/10/2026 | Conectores (servidores MCP) configurados pelo usuário; sincronização da configuração do Agente de IA entre dispositivos, com a lista do que viaja e do que fica no aparelho; declaração de que as credenciais da função Base de Dados acompanham a conta do navegador; verificação local do conteúdo dos documentos contra instruções dirigidas a sistemas de IA; rotinas do Agente de IA; permissões `alarms` e `notifications` |
 | 3.0 | 28/09/2026 | Revisão completa. Inventário de todas as funções que se comunicam com serviços externos (Agente de IA, módulo de Atividades, busca de normas, equações, ditado, Estúdio de Fluxo e demais), com o dado enviado, a condição e o destinatário; correção da declaração de que a extensão não transmite dados; tabela de permissões atualizada; orientação de controle institucional por bloqueio de rede |

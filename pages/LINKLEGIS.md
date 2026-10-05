@@ -16,9 +16,11 @@ Cite leis, decretos e outras normas **já com o link para o texto oficial**. Voc
    * **Lista de Normas** — escolha uma norma conhecida pelo nome, como o Código Civil;
 4. Clique em **Inserir**.
 
-As citações de legislação federal acompanham o hiperlink para a norma publicada no site do Planalto.
+Quando há mais de uma norma com o mesmo número (existem sete Decretos nº 1, por exemplo), o SEI Pro mostra as opções para você escolher. Informe também o **ano** para ir direto à norma certa.
 
-> **Sobre a consulta:** para encontrar a norma e montar o link, o SEI Pro consulta o **servidor do SEI Pro** (`seipro.io`), enviando apenas o tipo, o número ou as palavras pesquisadas. O texto do seu documento não é enviado.
+As citações de legislação federal acompanham o hiperlink para a norma no portal [normas.leg.br](https://normas.leg.br).
+
+> **Sobre a consulta:** para encontrar a norma e montar o link, o SEI Pro consulta a **API de legislação do SEI Pro**, montada com os dados abertos do Senado Federal (`legis.seipro.app`), enviando apenas o tipo, o número, o ano ou as palavras pesquisadas. O texto do seu documento não é enviado. Veja a [Política de Privacidade](../PRIVACY_POLICY.md) para saber o que a hospedagem registra.
 
 ### Remissão aos atos normativos
 
@@ -36,7 +38,7 @@ Digite mais de uma palavra-chave (separadas por espaço simples). Combine filtro
 
 > ![Tela Pesquisa de legislação](../img/tela-linklegis2.gif) 
 
-> Dica: Deixe todos os campos em branco e clique em **Pesquisar** para listar a legislação mais recente publicada pelo site do Planalto.
+> Dica: Deixe todos os campos em branco e clique em **Pesquisar** para listar a legislação federal mais recente.
 
 ### Legislação Federal
 
@@ -50,6 +52,8 @@ Atualmente estão disponíveis as seguintes legislações:
 |  [Decretos](http://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/decretos1) 
 |  [Leis Complementares](http://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/leis-complementares-1) |
 |  [Decretos-Leis](http://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/decretos-leis) |
+|  Emendas Constitucionais |
+|  Decretos Legislativos |
 |  [Códigos](http://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/codigos-1) |
 |  [Estatutos](http://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/estatutos) |
 
