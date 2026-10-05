@@ -2,6 +2,20 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.5.1
+05/10/2026
+
+O link de legislação volta a funcionar, com uma base nova de normas federais, e chega ao SEI 5.
+
+- **[Adicionar link de legislação](../pages/LINKLEGIS.md) volta a funcionar.** A pesquisa tinha parado porque o serviço antigo de normas saiu do ar. Agora a consulta vai para a nova API de legislação do SEI Pro, montada com os dados abertos do Senado Federal (mais de 212 mil normas federais), e o link da citação aponta para a norma no portal *normas.leg.br*
+- **A ferramenta passa a funcionar no SEI 5.** Até aqui, o botão mostrava apenas o aviso de que a busca estava "em migração"
+- **Quando o número se repete, você escolhe.** Existem sete Decretos nº 1, por exemplo: em vez de inserir um deles por conta própria, o SEI Pro mostra as opções. Informe o ano para ir direto à norma certa. A aba *Legislação Federal* ganhou também *Emenda Constitucional* e *Decreto Legislativo*
+- **Citar a mesma norma de novo** já insere a forma curta (*Lei nº 8.112, de 1990*), e inserir duas normas seguidas não parte mais o link anterior em dois
+- Na **enumeração de normas** com `@`, as referências como `@lei8666`, `@cc` e `@estatutoidoso` passam a ser resolvidas pela base nova
+- As **normas infralegais** (ANTAQ, Cade e outros órgãos) estão sendo levadas para a base nova. Até lá, a aba *Norma Infralegal* não encontra resultados
+- **Correção:** em algumas janelas abertas pelo SEI Pro no editor, os botões executavam a ação duas vezes. O *mais* da ementa, por exemplo, abria e fechava na mesma hora
+- A [política de privacidade](../PRIVACY_POLICY.md) foi atualizada: ela diz para onde vai a consulta de normas e o que a hospedagem registra. Os termos pesquisados não são guardados
+
 ### Versão 2.5
 02/10/2026
 
