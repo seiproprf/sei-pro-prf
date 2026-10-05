@@ -39,23 +39,42 @@ export function inserirNaOrdem(container: Element, painel: Element, ordem: numbe
 }
 
 /**
- * O título "Favoritos" com a mesma letra do título da tela ("Controle de Processos"): o SEI 5 dá
- * o tamanho ao título da tela por regras que não alcançam um painel novo, e ele saía bem menor.
- * O peso é sempre 600, o do título do SEI: copiado da tela, vinha 400 no SEI 5 (lido antes de
- * o estilo da página assentar) e, inline, vencia o 600 da classe.
+ * O título "Favoritos" com a letra do título da tela ("Controle de Processos"). A classe
+ * `infraBarraLocalizacao` já dá a mesma letra (o que o deixava pequeno era um `<span>`, que o SEI
+ * encolhe). Copiar o estilo computado NA MONTAGEM falhava no SEI 5: os estilos da página ainda estão
+ * carregando, e o valor copiado (pequeno, ou peso 400), por ser inline, vencia o da classe. Agora o
+ * peso é fixo e a letra só é conferida depois que a página termina de carregar.
  */
-export function igualarAoTituloDoSei(doc: Document, titulo: HTMLElement): void {
+export function igualarAoTituloDoSei(
+  doc: Document,
+  titulo: HTMLElement,
+  depoisDaCarga: (fn: () => void) => void = (fn) => aposCarregar(doc, fn),
+): void {
   titulo.style.setProperty("font-weight", "600", "important");
+  depoisDaCarga(() => copiarLetraDoTitulo(doc, titulo));
+}
+
+/** Copia tamanho e família do título da tela, se ele já tem letra de título (nunca a de texto comum). */
+export function copiarLetraDoTitulo(doc: Document, titulo: HTMLElement): void {
   const ref = doc.querySelector("#divInfraBarraLocalizacao");
   const visao = doc.defaultView as (Window & { getComputedStyle?: Window["getComputedStyle"] }) | null;
   if (!ref || !visao?.getComputedStyle) return;
   try {
     const c = visao.getComputedStyle(ref);
-    if (c.fontSize) titulo.style.fontSize = c.fontSize;
+    if (!(Number.parseFloat(c.fontSize) > 16)) return;
+    titulo.style.fontSize = c.fontSize;
     if (c.fontFamily) titulo.style.fontFamily = c.fontFamily;
   } catch {
     /* sem estilo computado */
   }
+}
+
+/** Depois do `load` da página (estilos carregados) e mais um pouco, para o que o SEI aplica por script. */
+function aposCarregar(doc: Document, fn: () => void): void {
+  const visao = doc.defaultView;
+  const agendar = () => visao?.setTimeout(fn, 1500);
+  if (doc.readyState === "complete") agendar();
+  else visao?.addEventListener("load", agendar, { once: true });
 }
 
 export interface OpcoesPainel {

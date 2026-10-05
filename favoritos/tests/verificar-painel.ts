@@ -4,7 +4,7 @@ import { criarRpc } from "@comum/ponte/rpc";
 import { avisoNaPagina } from "../src/pagina/aviso";
 import { instalarEstilo } from "../src/pagina/estilo";
 import { tratadoresDaAba } from "../src/pagina/executor";
-import { igualarAoTituloDoSei, inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
+import { copiarLetraDoTitulo, igualarAoTituloDoSei, inserirNaOrdem, montarPainel, ordemLegada } from "../src/pagina/painel";
 import { criarSobreposicao } from "../src/pagina/sobreposicao";
 import { botao, checar, disparar, instalarDom, lanca, secao, telaSei, tique } from "./util";
 import { CTX } from "./verificar-modelo";
@@ -50,12 +50,23 @@ export async function verificarPainel(): Promise<void> {
     fontFamily: "Roboto, Arial",
   });
   const tituloT = docT.createElement("div");
-  igualarAoTituloDoSei(docT, tituloT);
+  const agendados: Array<() => void> = [];
+  igualarAoTituloDoSei(docT, tituloT, (fn) => agendados.push(fn));
   checar(
-    "titulo Favoritos com a mesma letra do titulo da tela",
-    tituloT.style.fontSize === "22.4px" && tituloT.style.getPropertyValue("font-weight") === "600",
+    "na montagem nao copia o tamanho (no SEI 5 o estilo da pagina ainda esta carregando: vinha pequeno)",
+    tituloT.style.fontSize === "" && tituloT.style.getPropertyValue("font-weight") === "600" && agendados.length === 1,
     tituloT.getAttribute("style"),
   );
+  for (const fn of agendados) fn();
+  checar("depois da carga, a mesma letra do titulo da tela", tituloT.style.fontSize === "22.4px", tituloT.getAttribute("style"));
+  (docT.defaultView as unknown as { getComputedStyle: () => Partial<CSSStyleDeclaration> }).getComputedStyle = () => ({
+    fontSize: "13px",
+    fontWeight: "400",
+    fontFamily: "Arial",
+  });
+  const tituloP2 = docT.createElement("div");
+  copiarLetraDoTitulo(docT, tituloP2);
+  checar("titulo da tela ainda com letra de texto (13 px): nao copia", tituloP2.style.fontSize === "", tituloP2.getAttribute("style"));
   const docP = instalarDom('<html><body><form id="frmProcedimentoControlar"></form></body></html>');
   const recolhidos: boolean[] = [];
   const m = montarPainel(docP, {
