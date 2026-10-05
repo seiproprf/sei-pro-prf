@@ -22,7 +22,7 @@ Clique na **estrela** ao lado do processo:
 
 Ao favoritar, um balão deixa escolher na hora a pasta, as etiquetas, a nota e um lembrete, e mudar o processo para a lista **Pessoal**. Cada mudança é gravada na hora; **Pronto** fecha o balão. Para retirar o favorito, clique de novo na estrela.
 
-> ![Balão ao favoritar](../img/favoritos-balao.png)
+> <img src="../img/favoritos-balao.png" alt="Balão ao favoritar" width="404">
 
 Se preferir favoritar sem balão, desligue **Perguntar pasta e etiquetas ao favoritar** em **Preferências…**.
 
@@ -31,7 +31,7 @@ Se preferir favoritar sem balão, desligue **Perguntar pasta e etiquetas ao favo
 * **Abaixo da lista de processos**, no Controle de Processos, como sempre. O painel segue o tema do SEI: com o modo noturno do SEI Pro ligado, ele também fica escuro.
 * **No painel lateral**, ao lado de qualquer tela do SEI. Abra pelo botão ao lado da estrela, no alto da árvore, ou pelo botão **Favoritos** da barra de botões do Controle de Processos. O painel lateral acompanha o tema claro ou escuro do seu sistema e tem também as abas **Histórico** e **Agente de IA**.
 
-> ![Favoritos no painel lateral](../img/favoritos-lateral.png)
+> <img src="../img/favoritos-lateral.png" alt="Favoritos no painel lateral" width="380">
 
 Escolha em **Preferências…** (menu ⚙ dos favoritos) ou nas configurações do SEI Pro: **Abaixo da lista de processos**, **No painel lateral** ou **Nos dois lugares**. Com a lista só abaixo, o botão **Favoritos** da barra rola a página até ela; nas outras escolhas, ele abre o painel lateral. O botão mostra, num selo vermelho, quantos favoritos pedem atenção: lembrete vencido ou novidade.
 
@@ -110,7 +110,7 @@ Marque um local no favorito (menu ⋯ → **Local no mapa…**), clicando no map
 
 ### O menu ⚙
 
-> ![Menu de opções dos favoritos](../img/favoritos-menu.png)
+> <img src="../img/favoritos-menu.png" alt="Menu de opções dos favoritos" width="316">
 
 * **Pastas e etiquetas**: renomear, trocar a cor e excluir;
 * **Mapa dos favoritos**;
