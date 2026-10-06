@@ -1,5 +1,5 @@
 import { verificarMotor } from "./verificar-motor";
-import { verificarErro429, verificarProvedor } from "./verificar-provedor";
+import { verificarErro429, verificarProvedor, verificarRaciocinioComFerramentas } from "./verificar-provedor";
 import { verificarSkills } from "./verificar-skills";
 import { verificarMcp } from "./verificar-mcp";
 import { verificarMcpPermissao, verificarMcpTools } from "./verificar-mcp-permissao";
@@ -40,6 +40,7 @@ await verificarFavoritosTool();
 await verificarHistoricoTool();
 await verificarProvedor();
 await verificarErro429();
+await verificarRaciocinioComFerramentas();
 await verificarSkills();
 await verificarMcp();
 verificarMcpPermissao();

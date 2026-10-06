@@ -299,6 +299,24 @@ function parametrosDoModelo(o: OpcoesProvedor): Record<string, number> {
  * que cada modelo aceita — que envelhece mal —, o pedido é refeito sem o campo
  * que a mensagem citou.
  */
+/**
+ * O modelo exige que o raciocínio seja desligado para aceitar ferramentas?
+ *
+ * Caso real (relato de usuária, 06/10/2026): um modelo de raciocínio recusava
+ * toda pergunta com "Function tools with reasoning_effort are not supported
+ * for <modelo> in /v1/chat/completions. To use function tools, use
+ * /v1/responses or set reasoning to \"none\"".
+ *
+ * O ponto que confunde: o SEI Pro NÃO envia `reasoning_effort`. Ele é o padrão
+ * do próprio modelo. A saída, que a mensagem indica, é declará-lo como "none"
+ * — ou seja, ACRESCENTAR um campo, enquanto o agente só sabia remover o campo
+ * que o erro citasse.
+ */
+export function precisaDesligarRaciocinio(corpo: string): boolean {
+  const texto = corpo.toLowerCase();
+  return texto.includes("reasoning") && /tool|function/.test(texto);
+}
+
 export function parametroRecusado(corpo: string): string | null {
   const nomes = ["temperature", "top_p", "max_tokens", "frequency_penalty", "presence_penalty", "stream_options"];
   const texto = corpo.toLowerCase();
@@ -384,6 +402,12 @@ export function mensagemDeErro(status: number, corpo: string, servico: Servico =
   const onde = SERVICOS[servico]?.nome.replace(/ \(.*\)$/, "") ?? "servi\u00E7o de IA";
   if (status === 401 || status === 403) return `A chave do ${onde} foi recusada. Confira a chave nas configura\u00E7\u00F5es do agente.`;
   if (status === 402) return `Sem cr\u00E9dito no ${onde} para este modelo. Adicione cr\u00E9ditos ou escolha um modelo mais barato.`;
+  // O agente depende de ferramentas: é com elas que ele lê o processo e
+  // escreve no SEI. Um modelo que não as aceita não serve aqui, por melhor que
+  // seja — então a mensagem manda trocar de modelo, e não "tente de novo".
+  if (status === 400 && precisaDesligarRaciocinio(corpo)) {
+    return `O modelo escolhido n\u00E3o aceita, neste servi\u00E7o, combinar racioc\u00EDnio com as ferramentas que o agente usa para ler o processo e escrever no SEI. O agente j\u00E1 tentou desligar o racioc\u00EDnio e o ${onde} recusou. Escolha outro modelo nas configura\u00E7\u00F5es do agente \u2014 os da gera\u00E7\u00E3o anterior e as vers\u00F5es "mini" costumam aceitar.`;
+  }
   if (status === 404 && servico !== "openrouter") return `O ${onde} respondeu 404. Confira o endere\u00E7o (costuma terminar em /v1) e o nome do modelo.`;
   if (status === 429) {
     // A OpenAI (e quem imita a API dela) devolve 429 para DUAS coisas opostas:
@@ -514,6 +538,12 @@ export function criarProvedor(o: OpcoesProvedor): Provedor {
           if (/max_completion_tokens/.test(texto) && "max_tokens" in parametros && !("max_completion_tokens" in parametros)) {
             parametros.max_completion_tokens = parametros.max_tokens;
             recusados.add("max_tokens");
+            continue;
+          }
+          // Modelo de raciocínio que só aceita ferramentas com o raciocínio
+          // desligado: aqui se ACRESCENTA o campo, em vez de remover.
+          if (precisaDesligarRaciocinio(texto) && parametros.reasoning_effort !== "none") {
+            parametros.reasoning_effort = "none";
             continue;
           }
           // Ajuste fino que este modelo não aceita: tira o campo citado e repete.

@@ -296,3 +296,102 @@ export async function verificarErro429(): Promise<void> {
     checar("e a resposta chega", r.texto === "ok", r);
   }
 }
+
+/**
+ * Modelos de raciocínio com ferramentas.
+ *
+ * Relato de uma usuária (Patrícia, 06/10/2026): o modelo novo recusava toda
+ * pergunta com "Function tools with reasoning_effort are not supported ... To
+ * use function tools, use /v1/responses or set reasoning to 'none'".
+ *
+ * O detalhe que custa entender: o SEI Pro NÃO envia `reasoning_effort`. Ele é
+ * o padrão do próprio modelo, e a saída é mandá-lo explicitamente como "none"
+ * — acrescentar um campo, não remover, que era tudo o que o agente sabia fazer
+ * diante de um 400.
+ */
+export async function verificarRaciocinioComFerramentas(): Promise<void> {
+  secao("provedor: modelo de raciocinio que recusa ferramentas");
+  {
+    const enviados: Array<Record<string, unknown>> = [];
+    const buscar = (async (_u: string, init: RequestInit) => {
+      const corpo = JSON.parse(String(init.body)) as Record<string, unknown>;
+      enviados.push(corpo);
+      if (corpo.reasoning_effort !== "none") {
+        return {
+          ok: false,
+          status: 400,
+          headers: { get: () => null },
+          text: async () =>
+            JSON.stringify({
+              error: {
+                message: 'Function tools with reasoning_effort are not supported for gpt-6.1-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning to "none".',
+                type: "invalid_request_error",
+              },
+            }),
+        } as unknown as Response;
+      }
+      const sse = 'data: {"choices":[{"delta":{"content":"pronto"}}]}\n\ndata: [DONE]\n\n';
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(sse)); c.close(); } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const p = criarProvedor({ servico: "openai", url: "", chave: "sk-x", modelo: "gpt-6.1-sol", ajustes: {}, cache: false, fetch: buscar });
+    const tools = [{ type: "function" as const, function: { name: "processos_listar", description: "lista", parameters: { type: "object" as const, properties: {}, additionalProperties: false as const } } }];
+    const r = await p.conversar({ mensagens: [{ role: "user", content: "liste" }], tools }, new AbortController().signal, () => undefined);
+
+    checar("tentou duas vezes", enviados.length === 2, enviados.length);
+    checar("a primeira foi sem reasoning_effort (nos nao mandamos)", enviados[0].reasoning_effort === undefined, enviados[0].reasoning_effort);
+    checar("a segunda manda reasoning_effort none", enviados[1].reasoning_effort === "none", enviados[1].reasoning_effort);
+    checar("e as ferramentas continuam no pedido", Array.isArray(enviados[1].tools) && (enviados[1].tools as unknown[]).length === 1);
+    checar("a conversa chega ao fim", r.texto === "pronto", r);
+  }
+
+  secao("provedor: sem ferramentas, nao mexe no raciocinio");
+  {
+    const enviados: Array<Record<string, unknown>> = [];
+    const buscar = (async (_u: string, init: RequestInit) => {
+      enviados.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+      const sse = 'data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n';
+      return { ok: true, status: 200, headers: { get: () => null }, body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(sse)); c.close(); } }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const p = criarProvedor({ servico: "openai", url: "", chave: "sk-x", modelo: "gpt-6.1-sol", ajustes: {}, cache: false, fetch: buscar });
+    await p.conversar({ mensagens: [{ role: "user", content: "oi" }], tools: [] }, new AbortController().signal, () => undefined);
+    checar("pedido limpo, sem reasoning_effort", enviados[0].reasoning_effort === undefined, enviados[0]);
+  }
+
+  secao("provedor: a mensagem explica em portugues");
+  {
+    const corpo = 'Function tools with reasoning_effort are not supported for gpt-6.1-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning to "none".';
+    const m = mensagemDeErro(400, corpo, "openai");
+    checar("diz que o modelo nao combina raciocinio com ferramentas", /racioc\u00EDnio/i.test(m), m);
+    checar("e que o agente precisa das ferramentas para trabalhar no SEI", /ferramenta/i.test(m), m);
+    checar("sugere o caminho: outro modelo", /outro modelo/i.test(m), m);
+    checar("sem jargao de API na frase principal", !/\/v1\//.test(m.split(".")[0]), m);
+  }
+
+  secao("provedor: se nem assim aceitar, o erro chega ao usuario");
+  {
+    let vezes = 0;
+    const buscar = (async () => {
+      vezes += 1;
+      return {
+        ok: false,
+        status: 400,
+        headers: { get: () => null },
+        text: async () => JSON.stringify({ error: { message: "Function tools with reasoning_effort are not supported for gpt-6.1-sol." } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const p = criarProvedor({ servico: "openai", url: "", chave: "sk-x", modelo: "gpt-6.1-sol", ajustes: {}, cache: false, fetch: buscar });
+    const tools = [{ type: "function" as const, function: { name: "x", description: "y", parameters: { type: "object" as const, properties: {}, additionalProperties: false as const } } }];
+    const e = await lanca(() => p.conversar({ mensagens: [{ role: "user", content: "oi" }], tools }, new AbortController().signal, () => undefined));
+    checar("nao entra em laco infinito", vezes <= 3, vezes);
+    checar("a mensagem ao usuario e em portugues e diz o que fazer", /outro modelo/i.test(e?.message ?? ""), e?.message);
+    // O texto cru do provedor nao se perde: vai no diagnostico que o botao de
+    // copiar do cartao de erro leva para o chamado.
+    checar("e o texto original fica no diagnostico", /reasoning_effort/.test((e as { corpo?: string })?.corpo ?? ""), (e as { corpo?: string })?.corpo);
+  }
+}
