@@ -182,6 +182,92 @@ export async function listarBlocos(
   return todos.filter((b) => [b.numero, b.descricao, b.estado, b.grupo].join(" ").toLowerCase().includes(f));
 }
 
+/** Bloco que a unidade pode recolher para incluir novos documentos. */
+export interface BlocoParaInclusao {
+  /** Valor nativo do checkbox e da opção, que pode diferir do número exibido. */
+  id: string;
+  numero: string;
+  descricao: string;
+}
+
+function blocosParaInclusao(pagina: Pagina): BlocoParaInclusao[] {
+  const tabela = pagina.doc.querySelector("#frmBlocoLista #tblBlocos");
+  const col = colunas(tabela);
+  if (!tabela || col.estado === undefined || col.descricao === undefined) {
+    throw new ErroSei("SEI_VERSAO_NAO_SUPORTADA", "A listagem de blocos de assinatura não foi reconhecida.");
+  }
+  const porId = new Map(lerBlocos(pagina, "assinatura").map(b => [b.numero, b]));
+  const resultado: BlocoParaInclusao[] = [];
+  for (const linha of tabela.querySelectorAll("tr")) {
+    const id = linha.querySelector('input[type="checkbox"]')?.getAttribute("value") ?? "";
+    const bloco = porId.get(id);
+    if (!bloco || normalizar(bloco.estado) !== "disponibilizado") continue;
+    // O estado sozinho também inclui blocos recebidos de outra unidade.
+    // Só o controle de cancelar disponibilização autoriza recolher este bloco.
+    const podeCancelar = [...linha.querySelectorAll("[onclick]")].some(el => {
+      const chamada = /\bacaoCancelarDisponibilizacao\(\s*['"]([^'"]+)['"]\s*\)/.exec(el.getAttribute("onclick") ?? "");
+      return chamada?.[1] === id;
+    });
+    if (!podeCancelar) continue;
+    const celulas = [...linha.querySelectorAll("td")];
+    const numero = col.numero ?? col.n;
+    resultado.push({ id, numero: numero === undefined ? id : textoDe(celulas[numero]) || id, descricao: bloco.descricao });
+  }
+  return resultado;
+}
+
+/** Somente disponibilizados com o controle nativo de cancelar na própria linha. */
+export async function listarBlocosParaInclusao(sei: Sei, op: OpcoesHttp = {}): Promise<BlocoParaInclusao[]> {
+  return comDisponibilizados(sei, op, async pagina => blocosParaInclusao(pagina));
+}
+
+/** A consulta usa o filtro da sessão; marca Disponibilizado apenas enquanto lê/age. */
+async function comDisponibilizados<T>(sei: Sei, op: OpcoesHttp, usar: (pagina: Pagina) => Promise<T>): Promise<T> {
+  const { pagina: inicial } = await abrirLista(sei, "assinatura", op.sinal);
+  const checkbox = inicial.doc.querySelector("#chkSinEstadoDisponibilizado");
+  if (!checkbox || checkbox.hasAttribute("checked")) return usar(inicial);
+  const filtro = (valor: string | null) => Formulario.de(inicial, "#frmBlocoLista", sei.http).definir({
+    chkSinEstadoDisponibilizado: valor,
+    hdnInfraItemId: "",
+    hdnInfraItensSelecionados: "",
+  });
+  try {
+    const pagina = await filtro("on").enviar({ sinal: op.sinal, botao: "sbmPesquisar", aceitarValidacao: true });
+    return await usar(pagina);
+  } finally {
+    // Mesmo um envio abortado pode ter mudado o filtro no servidor.
+    // A restauração não usa o sinal cancelado da janela que foi fechada.
+    await filtro(null).enviar({ botao: "sbmPesquisar", aceitarValidacao: true });
+  }
+}
+
+/**
+ * O "retorno" da tela de inclusão é cancelar a disponibilização na geradora,
+ * não `bloco_retornar` (que devolve um bloco recebido à unidade geradora).
+ * Depois da escrita verificada, exige também a opção na tela de inclusão.
+ */
+export async function retornarBlocoParaInclusao(
+  sei: Sei, id: string, urlInclusao: string, op: OpcoesHttp = {},
+): Promise<{ id: string; rotulo: string }> {
+  const url = new URL(sei.http.absoluta(urlInclusao));
+  if (url.origin !== sei.http.base.origin || url.searchParams.get("acao") !== "bloco_escolher" || !url.searchParams.get("infra_hash")) {
+    throw new ErroSei("ARGUMENTO_INVALIDO", "A tela de inclusão deve pertencer à sessão atual do SEI.");
+  }
+  return comDisponibilizados(sei, op, async listagem => {
+    if (!blocosParaInclusao(listagem).some(b => b.id === id)) {
+      throw new ErroSei("SEI_ACAO_INDISPONIVEL", "O SEI não oferece cancelar a disponibilização deste bloco nesta unidade.");
+    }
+    await enviarAcaoDeBloco(sei, listagem, id, "cancelar", op);
+    const pagina = await sei.http.obter(url.href, op);
+    const opcao = [...pagina.doc.querySelectorAll<HTMLOptionElement>("#frmBlocoEscolher #selBloco option")]
+      .find(o => o.getAttribute("value") === id && !o.hasAttribute("disabled") && !o.parentElement?.hasAttribute("disabled"));
+    if (!opcao) {
+      throw new ErroSei("SEI_RESPOSTA_INESPERADA", "O SEI não confirmou o retorno do bloco na tela de inclusão. Confira seu estado antes de tentar novamente.");
+    }
+    return { id, rotulo: textoDe(opcao) };
+  });
+}
+
 /** Um bloco pelo número, procurando nos dois tipos quando não se sabe qual é. */
 export async function acharBloco(sei: Sei, numero: string, tipo?: TipoBloco, op?: OpcoesHttp): Promise<Bloco> {
   const alvo = String(numero).trim();
@@ -509,6 +595,18 @@ const ACOES: Record<AcaoDeBloco, { sei: string; vira: string; ja?: string[]; exi
   excluir: { sei: "bloco_excluir", vira: "(exclu\u00EDdo)", frase: (n) => `excluir o bloco ${n}` },
 };
 
+/** Envio nativo compartilhado por mudarBloco e pelo retorno na tela de inclusão. */
+async function enviarAcaoDeBloco(sei: Sei, pagina: Pagina, numero: string, acao: AcaoDeBloco, op: OpcoesHttp): Promise<void> {
+  const regra = ACOES[acao];
+  const link = linkDaAcao(pagina.html, regra.sei);
+  if (!link) throw new ErroSei("SEI_ACAO_INDISPONIVEL", `O SEI não oferece ${regra.frase(numero)} nesta unidade.`);
+  const form = Formulario.de(pagina, "#frmBlocoLista", sei.http).definir({
+    hdnInfraItemId: numero,
+    hdnInfraItensSelecionados: "",
+  });
+  await sei.http.enviar(link, form.pares(), { sinal: op.sinal });
+}
+
 /**
  * Disponibilizar, cancelar, concluir, reabrir, retornar ou excluir um bloco —
  * os ícones da linha na tela de blocos.
@@ -581,17 +679,11 @@ export async function mudarBloco(
   }
   if (!op.aplicar) return sair({ ...base, resumo: `Vai ${regra.frase(bloco.numero)}.` });
 
-  const link = linkDaAcao(pagina.html, regra.sei);
-  if (!link) {
+  try {
+    await enviarAcaoDeBloco(sei, pagina, bloco.numero, acao, op);
+  } finally {
     await restaurar();
-    throw new ErroSei("SEI_ACAO_INDISPONIVEL", `O SEI n\u00E3o oferece ${regra.frase(bloco.numero)} nesta unidade.`);
   }
-  const form = Formulario.de(pagina, "#frmBlocoLista", sei.http).definir({
-    hdnInfraItemId: bloco.numero,
-    hdnInfraItensSelecionados: "",
-  });
-  await sei.http.enviar(link, form.pares(), { sinal: op.sinal });
-  await restaurar();
 
   if (acao === "excluir") {
     const ainda = await acharBloco(sei, alvo, tipo, { sinal: op.sinal }).catch(() => null);
