@@ -27,6 +27,7 @@ Loja de extensões bloqueada no computador de trabalho? Veja [como instalar pelo
 ### Tela Controle de Processos
 
 - ![Gerenciar processos favoritos](/img/icon-favoritos.png) [Gerenciar processos favoritos](./pages/FAVORITOS.md)
+- ![Anotações no Controle de Processos](/img/icon-notaarvore.png) [Anotações no Controle de Processos](./pages/ANOTACAOCONTROLE.md)
 - ![Controle de Prazos](/img/icon-controleprazo.png) [Controle de Prazos](./pages/PRAZOS.md)
 - ![Reabertura programada de processos](/img/icon-reabrirprocessos.png) [Reabertura programada de processos](./pages/REABRIRPROCESSOS.md)
 - ![Agrupar, filtrar e ver os processos em quadro (Kanban)](/img/icon-agruparlista.png) [Agrupar, filtrar e ver os processos em quadro (Kanban)](./pages/AGRUPAR.md)
