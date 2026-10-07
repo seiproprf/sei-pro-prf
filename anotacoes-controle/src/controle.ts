@@ -13,6 +13,10 @@ export function iniciar({ doc, lerPagina }: Dependencias) {
   let abortar = new AbortController();
   const prioridades = new Map<string, boolean>();
   const tentadas = new Set<string>();
+  const observados = new Set<HTMLElement>();
+  const Resize = doc.defaultView?.ResizeObserver;
+  const resize = Resize ? new Resize(() => agendar()) : null;
+  doc.defaultView?.addEventListener('resize', agendar);
   const Observer = doc.defaultView?.MutationObserver;
   const observer = Observer ? new Observer(mudancas => {
     if (mudancas.some(m => ((m.target.nodeType === 1 ? m.target : m.target.parentElement) as Element | null)?.closest?.(TABELAS) || [...m.addedNodes, ...m.removedNodes].some(no => (no as Element).closest?.(TABELAS) || (no as Element).matches?.(TABELAS) || (no as Element).querySelector?.(TABELAS)))) agendar();
@@ -28,6 +32,9 @@ export function iniciar({ doc, lerPagina }: Dependencias) {
     if (encerrado) return;
     observer?.disconnect();
     const notas = renderizar(doc, ligada, prioridades);
+    const cards = new Set(doc.querySelectorAll<HTMLElement>('.spro-anotacao'));
+    for (const card of observados) if (!cards.has(card)) { resize?.unobserve(card); observados.delete(card); }
+    for (const card of cards) if (!observados.has(card)) { resize?.observe(card); observados.add(card); }
     observar();
     if (!ligada) return;
     const pendentes = notas.filter(nota => {
@@ -64,7 +71,8 @@ export function iniciar({ doc, lerPagina }: Dependencias) {
       ligada = valor; atualizar();
     },
     fechar() {
-      encerrado = true; abortar.abort(); observer?.disconnect(); clearTimeout(timer);
+      encerrado = true; abortar.abort(); observer?.disconnect(); resize?.disconnect(); observados.clear();
+      doc.defaultView?.removeEventListener('resize', agendar); clearTimeout(timer);
       renderizar(doc, false);
     },
   };

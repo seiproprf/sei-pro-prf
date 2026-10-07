@@ -112,4 +112,18 @@ teste('núcleo continua lendo a mesma linha com a coluna extra e ícone oculto',
   assert.deepEqual(lerLinhaCaixa(tr, 'recebidos'), antes);
   renderizar(d, false); assert.deepEqual(lerLinhaCaixa(tr, 'recebidos'), antes);
 });
+teste('seta só aparece com transbordamento medido e acompanha nova largura', () => {
+  const d = docTabela(); renderizar(d, true);
+  const texto = d.querySelector<HTMLElement>('.spro-anotacao-texto')!;
+  const botao = d.querySelector<HTMLButtonElement>('.spro-anotacao button')!;
+  let alturaTotal = 28;
+  Object.defineProperty(texto, 'clientHeight', {get: () => 28});
+  Object.defineProperty(texto, 'scrollHeight', {get: () => alturaTotal});
+  renderizar(d, true); assert.equal(botao.hidden, true);
+  alturaTotal = 65; renderizar(d, true); assert.equal(botao.hidden, false);
+  botao.click(); assert.equal(botao.getAttribute('aria-expanded'), 'true');
+  alturaTotal = 28; renderizar(d, true); assert.equal(botao.hidden, true);
+  assert.equal(botao.getAttribute('aria-expanded'), 'false');
+  assert.equal(d.querySelector('.spro-anotacao-expandida'), null);
+});
 console.log(`${n} verificações passaram.`);

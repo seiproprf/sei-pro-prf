@@ -8,7 +8,7 @@ Gerados e na visão detalhada. A preferência `mostraranotacaocontrole` usa o me
 
 - `src/leitura.ts`: lê o rótulo acessível ou os literais do tooltip com os parsers
   do `sei-nucleo`; não executa scripts nem interpreta o texto como HTML.
-- `src/view.ts`: DOM somente leitura, com expansão acessível; usa uma coluna própria entre os sinais e o número, preservando
+- `src/view.ts`: DOM somente leitura, com expansão acessível somente quando o texto ultrapassa duas linhas; usa uma coluna própria entre os sinais e o número, preservando
   links, seleção e os nós nativos da anotação na visão detalhada.
 - `src/controle.ts`: atualização idempotente por MutationObserver, preferência
   e cache de prioridade em memória durante a permanência na tela.
@@ -26,7 +26,9 @@ A interface cria uma coluna antes do número e oculta o ícone de anotação enq
 o cartão estiver visível. O código de controle antigo ignora a célula adicional
 nas leituras por posição e o tablesorter acompanha a inclusão/remoção da coluna,
 com migração dos índices de ordenação e filtros. Linhas clonadas pelo agrupamento
-recebem apenas um cartão. A visão detalhada reutiliza a coluna Anotação quando presente. O pacote não
+recebem apenas um cartão. A coluna de sinais mantém os ícones na mesma linha
+e cresce conforme necessário. A seta é medida na largura real do cartão,
+reavaliada por ResizeObserver e ao redimensionar a janela. A visão detalhada reutiliza a coluna Anotação quando presente. O pacote não
 substitui a anotação da árvore nem sua edição.
 
 ## Desenvolvimento
