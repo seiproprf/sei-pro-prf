@@ -2,6 +2,11 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.5.1.1
+07/10/2026
+
+- A anotação de cada processo pode ser exibida em uma coluna própria na tela de controle de processos. A seta para expandir aparece apenas quando o texto ultrapassa o espaço disponível.
+
 ### Versão 2.5.1
 05/10/2026
 
