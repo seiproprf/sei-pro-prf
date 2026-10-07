@@ -4,6 +4,7 @@ import { parseHTML } from 'linkedom';
 import { lerAnotacaoDaLinha, lerPrioridade } from '../src/leitura';
 import { renderizar } from '../src/view';
 import { opcaoLegadaLigada } from '../../sei-comum/src/opcoes/legadas';
+import { lerLinhaCaixa } from '../../sei-nucleo/src/dominio/caixa';
 import { definirAnalisador } from '../../sei-nucleo/src/sessao/dom';
 definirAnalisador(html => parseHTML(html).document as unknown as Document);
 let n = 0;
@@ -25,14 +26,20 @@ teste('prioridade vem do checkbox do formulário', () => {
   assert.equal(lerPrioridade(criar('<input id="chkSinPrioridade" type="checkbox" checked>')), true);
   assert.equal(lerPrioridade(criar('<input id="chkSinPrioridade" type="checkbox">')), false);
 });
-for (const id of ['tblProcessosRecebidos', 'tblProcessosGerados', 'tblProcessosDetalhado']) teste(`renderiza sem mudar colunas e sem duplicar: ${id}`, () => {
+for (const id of ['tblProcessosRecebidos', 'tblProcessosGerados', 'tblProcessosDetalhado']) teste(`cria coluna antes do processo sem duplicar: ${id}`, () => {
   const d = docTabela(id); renderizar(d, true); renderizar(d, true);
   assert.equal(d.querySelectorAll('.spro-anotacao').length, 1);
-  assert.equal(d.querySelector('tr#P42')!.querySelectorAll('td').length, 4);
-  assert.equal(d.querySelector('th[colspan]')!.getAttribute('colspan'), '3');
+  const celulas = [...d.querySelector('tr#P42')!.querySelectorAll('td')];
+  assert.equal(celulas.length, 5);
+  assert.equal(celulas[2]!.classList.contains('spro-anotacao-coluna'), true);
+  assert.equal(celulas[3]!.querySelector('a')!.textContent, '123');
+  assert.equal(d.querySelector('a[href*=anotacao_registrar]')!.classList.contains('spro-anotacao-icone-oculto'), true);
+  assert.equal(d.querySelectorAll('th').length, 5);
   assert.match(d.querySelector('.spro-anotacao')!.textContent!, /D'Ávila & equipe/);
   assert.equal(d.querySelectorAll('a[href*="anotacao_registrar"]').length, 1);
   renderizar(d, false); assert.equal(d.querySelectorAll('.spro-anotacao').length, 0);
+  assert.equal(d.querySelector('tr#P42')!.querySelectorAll('td').length, 4);
+  assert.equal(d.querySelector('.spro-anotacao-icone-oculto'), null);
 });
 teste('mudança do tooltip atualiza cartão', () => {
   const d = docTabela(); renderizar(d, true);
@@ -76,5 +83,33 @@ teste('detalhado mantém quebras de linha e acompanha célula substituída pelo 
   celula.textContent = 'Atualizada'; renderizar(d, true);
   assert.equal(celula.querySelector('.spro-anotacao-texto')!.textContent, 'Atualizada');
   renderizar(d, false); assert.equal(celula.textContent, 'Atualizada');
+});
+teste('nova coluna alinha também processos sem anotação e linhas clonadas', () => {
+  const d = docTabela(); const tbody = d.querySelector('tbody')!;
+  const semNota = d.querySelector('tr#P42')!.cloneNode(true) as Element;
+  semNota.querySelector('a')!.remove(); tbody.append(semNota);
+  renderizar(d, true);
+  assert.equal(semNota.querySelectorAll('td').length, 5);
+  const clone = d.querySelector('tr#P42')!.cloneNode(true) as Element;
+  tbody.append(clone); renderizar(d, true);
+  assert.equal(clone.querySelectorAll('.spro-anotacao').length, 1);
+  assert.equal(clone.querySelectorAll('.spro-anotacao-coluna').length, 1);
+  renderizar(d, false); assert.equal(clone.querySelectorAll('td').length, 4);
+});
+teste('clone da visão detalhada conserva texto nativo ao desligar', () => {
+  const d = criar(`<table id="tblProcessosDetalhado"><tbody><tr><th>Seleção</th><th>Status</th><th>Processo</th><th>Anotação</th></tr>${linha()}</tbody></table>`);
+  d.querySelector('tr#P42')!.querySelectorAll('td')[3]!.innerHTML = 'Primeira<br>Segunda';
+  renderizar(d, true);
+  const clone = d.querySelector('tr#P42')!.cloneNode(true) as Element;
+  d.querySelector('tbody')!.append(clone); renderizar(d, true);
+  assert.equal(clone.querySelector('.spro-anotacao-texto')!.textContent, 'Primeira\nSegunda');
+  renderizar(d, false); assert.equal(clone.querySelectorAll('td')[3]!.innerHTML, 'Primeira<br>Segunda');
+});
+teste('núcleo continua lendo a mesma linha com a coluna extra e ícone oculto', () => {
+  const d = criar(readFileSync(new URL('../../sei-nucleo/tests/fixtures/sei41/caixa.html', import.meta.url), 'utf8'));
+  const tr = d.querySelector('#P148265')!;
+  const antes = lerLinhaCaixa(tr, 'recebidos'); renderizar(d, true);
+  assert.deepEqual(lerLinhaCaixa(tr, 'recebidos'), antes);
+  renderizar(d, false); assert.deepEqual(lerLinhaCaixa(tr, 'recebidos'), antes);
 });
 console.log(`${n} verificações passaram.`);

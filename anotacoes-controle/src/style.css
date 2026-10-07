@@ -10,3 +10,11 @@
 .spro-anotacao-expandida .spro-anotacao-texto { max-height: none; }
 .spro-anotacao button { position: absolute; right: 2px; bottom: 2px; border: 0; border-radius: 3px; background: transparent; color: inherit; padding: 2px 4px; cursor: pointer; font: bold 15px/1 Arial, sans-serif; }
 .spro-anotacao button:focus-visible { outline: 2px solid #175b98; outline-offset: 1px; }
+
+:is(#tblProcessosRecebidos, #tblProcessosGerados, #tblProcessosDetalhado) .spro-anotacao-icone-oculto { display: none !important; }
+.spro-anotacao-coluna { width: 38%; min-width: 160px; vertical-align: middle; }
+.spro-anotacao-coluna .spro-anotacao { max-width: none; margin: 3px 6px; }
+
+.spro-anotacao-layout td:nth-child(2), .spro-anotacao-layout th:nth-child(2) { width: 90px !important; }
+
+.spro-anotacao-original { display: none !important; }
