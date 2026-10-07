@@ -6,7 +6,8 @@ Leia a anotação de cada processo diretamente em sua linha, nas listas de
 Recebidos e Gerados ou na visualização detalhada.
 
 Os cartões amarelos mostram as anotações; os vermelhos indicam prioridade.
-Use a seta no cartão para expandir o texto completo ou recolhê-lo.
+A seta aparece somente quando o texto não cabe no cartão recolhido. Use-a para
+expandir o texto completo ou recolhê-lo. Os ícones ao lado ficam na mesma linha.
 O cartão fica em uma coluna entre os ícones e o número do processo. Enquanto
 estiver visível, o ícone amarelo ou vermelho de anotação fica oculto. O número
 do processo continua disponível.

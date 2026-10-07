@@ -2,9 +2,11 @@
   position: relative; box-sizing: border-box; text-align: left;
   background: #fff8df; color: #333; border: 1px solid #f5d994;
   border-left: 3px solid #f3be55; border-radius: 4px;
-  padding: 5px 24px 5px 7px; margin: 3px 0 5px;
+  padding: 5px 7px; margin: 3px 0 5px;
   font: 12px/1.4 Arial, sans-serif; max-width: 480px; min-width: 140px;
 }
+.spro-anotacao-expansivel { padding-right: 24px; }
+.spro-anotacao button[hidden] { display: none !important; }
 .spro-anotacao-prioridade { background: #fde6e7; border-color: #f6b8bd; border-left-color: #de7d88; }
 .spro-anotacao-texto { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 2.8em; overflow: hidden; }
 .spro-anotacao-expandida .spro-anotacao-texto { max-height: none; }
@@ -15,6 +17,9 @@
 .spro-anotacao-coluna { width: 38%; min-width: 160px; vertical-align: middle; }
 .spro-anotacao-coluna .spro-anotacao { max-width: none; margin: 3px 6px; }
 
-.spro-anotacao-layout td:nth-child(2), .spro-anotacao-layout th:nth-child(2) { width: 90px !important; }
+.spro-anotacao-layout td:nth-child(2), .spro-anotacao-layout th:nth-child(2) { width: auto !important; min-width: 90px; white-space: nowrap; }
+.spro-anotacao-layout td:nth-child(2) > a,
+.spro-anotacao-layout td:nth-child(2) > button { display: inline-block; vertical-align: middle; float: none; }
+.spro-anotacao-layout td:nth-child(2) img { vertical-align: middle; }
 
 .spro-anotacao-original { display: none !important; }

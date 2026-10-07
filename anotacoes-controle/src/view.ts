@@ -17,6 +17,24 @@ function textoNativoDe(nos: Iterable<Node>): string {
     return /^(DIV|P|LI)$/.test(no.nodeName) ? `${valor}\n` : valor;
   }).join('');
 }
+/** Mede o texto recolhido na largura real; não estima pelo número de caracteres. */
+function atualizarExpansao(doc: Document): void {
+  for (const card of doc.querySelectorAll<HTMLElement>('.spro-anotacao')) {
+    const texto = card.querySelector<HTMLElement>('.spro-anotacao-texto');
+    const botao = card.querySelector<HTMLButtonElement>('button');
+    if (!texto || !botao) continue;
+    const expandido = card.classList.contains('spro-anotacao-expandida');
+    card.classList.remove('spro-anotacao-expandida', 'spro-anotacao-expansivel');
+    const transborda = texto.clientHeight > 0 && texto.scrollHeight > texto.clientHeight + 1;
+    botao.hidden = !transborda;
+    card.classList.toggle('spro-anotacao-expansivel', transborda);
+    card.classList.toggle('spro-anotacao-expandida', transborda && expandido);
+    if (!transborda && expandido) {
+      botao.setAttribute('aria-expanded', 'false'); botao.textContent = '⌄';
+      botao.title = 'Ver anotação completa'; botao.setAttribute('aria-label', botao.title);
+    }
+  }
+}
 const estados = new WeakMap<Element, { chave: string; card: HTMLElement; original?: HTMLElement; celula: Element }>();
 /** Cartão na coluna própria; mantém os links nativos para leitura e restauração. */
 export function renderizar(doc: Document, ligada: boolean, prioridades: ReadonlyMap<string, boolean> = new Map()): Anotacao[] {
@@ -71,8 +89,8 @@ export function renderizar(doc: Document, ligada: boolean, prioridades: Readonly
       const conteudo = doc.createElement('div'); conteudo.className = 'spro-anotacao-texto'; conteudo.textContent = nota.texto;
       if (nota.autor) card.title = `Anotação de ${nota.autor}`;
       card.append(conteudo);
-      // O botão funciona também para textos de uma linha que quebram com a largura da tabela.
-      const botao = doc.createElement('button'); botao.type = 'button'; botao.textContent = '⌄';
+      // A seta nasce oculta e só aparece após medir o conteúdo renderizado.
+      const botao = doc.createElement('button'); botao.type = 'button'; botao.hidden = true; botao.textContent = '⌄';
       botao.title = 'Ver anotação completa'; botao.setAttribute('aria-label', botao.title); botao.setAttribute('aria-expanded', 'false');
       botao.addEventListener('click', event => {
         event.preventDefault(); event.stopPropagation();
@@ -94,5 +112,6 @@ export function renderizar(doc: Document, ligada: boolean, prioridades: Readonly
     }
   }
   if (mudouLayout) doc.dispatchEvent(new (doc.defaultView?.Event ?? Event)('spro-anotacoes-colunas'));
+  atualizarExpansao(doc);
   return notas;
 }
