@@ -2093,7 +2093,7 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                             especificacao: tip ? removePrefixoNaoVisualizadoPro(tip[0]) : false,
                             tipo: tip ? tip[1] : false,
                             html_icons: $(this).find('td').eq(1).html(),
-                            html_proc: $(this).find('td').eq(2).html(),
+                            html_proc: $(this).find('td').eq(2).clone().find('.spro-anotacao').remove().end().html(),
                             html_atribuicao: $(this).find('td').eq(3).html(),
                             html_prazo: $(this).find('td.prazoBoxDisplay').html(),
                             color: $(this).data('color') ? $(this).css('color') : false
@@ -2771,7 +2771,7 @@ function getMapaControleProcesso() {
         let _td = _this.find('td');
         let id_procedimento = _this.attr('id');
             id_procedimento = typeof id_procedimento !== 'undefined' ? parseInt(id_procedimento.replace('P','')) : false;
-        let protocolo = _td.eq(2).text();
+        let protocolo = _td.eq(2).clone().find('.spro-anotacao').remove().end().text();
         let link_atribuicao = _td.eq(3).find('a[href*="controlador.php?acao=procedimento_atribuicao_listar"]');
         let nome_atribuicao = link_atribuicao.attr('title');
             nome_atribuicao = typeof nome_atribuicao !== 'undefined' ? nome_atribuicao.replace('Atribuído para ','') : false;

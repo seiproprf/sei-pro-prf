@@ -242,9 +242,10 @@ const ICONES = {
 export type NomeIcone = keyof typeof ICONES;
 export const NOMES_ICONES = Object.keys(ICONES) as NomeIcone[];
 
-export function icone(nome: NomeIcone, tamanho = 18): SVGSVGElement {
+/** `doc` serve a quem desenha em outro documento (o content script na página do SEI, os testes). */
+export function icone(nome: NomeIcone, tamanho = 18, doc: Document = document): SVGSVGElement {
   const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
+  const svg = doc.createElementNS(NS, "svg");
   const base: Record<string, string> = {
     viewBox: "0 0 24 24",
     width: String(tamanho),
@@ -260,7 +261,7 @@ export function icone(nome: NomeIcone, tamanho = 18): SVGSVGElement {
   };
   for (const [k, v] of Object.entries(base)) svg.setAttribute(k, v);
   for (const [tag, attrs] of ICONES[nome] as Forma[]) {
-    const el = document.createElementNS(NS, tag);
+    const el = doc.createElementNS(NS, tag);
     for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
     svg.append(el);
   }
