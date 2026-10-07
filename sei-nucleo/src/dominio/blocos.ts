@@ -191,27 +191,31 @@ export interface BlocoParaInclusao {
 }
 
 function blocosParaInclusao(pagina: Pagina): BlocoParaInclusao[] {
-  const tabela = pagina.doc.querySelector("#frmBlocoLista #tblBlocos");
-  const col = colunas(tabela);
-  if (!tabela || col.estado === undefined || col.descricao === undefined) {
+  // Há versões sem id na tabela e com "Situação" em vez de "Estado".
+  // O formulário e seus cabeçalhos identificam a lista, nunca posições fixas.
+  const tabela = [...(pagina.doc.querySelector("#frmBlocoLista")?.querySelectorAll("table") ?? [])].find(t => {
+    const c = colunas(t);
+    return (c.estado ?? c.situacao) !== undefined && c.descricao !== undefined && (c.numero ?? c.n) !== undefined;
+  });
+  if (!tabela) {
     throw new ErroSei("SEI_VERSAO_NAO_SUPORTADA", "A listagem de blocos de assinatura não foi reconhecida.");
   }
-  const porId = new Map(lerBlocos(pagina, "assinatura").map(b => [b.numero, b]));
+  const col = colunas(tabela);
   const resultado: BlocoParaInclusao[] = [];
   for (const linha of tabela.querySelectorAll("tr")) {
-    const id = linha.querySelector('input[type="checkbox"]')?.getAttribute("value") ?? "";
-    const bloco = porId.get(id);
-    if (!bloco || normalizar(bloco.estado) !== "disponibilizado") continue;
+    const celulas = [...linha.querySelectorAll("td")];
+    if (normalizar(textoDe(celulas[col.estado ?? col.situacao])) !== "disponibilizado") continue;
     // O estado sozinho também inclui blocos recebidos de outra unidade.
     // Só o controle de cancelar disponibilização autoriza recolher este bloco.
-    const podeCancelar = [...linha.querySelectorAll("[onclick]")].some(el => {
+    const id = [...linha.querySelectorAll("[onclick]")].map(el => {
       const chamada = /\bacaoCancelarDisponibilizacao\(\s*['"]([^'"]+)['"]\s*\)/.exec(el.getAttribute("onclick") ?? "");
-      return chamada?.[1] === id;
-    });
-    if (!podeCancelar) continue;
-    const celulas = [...linha.querySelectorAll("td")];
+      return chamada?.[1];
+    }).find(Boolean);
+    if (!id) continue;
+    const checkbox = linha.querySelector('input[type="checkbox"]')?.getAttribute("value");
+    if (checkbox && checkbox !== id) continue;
     const numero = col.numero ?? col.n;
-    resultado.push({ id, numero: numero === undefined ? id : textoDe(celulas[numero]) || id, descricao: bloco.descricao });
+    resultado.push({ id, numero: textoDe(celulas[numero]) || id, descricao: textoDe(celulas[col.descricao]) });
   }
   return resultado;
 }

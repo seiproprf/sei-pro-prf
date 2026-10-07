@@ -45,3 +45,13 @@ await assert.rejects(() => blocos.listarBlocosParaInclusao(erroFiltro.sei));
 assert.equal(erroFiltro.estado.filtraDisponibilizado, false, 'restaura também após falha no envio da pesquisa');
 assert.equal(erroFiltro.estado.posts, 0);
 console.log('OK: filtro salvo restaurado na listagem, escrita e falha');
+
+// Variante documentada nas fixtures do legado: tabela sem id, Situação e
+// identidade exclusivamente no controle nativo de cancelar disponibilização.
+const alternativo = servidor(); alternativo.estado.layoutAlternativo = true;
+assert.deepEqual(await blocos.listarBlocosParaInclusao(alternativo.sei), [
+  { id: '11', numero: '111111', descricao: '<img src=x onerror=alert(1)> Árvore' },
+]);
+assert.deepEqual(await blocos.retornarBlocoParaInclusao(alternativo.sei, '11', url), { id: '11', rotulo: '111111 - Árvore' });
+assert.equal(alternativo.estado.posts, 1);
+console.log('OK: tabela sem id, coluna Situação e identidade pelo controle nativo');

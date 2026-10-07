@@ -15,7 +15,7 @@ export const inclusao = `<form id="frmBlocoEscolher"><div id="divInfraBarraComan
 
 export function servidor() {
   let cancelado = false;
-  const estado = { posts: 0, leituras: 0, pesquisas: 0, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
+  const estado = { posts: 0, leituras: 0, pesquisas: 0, layoutAlternativo: false, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
   const link = (acao: string) => `controlador.php?acao=${acao}&infra_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`;
   const topo = criar(`<nav id="infraMenu"><a href="${link('bloco_assinatura_listar')}">Assinatura</a></nav>`);
   const lista = () => `<form id="frmBlocoLista" action="${link('bloco_assinatura_listar')}"><input name="hdnInfraItemId" value=""><input name="hdnInfraItensSelecionados" value=""><input type="checkbox" name="chkSinEstadoDisponibilizado" id="chkSinEstadoDisponibilizado" ${estado.filtraDisponibilizado ? 'checked' : ''}><input name="txtDescricao" value=""><button type="submit" name="sbmPesquisar">Pesquisar</button>
@@ -43,9 +43,14 @@ export function servidor() {
         if (!estado.rejeitar) cancelado = true;
       }
     }
-    const html = alvo.searchParams.get('acao') === 'bloco_escolher'
+    let html = alvo.searchParams.get('acao') === 'bloco_escolher'
       ? inclusao.replace('</select>', cancelado && !estado.semOpcao ? '<option value="11">111111 - Árvore</option></select>' : '</select>')
       : estado.semTabela ? '<p>Tela inesperada</p>' : lista();
+    if (estado.layoutAlternativo && alvo.searchParams.get('acao') !== 'bloco_escolher') {
+      html = html.replace('<table id="tblBlocos">', '<table><tr><td>Filtros</td></tr></table><table class="infraTable">')
+        .replace('<th>Estado</th>', '<th>Situação</th>')
+        .replace(/<input type="checkbox" value="\d+">/g, '');
+    }
     return { url: alvo.href, status: 200, arrayBuffer: async () => Uint8Array.from([...html].map(c => c.charCodeAt(0))).buffer } as Response;
   }) as typeof fetch });
   return { sei, estado };
