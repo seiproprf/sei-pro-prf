@@ -2,6 +2,17 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.6
+07/10/2026
+
+A anotação de cada processo pode aparecer na própria lista do Controle de Processos, com o checklist das anotações desenhado como caixas.
+
+- **Novo — [anotações no Controle de Processos](../pages/ANOTACAOCONTROLE.md).** Com a opção ligada, o texto da anotação aparece num cartão logo abaixo do número do processo, em *Recebidos* e *Gerados*, sem precisar passar o mouse sobre o ícone. A anotação com prioridade fica vermelha, com a etiqueta *Prioridade*. Texto longo abre e fecha pela seta do cartão, que também mostra o autor e a data. O ícone do SEI continua no lugar para editar a anotação
+- **O checklist das anotações vira caixas.** As linhas que começam com `[ ]` ou `[X]` aparecem com uma caixa desmarcada ou marcada, e os itens concluídos ficam riscados. A caixa é só para leitura: para marcar ou desmarcar, edite a anotação
+- A função vem **desligada**. Para ligar: *Configurações do SEI Pro*, aba *Geral*, seção *Controle de Processos*, opção *Mostrar a anotação de cada processo na tela de controle de processos*. Ela não faz nenhuma consulta extra ao SEI, segue o modo noturno e vale no Chrome e no Edge. A ideia veio de uma proposta de *SEI Pro PRF* ([#174](https://github.com/SEI-Pro/sei-pro/pull/174))
+- **Agente de IA: modelos com raciocínio voltam a funcionar.** Com alguns modelos novos da OpenAI, toda pergunta terminava em erro 400, porque o serviço recusava o raciocínio junto com as ferramentas do SEI. Agora o agente refaz o pedido com o raciocínio desligado. Se o modelo recusar mesmo assim, a mensagem explica, em português, que é preciso escolher outro modelo
+- **Nos favoritos novos (SEI Pro Lab):** o título do painel não aparece mais com a letra pequena no SEI 5 enquanto a página termina de carregar
+
 ### Versão 2.5.1.1
 07/10/2026
 

@@ -1,0 +1,21 @@
+{
+  "name": "sei-pro-blocos-assinatura",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Retorno de blocos disponibilizados na tela de inclusão",
+  "scripts": {
+    "build": "npm run verificar && node build.mjs",
+    "tipos": "tsc --noEmit",
+    "verificar": "tsx tests/verificar.ts && tsx tests/fluxo.ts",
+    "checar": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.300",
+    "@types/node": "^22.20.4",
+    "esbuild": "^0.25.0",
+    "linkedom": "^0.18.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}

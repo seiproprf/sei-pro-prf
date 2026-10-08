@@ -1,3 +1,4 @@
+import { DOMParser } from "linkedom";
 import { h, icone, NOMES_ICONES } from "../src/ui/dom";
 import { checar, disparar, instalarDom, secao } from "./util";
 
@@ -32,5 +33,11 @@ export function verificarUi(): void {
     "todo icone desenha algo",
     NOMES_ICONES.every((n) => icone(n).childNodes.length > 0),
     NOMES_ICONES.filter((n) => icone(n).childNodes.length === 0),
+  );
+  const outro = new DOMParser().parseFromString("<html><body></body></html>", "text/html") as unknown as Document;
+  const doOutro = icone("nota", 14, outro);
+  checar(
+    "documento informado (content script em outro documento)",
+    doOutro.ownerDocument === outro && doOutro.firstElementChild?.ownerDocument === outro,
   );
 }
