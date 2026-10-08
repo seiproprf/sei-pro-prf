@@ -2,6 +2,12 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
+### Versão 2.6.0.1
+08/10/2026
+
+- Integra as anotações em coluna própria no Controle de Processos, com expansão apenas quando o texto ultrapassa o espaço disponível.
+- Adiciona o retorno de blocos disponibilizados na tela de inclusão de documentos, com configuração própria e preservação dos documentos marcados.
+
 ### Versão 2.6
 07/10/2026
 
