@@ -1,65 +1,60 @@
 # Anotações no Controle de Processos
 
-Mostra o texto da anotação de cada processo num cartão dentro da célula do
-processo, logo abaixo do número, em Recebidos e Gerados. Opção
-`mostraranotacaocontrole`, **desligada por padrão** (regra do
-`verifyConfigValue`, lida por `opcaoLegadaMarcada` do `sei-comum`). Ajuda em
-`pages/ANOTACAOCONTROLE.md`.
-
-Proposta original: PR #174 (seiproprf). Esta versão mantém a ideia e corta o
-que pesava:
-
-- **Nenhuma requisição.** Texto, autor e prioridade vêm da linha já na tela:
-  `aria-label` "Anotação[ com prioridade] / texto / autor" no SEI 4.1 e 5,
-  tooltip no SEI 3; a prioridade também está no ícone (`anotacao2.svg`, ou
-  "prioridade" no nome no SEI 3).
-- **Nenhuma coluna nova.** O legado lê as colunas por posição em dezenas de
-  lugares; dentro da célula do processo só dois leem a célula inteira, e os dois
-  (mapa e Kanban em `sei-pro.js`) descartam `.spro-anotacao`.
-- **O ícone nativo fica** e continua abrindo a edição.
-- **Visão detalhada intocada:** o SEI já tem a coluna Anotação.
-
-## Visual
-
-Linguagem dos favoritos e do histórico: tokens de `sei-comum/src/ui/base.css`
-(cores, fonte do sistema, raio de 8 px), fundo tingido pelo tom como a pílula
-de lembrete, ícones `nota` e `chevron` de `sei-comum/src/ui/dom.ts`. Os tokens
-são declarados só no cartão (`.spro-anotacao`), porque o `base.css` tem regras
-globais e a página é do SEI. Prioridade: tom vermelho e pílula com texto (a cor
-sozinha não basta).
-
-Checklist das anotações: linha que **começa** com `[ ]`, `[X]` ou `[x]` vira
-item com uma caixa desenhada (não é `<input>`, não tem clique); concluído fica
-riscado. Marcador no meio da linha continua texto (o legado aceita em qualquer
-ponto). Com prioridade e checklist na primeira linha, a pílula vai numa linha
-própria, senão esmaga o item em célula estreita. No SEI 3 o tooltip chega já
-transformado pelo `replaceSticknoteHome` do legado (HTML de ícones, linhas
-coladas); `leitura.ts` desfaz isso de volta para `[ ]`/`[X]`.
-
-Modo noturno do legado = `body.seiSlim.dark-mode`. O `sei-slim.css` pinta todo
-elemento (`.seiSlim.dark-mode * { color }`, peso 0,2,0), inclusive os `<path>`
-dos ícones; o `style.css` devolve as cores com seletores de peso 0,3,0.
+Exibe a anotação já disponível na tela em um cartão por processo, em Recebidos,
+Gerados e na visão detalhada. A preferência `mostraranotacaocontrole` usa o mesmo
+`chrome.storage.sync.dataValues` das opções atuais; ausente significa ligada.
 
 ## Estrutura
 
-- `src/leitura.ts`: lê a anotação da linha, sem executar o tooltip.
-- `src/view.ts`: põe, atualiza e retira os cartões. O estado fica no próprio
-  cartão (`data-spro-chave`) e a seta usa um ouvinte único em captura no
-  documento, então as linhas que o agrupamento clona funcionam sem tratamento
-  especial.
-- `src/controle.ts`: redesenha quando as tabelas mudam (MutationObserver) e
-  quando a largura muda (ResizeObserver, só largura).
-- `src/main.ts`: content script isolado; só age em `procedimento_controlar` e
-  liga/desliga ao vivo quando as opções mudam.
+- `src/leitura.ts`: lê o rótulo acessível ou os literais do tooltip com os parsers
+  do `sei-nucleo`; não executa scripts nem interpreta o texto como HTML.
+- `src/view.ts`: DOM somente leitura, com expansão acessível somente quando o texto ultrapassa duas linhas; usa uma coluna própria entre os sinais e o número, preservando
+  links, seleção e os nós nativos da anotação na visão detalhada.
+- `src/controle.ts`: atualização idempotente por MutationObserver, preferência
+  e cache de prioridade em memória durante a permanência na tela.
+- `src/main.ts`: content script isolado, integração com as opções de `sei-comum`
+  e transporte de `sei-nucleo`. Só inicia em `procedimento_controlar`.
+
+O texto aparece sem requisição extra. Para o destaque vermelho, lê o checkbox
+`chkSinPrioridade` no formulário de anotação pelo link assinado da própria
+linha. O transporte limita a duas requisições simultâneas. Falha nessa leitura
+mantém o cartão sem destaque e não repete automaticamente a requisição.
+Desligar a preferência cancela leituras pendentes e restaura a tela nativa.
+Nenhuma anotação é gravada ou enviada para serviços externos.
+
+A interface cria uma coluna antes do número e oculta o ícone de anotação enquanto
+o cartão estiver visível. O código de controle antigo ignora a célula adicional
+nas leituras por posição e o tablesorter acompanha a inclusão/remoção da coluna,
+com migração dos índices de ordenação e filtros. Linhas clonadas pelo agrupamento
+recebem apenas um cartão. A coluna de sinais mantém os ícones na mesma linha
+e cresce conforme necessário. A seta é medida na largura real do cartão,
+reavaliada por ResizeObserver e ao redimensionar a janela. A visão detalhada reutiliza a coluna Anotação quando presente. O pacote não
+substitui a anotação da árvore nem sua edição.
 
 ## Desenvolvimento
 
 ```sh
 npm install
-npm run verificar   # testes (linkedom)
+npm run verificar
 npm run tipos
-npm run build       # verificar + gera dist/js/init_anotacoes_controle.js (só ASCII)
+npm run build
 ```
 
-O linkedom ignora a fase de captura dos eventos; a ordem real (o clique na
-seta não chega à linha) só se confere no Chrome.
+O build gera `dist/js/init_anotacoes_controle.js`, incluído no manifest, com
+verificação de bytes ASCII. Testes incluem uma fixture real do SEI 4.1, conteúdo
+com escapes e entidades, dados maliciosos tratados como texto, visualização
+simples/detalhada, alterações de DOM, preferência ao vivo, prioridade e falhas
+ou respostas tardias de IO.
+
+## Validação manual no SEI
+
+1. Recarregue a extensão e abra Controle de Processos com a opção ligada.
+2. Confira notas curtas, multilinhas e prioritárias em Recebidos e Gerados.
+3. Expanda e recolha uma nota longa; abra o processo pelo número e a edição
+   pelo ícone nativo.
+4. Ordene, filtre, pagine e alterne para a visão detalhada; confira ausência de
+   duplicações e a integridade da seleção e das atribuições.
+5. Desligue a opção e confirme que só a tela nativa permanece.
+
+A validação automatizada e a prévia local com dados fictícios não substituem a
+conferência em sessão real do SEI, especialmente nas versões 3 e 5.

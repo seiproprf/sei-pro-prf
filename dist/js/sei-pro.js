@@ -207,7 +207,7 @@ function appendGerados(type) {
     
     var tbody = $('#divRecebidos tbody');
     tbody.find('tr').each(function() {
-        var dataRecebido = ($(this).find('td').eq(2).find('a').length) ? getArrayProcessoRecebido($(this).find('td').eq(2).find('a').attr('href')) : '';
+        var dataRecebido = ($(this).find('td').not('.spro-anotacao-coluna').eq(2).find('a').length) ? getArrayProcessoRecebido($(this).find('td').not('.spro-anotacao-coluna').eq(2).find('a').attr('href')) : '';
             dataRecebido = (dataRecebido != '' && type == 'arrivaldate') ? moment(dataRecebido.datahora, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
             dataRecebido = (dataRecebido != '' && type == 'acessdate') ? moment(dataRecebido.datetime, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
             dataRecebido = (dataRecebido != '' && type == 'createdate') ? moment(dataRecebido.datageracao, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
@@ -356,7 +356,7 @@ function removeAllTags(forceFilter = false, n) {
     if (forceFilter && sessionStorageRestorePro('setFiltersTableHome')) {
         setTimeout(function(){ 
             $.each(tableHomePro, function(i){
-                $.tablesorter.setFilters( tableHomePro[i][0], sessionStorageRestorePro('setFiltersTableHome'), true );
+                $.tablesorter.setFilters( tableHomePro[i][0], filtrosComAnotacaoPro(tableHomePro[i][0], sessionStorageRestorePro('setFiltersTableHome')), true );
                 tableHomePro[i].trigger('update');
             });
         }, 1000);
@@ -426,15 +426,15 @@ function getTableOnTag(type) {
     $('#divRecebidos table tbody tr').each(function(index){
     	var dataTag = $(this).attr('data-tagname');
     		dataTag = ( dataTag == '' ) ? 'SemGrupo' : dataTag;
-    	if ( typeof dataTag !== 'undefined' && $(this).find('td').eq(2).find('a').length > 0 ) {
-    		var desc = $(this).find('td').eq(2).find('a').attr('onmouseover').split("','");    
+        if ( typeof dataTag !== 'undefined' && $(this).find('td').not('.spro-anotacao-coluna').eq(2).find('a').length > 0 ) {
+            var desc = $(this).find('td').not('.spro-anotacao-coluna').eq(2).find('a').attr('onmouseover').split("','");
             var txt_desc = (typeof desc[0] !== 'undefined') ? removePrefixoNaoVisualizadoPro(desc[0].replace("return infraTooltipMostrar('", "")) : '';
             var txt_tipo_proc = (typeof desc[1] !== 'undefined') ? desc[0].replace("return infraTooltipMostrar('", "") : '';
             var editDesc = '<a class="newLink newLink_active followLink followLinkDesc content_btnsave" onclick="editFieldProc(this)" style="right: 0;top: 0;" onmouseover="return infraTooltipMostrar(\'Editar descri\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-edit" style="font-size: 100%;"></i></a>';        
     		var htmlDesc = (type == 'all')
                 ? '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td>'
                 : '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td><td class="tagintable">'+desc[1].replace("');","")+'</td>';
-            var dataRecebido = getArrayProcessoRecebido($(this).find('td').eq(2).find('a').attr('href'));
+            var dataRecebido = getArrayProcessoRecebido($(this).find('td').not('.spro-anotacao-coluna').eq(2).find('a').attr('href'));
             var textBoxDesc =   (type == 'arrivaldate' || type == 'acessdate') 
                                 ? dataRecebido.descricao+' em: '+moment(dataRecebido.datahora, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm')+'<br>'
                                 : (dataRecebido.datesend != '') ? dataRecebido.descricaosend+' em: '+moment(dataRecebido.datesend, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm')+'<br>' : '';
@@ -446,7 +446,7 @@ function getTableOnTag(type) {
                 textDataRecebido = (dataRecebido != '' && (type == 'senddate' || type == 'senddepart' || type == 'acompanhamentoesp') && dataRecebido.datesend != '') ? moment(dataRecebido.datesend, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY') : textDataRecebido;
             var htmlDataRecebido = (dataRecebido != '') ? '<td class="tagintable"><span onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+textBox+'\')">'+textDataRecebido+'</span></td>' : '<td class="tagintable"></td>';
                 htmlDataRecebido = (type == 'all') ? '' : htmlDataRecebido;
-    			$(this).find('td').eq(3).after(htmlDesc+htmlDataRecebido);
+                $(this).find('td').not('.spro-anotacao-coluna').eq(3).after(htmlDesc+htmlDataRecebido);
     		var cloneTr = $(this).clone();
     		getTrGroupTablePro($('#divRecebidos table tbody'), 'data-htagname', dataTag).after(cloneTr);
     		$(this).remove(); 
@@ -850,7 +850,7 @@ function getFilterTableHome(this_) {
         if (filters.length > 0) {
             setTimeout(function(){ 
                 $.each(tableHomePro, function(i){
-                    $.tablesorter.setFilters( tableHomePro[i][0], filters, true );
+                    $.tablesorter.setFilters( tableHomePro[i][0], filtrosComAnotacaoPro(tableHomePro[i][0], filters), true );
                 });
                 sessionStorageStorePro('setFiltersTableHome', filters);
             }, 100);
@@ -1472,7 +1472,7 @@ function getTableProcessosCSV() {
     var tableSelect = (table.find('tbody tr.infraTrMarcada').length > 0) ? table.find('tbody tr.infraTrMarcada') : table.find('tbody tr.infraTrClara');
     var listaAcompEsp = getListaAcompanhamentoEspUnidadePro();
         tableSelect.each(function(){
-            var td = $(this).find('td');
+            var td = $(this).find('td').not('.spro-anotacao-coluna');
             var id_protocolo = $(this).attr('id').replace('P', '');
             var etiqueta = td.eq(1).find('a[href*="andamento_marcador_gerenciar"]').attr('onmouseover');
             var etiqueta_array = (typeof etiqueta !== 'undefined' && etiqueta != '') ? extractAllTextBetweenQuotes(etiqueta) : false;
@@ -1572,6 +1572,38 @@ function filterTableProcessos(this_) {
         _this.addClass('newLink_active');
     }
 }
+// O content script isolado avisa quando muda a estrutura das colunas.
+var reiniciarAnotacoesTablePro = false;
+document.addEventListener('spro-anotacoes-antes-colunas', function () {
+    if (typeof tableHomePro !== 'undefined' && tableHomePro.length) {
+        var estados = tableHomePro.map(function (table) {
+            return { table: table[0], sortList: (table[0].config.sortList || []).slice(), filtros: $.tablesorter.getFilters(table[0]) };
+        });
+        tableHomeDestroy();
+        estados.forEach(function (estado) {
+            storageTableHomePro(estado.table, 'tablesorter-savesort', { sortList: estado.sortList });
+            storageTableHomePro(estado.table, 'tablesorter-filters', estado.filtros);
+        });
+        reiniciarAnotacoesTablePro = true;
+    }
+});
+document.addEventListener('spro-anotacoes-colunas', function () {
+    if (reiniciarAnotacoesTablePro) {
+        reiniciarAnotacoesTablePro = false;
+        initTableSorterHome();
+    } else if (typeof tableHomePro !== 'undefined') {
+        $.each(tableHomePro, function (_, table) { table.trigger('updateAll'); });
+    }
+});
+function storageTableHomePro(table, chave, valor) {
+    // storage() precisa do tipo explicito antes da primeira inicializacao do plugin.
+    return $.tablesorter.storage(table, chave, valor, { storageType: 'local' });
+}
+function filtrosComAnotacaoPro(table, filtros) {
+    var result = (filtros || []).slice();
+    if ($(table).find('.spro-anotacao-cabecalho').length) result.splice(2, 0, '');
+    return result;
+}
 function initTableSorterHome(TimeOut = 1000) {
     if (TimeOut <= 0) { return; }
     if (
@@ -1638,41 +1670,53 @@ function setTableSorterHome() {
                     var elemID = $(this).attr('id');
                     var _this = $('#'+$(this).attr('id'));
                     var sortListArray = (typeof sortListSaved !== 'undefined' && sortListSaved && typeof sortListSaved[elemID] !== 'undefined') ? sortListSaved[elemID].sortList : [];
+                    var temAnotacao = _this.find('.spro-anotacao-cabecalho').length > 0;
+                    var tinhaAnotacao = storageTableHomePro(this, 'spro-anotacoes-coluna') === true;
+                    var savedSort = storageTableHomePro(this, 'tablesorter-savesort');
+                    if (savedSort && savedSort.sortList) sortListArray = savedSort.sortList;
+                    if (temAnotacao !== tinhaAnotacao) {
+                        var salvo = sortListArray;
+                        sortListArray = salvo.filter(function (item) { return temAnotacao || item[0] !== 2; }).map(function (item) {
+                            return [item[0] >= 2 ? item[0]+(temAnotacao ? 1 : -1) : item[0], item[1]];
+                        });
+                        storageTableHomePro(this, 'tablesorter-savesort', { sortList: sortListArray });
+                        var salvos = storageTableHomePro(this, 'tablesorter-filters');
+                        if (Array.isArray(salvos)) {
+                            salvos = salvos.slice();
+                            if (temAnotacao) salvos.splice(2, 0, ''); else salvos.splice(2, 1);
+                            storageTableHomePro(this, 'tablesorter-filters', salvos);
+                        }
+                    }
+                    storageTableHomePro(this, 'spro-anotacoes-coluna', temAnotacao);
                     var configSorter = {
                         sortLocaleCompare : true,
-                        textExtraction: {
-                            1: function (elem, table, cellIndex) {
-                                var text_return = '';
-                                if ($(elem).find('img').length > 0) {
-                                    $(elem).find('img').each(function(){
-                                        var type_img = $(this).attr('src').indexOf('anotacao') != -1 ? 'Nota:' : '';
-                                            type_img = $(this).attr('src').indexOf('marcador') != -1 ? 'Marcador:' : type_img;
-                                        var prioridade = $(this).attr('src').indexOf('prioridade') != -1 ? '1' : '2';
-                                        var texttip = $(this).closest('a').attr('onmouseover');
-                                            texttip = (typeof texttip !== 'undefined') ? texttip : $(this).attr('onmouseover');
-                                            texttip = (typeof texttip !== 'undefined') ? extractTooltip(texttip) : ''; 
-                                        text_return += prioridade+' '+type_img+' '+texttip;
-                                    });
-                                }
-                                text_return = (text_return == '') ? '3' : text_return.replace(/  /g, ' ');
-                                // console.log(text_return);
-                                return text_return;
-                            },
-                            2: function (elem, table, cellIndex) {
-                                var processo = $(elem).find('a').eq(0);
+                        // A coluna de anotacao desloca os indices: identificar pelo conteudo.
+                        textExtraction: function (elem) {
+                            var cell = $(elem);
+                            if (cell.hasClass('spro-anotacao-coluna')) return cell.find('.spro-anotacao-texto').text();
+                            var processo = cell.find('a[href*="acao=procedimento_trabalhar"]').eq(0);
+                            if (processo.length) {
                                 var nrProc = processo.text().trim();
                                 var texttip = processo.attr('onmouseover');
-                                    texttip = (typeof texttip !== 'undefined') ? extractTooltip(texttip) : '';
-                                var urgente = (texttip != '' && texttip.toLowerCase().indexOf('(urgente)') !== -1) ? '0 ' : '';
-                                var prescricao = $(elem).find('.progressPrescricao').attr('aria-percent'); 
-                                    prescricao = typeof prescricao !== 'undefined' ? ' '+prescricao+' ' : ' 0 ';
-                                return urgente+prescricao+nrProc+' '+texttip;
-                            },
-                            4: function (elem, table, cellIndex) {
-                              var target = $(elem).find('.dateboxDisplay').eq(0);
-                              var text_date = (typeof target !== 'undefined' && target.length > 0) ? target.data('time-sorter') : $(elem).text().trim();
-                              return text_date;
+                                texttip = typeof texttip !== 'undefined' ? extractTooltip(texttip) : '';
+                                var urgente = texttip && texttip.toLowerCase().indexOf('(urgente)') !== -1 ? '0 ' : '';
+                                var prescricao = cell.find('.progressPrescricao').attr('aria-percent');
+                                return urgente+(typeof prescricao !== 'undefined' ? ' '+prescricao+' ' : ' 0 ')+nrProc+' '+texttip;
                             }
+                            var date = cell.find('.dateboxDisplay').eq(0);
+                            if (date.length) return date.data('time-sorter');
+                            if (cell.index() === 1) {
+                                var text_return = '';
+                                cell.find('img').each(function () {
+                                    var type_img = $(this).attr('src').indexOf('anotacao') !== -1 ? 'Nota:' : '';
+                                    type_img = $(this).attr('src').indexOf('marcador') !== -1 ? 'Marcador:' : type_img;
+                                    var prioridade = $(this).attr('src').indexOf('prioridade') !== -1 ? '1' : '2';
+                                    var texttip = $(this).closest('a').attr('onmouseover') || $(this).attr('onmouseover');
+                                    text_return += prioridade+' '+type_img+' '+(texttip ? extractTooltip(texttip) : '');
+                                });
+                                return text_return ? text_return.replace(/  /g, ' ') : '3';
+                            }
+                            return cell.text().trim();
                         },
                         widgets: ["saveSort", "filter"],
                         widgetOptions: {
@@ -1741,7 +1785,7 @@ function setTableSorterHome() {
                 }
                 var filterStore = (typeof tableHomePro[0] !== 'undefined' && typeof tableHomePro[0][0] !== 'undefined') ? $.tablesorter.storage(tableHomePro[0][0], 'tablesorter-filters') : [];
                 if (typeof filterStore !== 'undefined' && filterStore !== null && filterStore.length > 0) {
-                    var filterUser = filterStore[3];
+                    var filterUser = filterStore[tableHomePro[0].find('.spro-anotacao-cabecalho').length ? 4 : 3];
                         filterUser = (typeof filterUser !== 'undefined' && filterUser !== null) ? filterUser.replace('(','').replace(')','') : false;
                     if (filterUser) {
                         $('#filterTableHome').val(filterUser).trigger('chosen:updated');
@@ -2093,8 +2137,8 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                             especificacao: tip ? removePrefixoNaoVisualizadoPro(tip[0]) : false,
                             tipo: tip ? tip[1] : false,
                             html_icons: $(this).find('td').eq(1).html(),
-                            html_proc: $(this).find('td').eq(2).clone().find('.spro-anotacao').remove().end().html(),
-                            html_atribuicao: $(this).find('td').eq(3).html(),
+                            html_proc: $(this).find('td').not('.spro-anotacao-coluna').eq(2).html(),
+                            html_atribuicao: $(this).find('td').not('.spro-anotacao-coluna').eq(3).html(),
                             html_prazo: $(this).find('td.prazoBoxDisplay').html(),
                             color: $(this).data('color') ? $(this).css('color') : false
                         }
@@ -2209,10 +2253,10 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                                     if (targetEl != 'SemGrupo') {
                                         var targetAtribuicao = '(<a href="'+linkAtribuicao+'" title="Atribu\u00EDdo para '+targetEl+'" class="ancoraSigla">'+targetEl+'</a>)';
                                         elemUser.html(targetAtribuicao);
-                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(3).html(targetAtribuicao);
+                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').not('.spro-anotacao-coluna').eq(3).html(targetAtribuicao);
                                     } else {
                                         elemUser.html('');
-                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(3).html('');
+                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').not('.spro-anotacao-coluna').eq(3).html('');
                                     }
                                     elemProc.find('i.fa-sync').remove();
                                     elemProc.prepend('<i class="fas fa-check-double verdeColor" style="margin-right: 5px;"></i>');
@@ -2768,10 +2812,10 @@ function configDatesSwitchChangeHome(this_) {
 function getMapaControleProcesso() {
     return $('#tblProcessosRecebidos').find('tbody tr').not('.tableHeader').not('.infraCaption').map(function(){
         let _this = $(this);
-        let _td = _this.find('td');
+        let _td = _this.find('td').not('.spro-anotacao-coluna');
         let id_procedimento = _this.attr('id');
             id_procedimento = typeof id_procedimento !== 'undefined' ? parseInt(id_procedimento.replace('P','')) : false;
-        let protocolo = _td.eq(2).clone().find('.spro-anotacao').remove().end().text();
+        let protocolo = _td.eq(2).text();
         let link_atribuicao = _td.eq(3).find('a[href*="controlador.php?acao=procedimento_atribuicao_listar"]');
         let nome_atribuicao = link_atribuicao.attr('title');
             nome_atribuicao = typeof nome_atribuicao !== 'undefined' ? nome_atribuicao.replace('Atribuído para ','') : false;
@@ -2835,7 +2879,7 @@ var txtPadrao_newLink = async () => {
 }
 var txtPadrao_getConfig = async (idTxt) => {
     var htmlTxtPadrao = await $.get(urlTxtPadrao);
-    var urlView = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').eq(2).text() == '[_'+idTxt+']') return $(this).find('a[href*="acao=texto_padrao_interno_consultar"]').attr('href') }).get();
+    var urlView = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').not('.spro-anotacao-coluna').eq(2).text() == '[_'+idTxt+']') return $(this).find('a[href*="acao=texto_padrao_interno_consultar"]').attr('href') }).get();
         urlView = typeof urlView !== 'undefined' && urlView !== null && urlView.length ? urlView[0] : false;
 
     if (urlView) {
@@ -2851,7 +2895,7 @@ var txtPadrao_getConfig = async (idTxt) => {
 }
 var txtPadrao_setConfig = async (data) => {
     var htmlTxtPadrao = await $.get(urlTxtPadrao);
-    var urlEdit = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').eq(2).text() == '[_'+data.nome+']') return $(this).find('a[href*="acao=texto_padrao_interno_alterar"]').attr('href') }).get();
+    var urlEdit = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').not('.spro-anotacao-coluna').eq(2).text() == '[_'+data.nome+']') return $(this).find('a[href*="acao=texto_padrao_interno_alterar"]').attr('href') }).get();
         urlEdit = typeof urlEdit !== 'undefined' && urlEdit !== null && urlEdit.length ? urlEdit[0] : false;
     var urlPage = urlEdit ? urlEdit : await txtPadrao_newLink();
     var htmlLink = await $.get(urlPage);
