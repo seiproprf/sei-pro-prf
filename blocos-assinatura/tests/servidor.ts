@@ -16,14 +16,14 @@ export const inclusao = `<form id="frmBlocoEscolher"><div id="divInfraBarraComan
 
 export function servidor() {
   let cancelado = false;
-  const estado = { posts: 0, leituras: 0, pesquisas: 0, layoutAlternativo: false, layoutSei415: false, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
+  const estado = { posts: 0, leituras: 0, pesquisas: 0, descricao: '', grupo: '', pagina: 0, paginado: false, falharRestauracao: false, layoutAlternativo: false, layoutSei415: false, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
   const link = (acao: string) => `controlador.php?acao=${acao}&infra_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`;
   const topo = criar(`<nav id="infraMenu"><a href="${link('bloco_assinatura_listar')}">Assinatura</a></nav>`);
-  const lista = () => `<form id="frmBlocoLista" action="${link('bloco_assinatura_listar')}"><input name="hdnInfraItemId" value=""><input name="hdnInfraItensSelecionados" value=""><input type="checkbox" name="chkSinEstadoDisponibilizado" id="chkSinEstadoDisponibilizado" ${estado.filtraDisponibilizado ? 'checked' : ''}><input name="txtDescricao" value=""><button type="submit" name="sbmPesquisar">Pesquisar</button>
+  const lista = () => `<form id="frmBlocoLista" action="${link('bloco_assinatura_listar')}"><input name="hdnInfraItemId" value=""><input name="hdnInfraItensSelecionados" value=""><input type="checkbox" name="chkSinEstadoDisponibilizado" id="chkSinEstadoDisponibilizado" ${estado.filtraDisponibilizado ? 'checked' : ''}><input name="txtDescricao" value="${estado.descricao}"><select name="selGrupoBloco"><option value="">Todos</option><option value="restrito" ${estado.grupo ? 'selected' : ''}>Restrito</option></select><input type="hidden" name="hdnInfraPaginaAtual" value="${estado.pagina}"><button type="submit" name="sbmPesquisar">Pesquisar</button>
     <table id="tblBlocos"><tr><th>Seleção</th><th>Número</th><th>Estado</th><th>Descrição</th><th>Ações</th></tr>
-    ${estado.filtraDisponibilizado || cancelado ? `<tr><td><input type="checkbox" value="11"></td><td>111111</td><td>${cancelado ? 'Gerado' : 'Disponibilizado'}</td><td>&lt;img src=x onerror=alert(1)&gt; Árvore</td><td>${estado.semAcao ? '' : '<a onclick="acaoCancelarDisponibilizacao(\'11\')">Cancelar</a>'}</td></tr>` : ''}
+    ${(estado.filtraDisponibilizado || cancelado) && !estado.descricao && !estado.grupo && (!estado.paginado || estado.pagina === 1) ? `<tr><td><input type="checkbox" value="11"></td><td>111111</td><td>${cancelado ? 'Gerado' : 'Disponibilizado'}</td><td>&lt;img src=x onerror=alert(1)&gt; Árvore</td><td>${estado.semAcao ? '' : '<a onclick="acaoCancelarDisponibilizacao(\'11\')">Cancelar</a>'}</td></tr>` : ''}
     <tr><td><input type="checkbox" value="12"></td><td>222222</td><td>Gerado</td><td>Outro</td><td></td></tr>
-    <tr><td><input type="checkbox" value="13"></td><td>333333</td><td>Disponibilizado</td><td>Recebido</td><td><a onclick="acaoRetornar(\'13\')">Retornar à geradora</a></td></tr></table></form>
+    <tr><td><input type="checkbox" value="13"></td><td>333333</td><td>Disponibilizado</td><td>Recebido</td><td><a onclick="acaoRetornar(\'13\')">Retornar à geradora</a></td></tr></table>${estado.paginado && estado.pagina === 0 ? `<a onclick="infraAcaoPaginar('+',0);">Próxima</a>` : ''}</form>
     <script>function acaoCancelarDisponibilizacao(id){form.action='${link('bloco_cancelar_disponibilizacao')}';}</script>`;
   const sei = new Sei(url, () => paginaDe(topo, url), { fetch: (async (input, init) => {
     const alvo = new URL(String(input));
@@ -39,6 +39,9 @@ export function servidor() {
       }
       if (alvo.searchParams.get('acao') === 'bloco_assinatura_listar') {
         assert.equal(campos.get('hdnInfraItemId'), '');
+        if (estado.falharRestauracao && campos.get('txtDescricao')) throw new Error('Falha ao restaurar filtros');
+        estado.descricao = campos.get('txtDescricao') ?? ''; estado.grupo = campos.get('selGrupoBloco') ?? '';
+        estado.pagina = Number(campos.get('hdnInfraPaginaAtual') ?? 0);
         estado.filtraDisponibilizado = campos.has('chkSinEstadoDisponibilizado'); estado.pesquisas++;
         if (estado.falharBusca && estado.filtraDisponibilizado) throw new Error('Falha depois de aplicar filtro');
       } else {

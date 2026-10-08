@@ -86,6 +86,8 @@ export function iniciar({ doc, url, sei }: Dependencias) {
     fechar.addEventListener('click', () => { if (!escrevendo) fecharDialogo(); });
     atual.showModal(); fechar.focus();
     let selecionado = '';
+    let aviso = '';
+    const aoAviso = (mensagem: string) => { aviso = mensagem; };
     lista.addEventListener('change', () => {
       selecionado = lista.querySelector<HTMLInputElement>('input:checked')?.value ?? '';
       confirmar.disabled = !selecionado || escrevendo;
@@ -93,11 +95,11 @@ export function iniciar({ doc, url, sei }: Dependencias) {
     const abort = new AbortController(); leitura = abort;
     const ativa = () => !encerrada && ligada && dialogo === atual;
     try {
-      const blocos = await listarBlocosParaInclusao(sei, { sinal: abort.signal });
+      const blocos = await listarBlocosParaInclusao(sei, { sinal: abort.signal, aoAviso });
       if (!ativa()) return;
       leitura = null;
       if (!blocos.length) {
-        status.textContent = 'Nenhum bloco disponibilizado que possa retornar nesta unidade foi encontrado.';
+        status.textContent = 'Nenhum bloco disponibilizado que possa retornar nesta unidade foi encontrado.' + (aviso ? ` ${aviso}` : '');
         fechar.textContent = 'Fechar'; return;
       }
       for (const bloco of blocos) {
@@ -108,12 +110,13 @@ export function iniciar({ doc, url, sei }: Dependencias) {
         rotulo.append(radio, texto); lista.append(rotulo);
       }
       lista.hidden = false;
-      status.textContent = 'Escolha um bloco e confirme o retorno.';
+      status.textContent = 'Escolha um bloco e confirme o retorno.' + (aviso ? ` ${aviso}` : '');
       lista.querySelector<HTMLInputElement>('input')?.focus();
     } catch (erro) {
       if (!ativa()) return;
       leitura = null;
       status.textContent = erro instanceof Error ? erro.message : 'Não foi possível carregar os blocos. Tente novamente.';
+      if (aviso) status.textContent += ` ${aviso}`;
       fechar.textContent = 'Fechar';
     }
     confirmar.addEventListener('click', () => { void retornar(); });
@@ -127,7 +130,7 @@ export function iniciar({ doc, url, sei }: Dependencias) {
       try {
         // A escrita já enviada continua mesmo se a preferência for desligada:
         // abortar o fetch não garante cancelar o que o servidor está fazendo.
-        const bloco = await retornarBlocoParaInclusao(sei, selecionado, url);
+        const bloco = await retornarBlocoParaInclusao(sei, selecionado, url, { aoAviso });
         if (!ativa()) return;
         const seletor = doc.querySelector<HTMLSelectElement>('#frmBlocoEscolher #selBloco');
         if (!seletor) {
@@ -142,10 +145,15 @@ export function iniciar({ doc, url, sei }: Dependencias) {
           seletor.dispatchEvent(new Evento('chosen:updated', { bubbles: true }));
           status.textContent = 'Bloco retornado e selecionado no campo Bloco. Você pode incluir os documentos marcados.';
         }
-        confirmar.hidden = true; fechar.textContent = 'Fechar';
+        if (aviso) status.textContent += ` ${aviso}`;
+        titulo.remove(); explicacao.remove(); lista.remove(); confirmar.remove();
+        atual.removeAttribute('aria-labelledby');
+        atual.setAttribute('aria-label', 'Bloco retornado');
+        fechar.textContent = 'Fechar';
       } catch (erro) {
         if (!ativa()) return;
         status.textContent = erro instanceof Error ? erro.message : 'Não foi possível confirmar o retorno. Confira o bloco no SEI antes de tentar novamente.';
+        if (aviso) status.textContent += ` ${aviso}`;
         confirmar.disabled = false;
       } finally {
         escrevendo = false;

@@ -9,9 +9,12 @@ nativos por linha e oferece somente blocos disponibilizados cuja disponibilizaç
 a unidade pode cancelar. `retornarBlocoParaInclusao` compartilha o envio de ações
 com `mudarBloco`, usando a ação `cancelar`, os links assinados e os formulários do
 `sei-nucleo`. Revalida a ação antes do envio e busca a tela de inclusão para exigir
-a opção efetivamente oferecida pelo servidor. Se o estado Disponibilizado estiver
-desmarcado no filtro salvo do SEI, marca-o durante a consulta e o restaura no fim,
-inclusive após uma falha.
+a opção efetivamente oferecida pelo servidor. A consulta marca Disponibilizado quando necessário, limpa temporariamente
+os critérios de texto e seletores com opção neutra, começa na primeira página e
+percorre a paginação nativa. Restaura os filtros e a página salvos no fim, inclusive
+após uma falha. Se a restauração falhar, mostra um aviso sem invalidar o retorno
+confirmado nem substituir o erro original. O núcleo entrega esse aviso por
+`aoAviso` nas opções da consulta/retorno.
 
 A interface copia apenas valor e texto dessa opção para o seletor vivo. Não
 submete o formulário nem dispara `change`, preservando os documentos marcados e
@@ -39,7 +42,8 @@ O build gera `dist/js/init_blocos_assinatura.js`, versionado e registrado no
 manifest, com verificação de bytes ASCII. Os testes usam HTML autoral sem dados
 reais e o núcleo real com transporte simulado. Cobrem controles e links nativos,
 permissões por linha, id/número, escrita, resposta inválida, estado inalterado,
-opção ausente, confirmação, duplicidade, texto seguro, preferência e remontagem.
+opção ausente, confirmação, duplicidade, texto seguro, preferência, remontagem,
+filtros de descrição/grupo, paginação e falhas de restauração.
 
 ## Conferência no SEI
 

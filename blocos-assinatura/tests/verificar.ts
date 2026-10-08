@@ -64,3 +64,27 @@ assert.deepEqual(await blocos.listarBlocosParaInclusao(sei415.sei), [
 assert.deepEqual(await blocos.retornarBlocoParaInclusao(sei415.sei, '11', url), { id: '11', rotulo: '111111 - Árvore' });
 assert.equal(sei415.estado.posts, 1);
 console.log('OK: cabeçalho real SEI 4.1.5 e preservação dos campos nativos do POST');
+
+const restrito = servidor(); restrito.estado.descricao = 'inexistente'; restrito.estado.grupo = 'restrito';
+assert.equal((await blocos.listarBlocosParaInclusao(restrito.sei)).length, 1, 'remove filtros que ocultam blocos elegíveis');
+assert.equal(restrito.estado.descricao, 'inexistente'); assert.equal(restrito.estado.grupo, 'restrito');
+const paginado = servidor(); paginado.estado.paginado = true; paginado.estado.pagina = 1;
+assert.equal((await blocos.listarBlocosParaInclusao(paginado.sei)).length, 1, 'consulta desde a primeira página e percorre as seguintes');
+assert.equal(paginado.estado.pagina, 1, 'restaura página salva');
+assert.deepEqual(await blocos.retornarBlocoParaInclusao(paginado.sei, '11', url), { id: '11', rotulo: '111111 - Árvore' });
+const restauracao = servidor(); restauracao.estado.descricao = 'inexistente'; restauracao.estado.falharRestauracao = true;
+const avisos: string[] = [];
+assert.deepEqual(await blocos.retornarBlocoParaInclusao(restauracao.sei, '11', url, { aoAviso: aviso => avisos.push(aviso) }), { id: '11', rotulo: '111111 - Árvore' }, 'falha de restauração não invalida retorno confirmado');
+console.log('OK: filtros de descrição/grupo, paginação e retorno apesar de falha de restauração');
+
+assert.equal(avisos.length, 1); assert.match(avisos[0], /filtros/i);
+const falhaOriginal = servidor(); falhaOriginal.estado.descricao = 'inexistente'; falhaOriginal.estado.falharRestauracao = true; falhaOriginal.estado.semOpcao = true;
+await assert.rejects(() => blocos.retornarBlocoParaInclusao(falhaOriginal.sei, '11', url), /não confirmou o retorno/);
+
+const segundaPagina = servidor(); segundaPagina.estado.paginado = true;
+assert.equal((await blocos.listarBlocosParaInclusao(segundaPagina.sei)).length, 1, 'bloco que aparece somente na segunda página deve ser oferecido');
+assert.equal(segundaPagina.estado.pagina, 0, 'devolve primeira página salva');
+const consultaAviso = servidor(); consultaAviso.estado.descricao = 'inexistente'; consultaAviso.estado.falharRestauracao = true;
+const avisosConsulta: string[] = [];
+assert.equal((await blocos.listarBlocosParaInclusao(consultaAviso.sei, { aoAviso: a => avisosConsulta.push(a) })).length, 1);
+assert.equal(avisosConsulta.length, 1);

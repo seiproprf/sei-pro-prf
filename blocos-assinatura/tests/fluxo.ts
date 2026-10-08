@@ -58,6 +58,12 @@ assert.equal(doc.querySelector<HTMLInputElement>('#hdnDocumentosItensSelecionado
 assert.equal(mudancas, 0, 'onchange nativo não deve submeter o formulário');
 assert.equal(chosen, 1, 'Chosen deve receber atualização sem change');
 assert.match(doc.querySelector('[role=status]')!.textContent!, /selecionado/);
+const sucesso = doc.querySelector('dialog')!;
+assert.equal(!!sucesso.querySelector('fieldset'), false, 'sucesso não deve manter a seleção de blocos');
+assert.equal(!!sucesso.querySelector('h2'), false, 'sucesso mostra somente mensagem e fechar');
+assert.equal(sucesso.querySelectorAll('p').length, 1, 'remove explicação inicial após o retorno');
+assert.equal(sucesso.querySelectorAll('button').length, 1, 'somente o botão Fechar permanece');
+assert.equal(sucesso.querySelector('button')!.textContent, 'Fechar');
 clicar(doc, '[data-spro-fechar]');
 assert.equal(doc.querySelector('dialog'), null);
 controle.configurar(false); await esperar();
@@ -98,3 +104,15 @@ assert.equal(dinamica.querySelectorAll('.spro-blocos-retornar').length, 2); cd.f
 assert.equal(opcaoLegadaLigada(undefined, 'retornarblocodisponibilizado'), true);
 assert.equal(opcaoLegadaLigada(JSON.stringify([{configGeral:[{name:'retornarblocodisponibilizado', value:false}]}]), 'retornarblocodisponibilizado'), false);
 console.log('OK: erros, cancelar, lista vazia, preferência, resposta tardia, contexto e remontagem');
+
+const avisoServidor = servidor(); avisoServidor.estado.descricao = 'inexistente';
+const da = tela(), ca = iniciar({ doc: da, url, sei: avisoServidor.sei }); ca.configurar(true);
+clicar(da, '.spro-blocos-retornar'); await esperar(); escolher(da);
+avisoServidor.estado.falharRestauracao = true;
+clicar(da, '[data-spro-confirmar]'); await esperar();
+assert.equal(da.querySelector('#selBloco option[selected]')!.getAttribute('value'), '11');
+assert.match(da.querySelector('[role=status]')!.textContent!, /selecionado/);
+assert.match(da.querySelector('[role=status]')!.textContent!, /filtros/);
+assert.equal(da.querySelector('[data-spro-confirmar]'), null);
+ca.fechar();
+console.log('OK: retorno confirmado atualiza seletor e apresenta aviso de restauração');
