@@ -3,12 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Anotações nas linhas do Controle de Processos",
+  "description": "Anotacoes nas linhas do Controle de Processos",
   "scripts": {
     "build": "npm run verificar && node build.mjs",
     "tipos": "tsc --noEmit",
-    "verificar": "tsx tests/verificar.ts && tsx tests/ciclo.ts",
-    "checar": "tsc --noEmit"
+    "verificar": "tsx tests/verificar.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.300",

@@ -26,7 +26,6 @@ Loja de extensões bloqueada no computador de trabalho? Veja [como instalar pelo
 
 ### Tela Controle de Processos
 
-- ![Anotações no Controle de Processos](/img/icon-notaarvore.png) [Anotações no Controle de Processos](./pages/ANOTACAOCONTROLE.md)
 - ![Gerenciar processos favoritos](/img/icon-favoritos.png) [Gerenciar processos favoritos](./pages/FAVORITOS.md)
 - ![Anotações no Controle de Processos](/img/icon-notaarvore.png) [Anotações no Controle de Processos](./pages/ANOTACAOCONTROLE.md)
 - ![Controle de Prazos](/img/icon-controleprazo.png) [Controle de Prazos](./pages/PRAZOS.md)
@@ -77,7 +76,6 @@ Loja de extensões bloqueada no computador de trabalho? Veja [como instalar pelo
 
 ### Ferramentas do processo
 
-- ![Retornar bloco de assinatura disponibilizado na tela de inclusão](/img/icon-acoeslote.png) [Retornar bloco de assinatura disponibilizado na tela de inclusão](./pages/RETORNARBLOCO.md)
 - ![Ações em Lote: assinar, dar ciência, excluir e alterar sigilo de vários documentos](/img/icon-acoeslote.png) [Ações em Lote: assinar, dar ciência, excluir e alterar sigilo de vários documentos](./pages/ACOESEMLOTE.md)
 - ![Documentos em Lote: criar vários documentos a partir de um modelo e uma planilha](/img/icon-acoeslote.png) [Documentos em Lote: criar vários documentos a partir de um modelo e uma planilha](./pages/DOCUMENTOSEMLOTE.md)
 - ![Comparador de Documentos](/img/icon-comparardocumentos.png) [Comparador de Documentos](./pages/COMPARARDOCUMENTOS.md)

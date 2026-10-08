@@ -2,12 +2,6 @@
 
 ## ![SEI Pro Histórico de Versões](../img/icon-historico.png) Histórico de versões
 
-### Versão 2.6.0.1
-08/10/2026
-
-- Integra as anotações em coluna própria no Controle de Processos, com expansão apenas quando o texto ultrapassa o espaço disponível.
-- Adiciona o retorno de blocos disponibilizados na tela de inclusão de documentos, com configuração própria e preservação dos documentos marcados.
-
 ### Versão 2.6
 07/10/2026
 
@@ -18,11 +12,6 @@ A anotação de cada processo pode aparecer na própria lista do Controle de Pro
 - A função vem **desligada**. Para ligar: *Configurações do SEI Pro*, aba *Geral*, seção *Controle de Processos*, opção *Mostrar a anotação de cada processo na tela de controle de processos*. Ela não faz nenhuma consulta extra ao SEI, segue o modo noturno e vale no Chrome e no Edge. A ideia veio de uma proposta de *SEI Pro PRF* ([#174](https://github.com/SEI-Pro/sei-pro/pull/174))
 - **Agente de IA: modelos com raciocínio voltam a funcionar.** Com alguns modelos novos da OpenAI, toda pergunta terminava em erro 400, porque o serviço recusava o raciocínio junto com as ferramentas do SEI. Agora o agente refaz o pedido com o raciocínio desligado. Se o modelo recusar mesmo assim, a mensagem explica, em português, que é preciso escolher outro modelo
 - **Nos favoritos novos (SEI Pro Lab):** o título do painel não aparece mais com a letra pequena no SEI 5 enquanto a página termina de carregar
-
-### Versão 2.5.1.1
-07/10/2026
-
-- A anotação de cada processo pode ser exibida em uma coluna própria na tela de controle de processos. A seta para expandir aparece apenas quando o texto ultrapassa o espaço disponível.
 
 ### Versão 2.5.1
 05/10/2026

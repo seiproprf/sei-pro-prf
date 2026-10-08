@@ -8441,7 +8441,7 @@ function getProcessoUnidadePro(selected = false, obj = false) {
                             : $('#tblProcessosRecebidos, #tblProcessosGerados, .infraTable').find('tr');
         if (selectTableTr.length > 0) {
             selectTableTr.each(function(index){ 
-                var a = $(this).find('a[href*="acao=procedimento_trabalhar"]').eq(0);
+                var a = $(this).find('td').eq(2).find('a').eq(0)
                 var processo_sei = a.text();
                     processo_sei = (typeof processo_sei !== 'undefined') ? processo_sei : false;
                 var id_procedimento = getParamsUrlPro(a.attr('href')).id_procedimento;
