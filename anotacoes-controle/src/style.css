@@ -1,0 +1,203 @@
+/*
+ * Linguagem visual dos favoritos e do histórico (sei-comum/src/ui/base.css),
+ * com os tokens declarados só no cartão: a página é do SEI, e o base.css tem
+ * regras globais. Fundo tingido pelo tom, como a pílula de lembrete dos
+ * favoritos. Modo noturno do SEI Pro = classe dark-mode no body.
+ */
+.spro-anotacao {
+  --spro-fundo: #ffffff;
+  --spro-texto: #1b1f24;
+  --spro-suave: #5d6772;
+  --spro-perigo: #d1352b;
+  --spro-anel: 0 0 0 3px color-mix(in srgb, #1f5fbf 30%, transparent);
+  --tom: #c98408;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  box-sizing: border-box;
+  max-width: 440px;
+  margin: 5px 0 3px;
+  padding: 6px 28px 6px 9px;
+  font: 12px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--spro-texto);
+  text-align: left;
+  white-space: normal;
+  background: color-mix(in srgb, var(--tom) 11%, var(--spro-fundo));
+  border-radius: 8px;
+}
+.dark-mode .spro-anotacao {
+  --spro-fundo: #1a1d21;
+  --spro-texto: #e7e9ec;
+  --spro-suave: #a4abb3;
+  --spro-perigo: #ff7d73;
+  --spro-anel: 0 0 0 3px color-mix(in srgb, #79acff 30%, transparent);
+  --tom: #e8b04a;
+}
+/* Mais específico que o modo noturno: a prioridade fica vermelha nos dois temas. */
+.spro-anotacao.spro-anotacao-prioridade,
+.dark-mode .spro-anotacao.spro-anotacao-prioridade {
+  --tom: var(--spro-perigo);
+}
+
+.spro-anotacao > .spro-icone {
+  flex: none;
+  margin-top: 2px;
+  color: var(--tom);
+}
+.spro-anotacao-corpo {
+  flex: 1;
+  min-width: 0;
+}
+.spro-anotacao-texto {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 2.9em;
+  overflow: hidden;
+}
+.spro-anotacao-expandida .spro-anotacao-texto {
+  max-height: none;
+}
+/* Cada linha da anotação; a altura mínima mantém as linhas em branco. */
+.spro-anotacao-linha {
+  min-height: 1.45em;
+}
+
+/* Checklist ("[ ]" / "[X]"): caixa desenhada, sem clique; o texto quebra alinhado depois dela. */
+.spro-anotacao-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+.spro-anotacao-item > .spro-anotacao-conteudo {
+  flex: 1;
+  min-width: 0;
+}
+/* Pílula antes de um checklist: linha própria. */
+.spro-anotacao-texto > .spro-anotacao-pilula {
+  display: flex;
+  width: fit-content;
+  margin: 1px 0 3px;
+}
+.spro-anotacao-caixa {
+  flex: none;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  margin-top: 2.7px;
+  border: 1.5px solid color-mix(in srgb, var(--spro-suave) 75%, transparent);
+  border-radius: 3px;
+  color: var(--spro-fundo);
+}
+.spro-anotacao-item-feito > .spro-anotacao-caixa {
+  background: var(--tom);
+  border-color: var(--tom);
+}
+.spro-anotacao-caixa svg {
+  display: block;
+  stroke-width: 3.2;
+}
+.spro-anotacao-item-feito > .spro-anotacao-conteudo {
+  color: var(--spro-suave);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--spro-suave) 70%, transparent);
+}
+.spro-anotacao-pilula {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  margin-right: 5px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--tom);
+  background: color-mix(in srgb, var(--tom) 14%, transparent);
+}
+.spro-anotacao-rodape {
+  display: none;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--spro-suave);
+}
+.spro-anotacao-expandida .spro-anotacao-rodape {
+  display: block;
+}
+
+.spro-anotacao-seta {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--spro-suave);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.spro-anotacao-seta[hidden] {
+  display: none !important;
+}
+.spro-anotacao-seta:hover {
+  color: var(--spro-texto);
+  background: color-mix(in srgb, var(--tom) 16%, transparent);
+}
+.spro-anotacao-seta:focus-visible {
+  outline: none;
+  box-shadow: var(--spro-anel);
+}
+.spro-anotacao-seta svg {
+  display: block;
+  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.spro-anotacao-expandida .spro-anotacao-seta svg {
+  transform: rotate(180deg);
+}
+/*
+ * O modo noturno do legado pinta todo elemento (`.seiSlim.dark-mode * { color }`,
+ * peso 0,2,0, sei-slim.css). Aqui o peso é 0,3,0: as cores do cartão voltam,
+ * qualquer que seja a ordem em que as folhas carregam.
+ */
+.seiSlim.dark-mode .spro-anotacao,
+.seiSlim.dark-mode .spro-anotacao-texto,
+.seiSlim.dark-mode .spro-anotacao-conteudo,
+.seiSlim.dark-mode .spro-anotacao-seta:hover {
+  color: var(--spro-texto);
+}
+.seiSlim.dark-mode .spro-anotacao-item-feito > .spro-anotacao-conteudo {
+  color: var(--spro-suave);
+}
+.seiSlim.dark-mode .spro-anotacao-caixa {
+  color: var(--spro-fundo);
+}
+.seiSlim.dark-mode .spro-anotacao > .spro-icone,
+.seiSlim.dark-mode .spro-anotacao-pilula {
+  color: var(--tom);
+}
+.seiSlim.dark-mode .spro-anotacao-rodape,
+.seiSlim.dark-mode .spro-anotacao-seta {
+  color: var(--spro-suave);
+}
+/* O traço dos ícones é currentColor, e a regra universal pinta até os <path>. */
+.seiSlim.dark-mode .spro-anotacao svg,
+.seiSlim.dark-mode .spro-anotacao svg * {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spro-anotacao-seta,
+  .spro-anotacao-seta svg {
+    transition: none;
+  }
+}
