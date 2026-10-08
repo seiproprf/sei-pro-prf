@@ -3,7 +3,7 @@
   "name": "SEI Pro Lab",
   "short_name": "SEI Pro Lab",
   "description": "Adiciona ao Sistema Eletrônico de Informações (SEI) funções avançadas",
-  "version": "2.6",
+  "version": "2.6.0.1",
   "author": "Pedro Henrique Soares",
   "homepage_url": "https://seipro.app",
   "icons": {
@@ -418,6 +418,39 @@
     {
       "js": [
         "js/init_anotacoes_controle.js"
+      ],
+      "matches": [
+        "*://*.br/sei/*",
+        "*://*.br/sip/*",
+        "*://*.br/*/sei/*",
+        "*://*.br/*/sip/*",
+        "*://*.br/*controlador*.php?acao=*",
+        "*://*.org/sei/*",
+        "*://*.org/sip/*",
+        "*://*.org/*controlador*.php?acao=*",
+        "*://sip-sei.ans.gov.br/*"
+      ],
+      "exclude_matches": [
+        "*://sei.antaq1.gov.br/*",
+        "*://*.br/*login.php*",
+        "*://*.br/sip/*controlador.php*",
+        "*://*.br/sei/*controlador_externo.php*",
+        "*://*.br/*/sip/*controlador.php*",
+        "*://*.br/*/sei/*controlador_externo.php*",
+        "*://*.org/*login.php*",
+        "*://*.org/sip/*controlador.php*",
+        "*://*.org/sei/*controlador_externo.php*",
+        "*://sip-sei.ans.gov.br/login.php*",
+        "*://sip-sei.ans.gov.br/controlador.php*",
+        "*://sip-sei.ans.gov.br/controlador_externo.php*",
+        "*://sistemas.unir.br/sip/*"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "js": [
+        "js/init_blocos_assinatura.js"
       ],
       "matches": [
         "*://*.br/sei/*",
