@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { parseHTML } from 'linkedom';
 import { definirAnalisador } from '../../sei-nucleo/src/sessao/dom';
 import { paginaDe } from '../../sei-nucleo/src/sessao/pagina';
@@ -15,7 +16,7 @@ export const inclusao = `<form id="frmBlocoEscolher"><div id="divInfraBarraComan
 
 export function servidor() {
   let cancelado = false;
-  const estado = { posts: 0, leituras: 0, pesquisas: 0, layoutAlternativo: false, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
+  const estado = { posts: 0, leituras: 0, pesquisas: 0, layoutAlternativo: false, layoutSei415: false, filtraDisponibilizado: true, falharBusca: false, falha: '', rejeitar: false, semOpcao: false, semTabela: false, semAcao: false, tardar: null as Promise<void> | null };
   const link = (acao: string) => `controlador.php?acao=${acao}&infra_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`;
   const topo = criar(`<nav id="infraMenu"><a href="${link('bloco_assinatura_listar')}">Assinatura</a></nav>`);
   const lista = () => `<form id="frmBlocoLista" action="${link('bloco_assinatura_listar')}"><input name="hdnInfraItemId" value=""><input name="hdnInfraItensSelecionados" value=""><input type="checkbox" name="chkSinEstadoDisponibilizado" id="chkSinEstadoDisponibilizado" ${estado.filtraDisponibilizado ? 'checked' : ''}><input name="txtDescricao" value=""><button type="submit" name="sbmPesquisar">Pesquisar</button>
@@ -32,6 +33,10 @@ export function servidor() {
     if (init?.method === 'POST') {
       const campos = new URLSearchParams(String(init.body));
       assert.equal(campos.get('hdnInfraItensSelecionados'), '');
+      if (estado.layoutSei415) {
+        assert.equal(campos.get('hdnInfraSelecoes'), 'Infra');
+        assert.equal(campos.get('hdnInfraItensHash'), 'hash-ficticio');
+      }
       if (alvo.searchParams.get('acao') === 'bloco_assinatura_listar') {
         assert.equal(campos.get('hdnInfraItemId'), '');
         estado.filtraDisponibilizado = campos.has('chkSinEstadoDisponibilizado'); estado.pesquisas++;
@@ -50,6 +55,13 @@ export function servidor() {
       html = html.replace('<table id="tblBlocos">', '<table><tr><td>Filtros</td></tr></table><table class="infraTable">')
         .replace('<th>Estado</th>', '<th>Situação</th>')
         .replace(/<input type="checkbox" value="\d+">/g, '');
+    }
+    if (estado.layoutSei415 && alvo.searchParams.get('acao') !== 'bloco_escolher') {
+      const cabecalho = readFileSync(new URL('./fixtures/cabecalho-sei-4.1.5.html', import.meta.url), 'utf8');
+      // Dez colunas observadas no SEI; linhas e identificadores fictícios.
+      html = html.replace(/<tr><th>Seleção<\/th>[\s\S]*?<\/tr>/, cabecalho)
+        .replace(/(<td>\d+<\/td>)(<td>(?:Disponibilizado|Gerado)<\/td>)/g, '$1<td></td><td></td>$2<td>GERADORA</td><td>DESTINO</td><td></td>');
+      html = html.replace('<input name="hdnInfraItemId"', '<input type="hidden" name="hdnInfraSelecoes" value="Infra"><input type="hidden" name="hdnInfraItensHash" value="hash-ficticio"><input name="hdnInfraItemId"');
     }
     return { url: alvo.href, status: 200, arrayBuffer: async () => Uint8Array.from([...html].map(c => c.charCodeAt(0))).buffer } as Response;
   }) as typeof fetch });

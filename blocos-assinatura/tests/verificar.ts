@@ -55,3 +55,12 @@ assert.deepEqual(await blocos.listarBlocosParaInclusao(alternativo.sei), [
 assert.deepEqual(await blocos.retornarBlocoParaInclusao(alternativo.sei, '11', url), { id: '11', rotulo: '111111 - Árvore' });
 assert.equal(alternativo.estado.posts, 1);
 console.log('OK: tabela sem id, coluna Situação e identidade pelo controle nativo');
+
+// Cabeçalho capturado na sessão real: ordenação, responsividade e dez colunas.
+const sei415 = servidor(); sei415.estado.layoutSei415 = true;
+assert.deepEqual(await blocos.listarBlocosParaInclusao(sei415.sei), [
+  { id: '11', numero: '111111', descricao: '<img src=x onerror=alert(1)> Árvore' },
+]);
+assert.deepEqual(await blocos.retornarBlocoParaInclusao(sei415.sei, '11', url), { id: '11', rotulo: '111111 - Árvore' });
+assert.equal(sei415.estado.posts, 1);
+console.log('OK: cabeçalho real SEI 4.1.5 e preservação dos campos nativos do POST');
