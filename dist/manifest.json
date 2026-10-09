@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "SEI Pro Lab",
-  "short_name": "SEI Pro Lab",
+  "name": "SEI Pro PRF",
+  "short_name": "SEI Pro PRF",
   "description": "Adiciona ao Sistema Eletrônico de Informações (SEI) funções avançadas",
-  "version": "2.6.0.2",
-  "author": "Pedro Henrique Soares",
+  "version": "2.6.0.3",
+  "author": "Pedro Soares / Tadeu Jr",
   "homepage_url": "https://seipro.app",
   "icons": {
     "16": "icons/lab/icon-16.png",
@@ -489,6 +489,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "icons/prf-pro-256.png",
         "js/lib/jquery-3.4.1.min.js",
         "js/lib/jquery-ui.min.js",
         "js/lib/jmespath.min.js",

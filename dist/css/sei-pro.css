@@ -3411,6 +3411,37 @@ div.infraTooltipTexto i.far {
 #lblSelGrupoAcompanhamento {
     position: inherit !important;
 }
+/* PRF: uma unica barra, com a identidade institucional tambem no SEI Slim. */
+html body nav#navInfraBarraNavegacao.seipro-nav-prf,
+html body div#divInfraBarraSistema.seipro-barra-prf,
+html body #divInfraBarraSistema.seipro-barra-prf #divInfraBarraSistemaPadrao,
+html body #divInfraBarraSistema.seipro-barra-prf #divInfraBarraSistemaMovel {
+    background: #000d4b !important;
+    height: auto !important;
+    box-shadow: none !important;
+}
+html body #divInfraBarraSistema.seipro-barra-prf #divInfraBarraSistemaLinha {
+    display: none !important;
+}
+html body #divInfraBarraSistema.seipro-barra-prf .seipro-identificacao-prf {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+.seiSlim.seiSlim_parent #divInfraBarraSistema.seipro-barra-prf #divInfraBarraSistemaPadraoE {
+    background-position: 16px center !important;
+    background-size: 75px !important;
+}
+html body #divInfraBarraSistema.seipro-barra-prf img.seipro-logo-prf {
+    display: inline-block !important;
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0;
+    vertical-align: middle;
+    object-fit: contain;
+    filter: none !important;
+    opacity: 1 !important;
+}
 #divInfraBarraSistemaPadrao,
 #divInfraBarraSistema {
     min-height: 50px;

@@ -28,6 +28,29 @@ function getManifestExtension() {
         return browser.runtime.getManifest();
     }
 }
+
+// Identidade institucional apenas no SEI da PRF, nas barras desktop e movel.
+function aplicarIdentidadePrf() {
+    if (location.hostname !== 'sei.prf.gov.br') return;
+    const barra = document.getElementById('divInfraBarraSistema');
+    if (!barra) return;
+    barra.classList.add('seipro-barra-prf');
+    barra.closest('#navInfraBarraNavegacao')?.classList.add('seipro-nav-prf');
+    barra.querySelectorAll(':scope > h6.infraCorBarraSuperior').forEach(el => el.remove());
+    barra.querySelectorAll('.infraTituloLogoSistema').forEach(el => {
+        if (el.textContent.trim() !== 'Produção') return;
+        const logo = document.createElement('img');
+        logo.src = getUrlExtension('icons/prf-pro-256.png');
+        logo.alt = 'SEI Pro PRF';
+        logo.title = 'SEI Pro PRF';
+        logo.width = 32;
+        logo.height = 32;
+        logo.className = 'seipro-logo-prf';
+        el.parentElement.classList.add('seipro-identificacao-prf');
+        el.replaceWith(logo);
+    });
+}
+aplicarIdentidadePrf();
 function loadFontIcons(elementTo, target = $('html')) {
     var iconBoxSlim = (localStorage.getItem('seiSlim')) ? true : false;
     var pathExtension = pathExtensionSEIPro();
