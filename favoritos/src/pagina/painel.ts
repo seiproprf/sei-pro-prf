@@ -86,6 +86,7 @@ export interface OpcoesPainel {
   temaEscuro?: boolean;
   recolhido: boolean;
   ordem: number | null;
+  posicao?: "acima" | "abaixo";
   aoRecolher(recolhido: boolean): void;
 }
 
@@ -138,7 +139,7 @@ export function montarPainel(doc: Document, o: OpcoesPainel): PainelMontado | nu
   const painel = h(
     "div",
     {
-      class: "panelHomePro",
+      class: o.posicao === "acima" ? "spro-fav-acima" : "panelHomePro",
       id: "favoritesPro",
       "data-order": o.ordem === null ? "" : String(o.ordem),
       style: "display: inline-block; width: 100%;",
@@ -146,7 +147,8 @@ export function montarPainel(doc: Document, o: OpcoesPainel): PainelMontado | nu
     titulo,
     corpo,
   );
-  inserirNaOrdem(container, painel, o.ordem);
+  if (o.posicao === "acima") (form.closest("#panelHomePro") ?? form).before(painel);
+  else inserirNaOrdem(container, painel, o.ordem);
   const sobreposicao = criarSobreposicao(doc, iframe, corpo);
   return {
     painel,

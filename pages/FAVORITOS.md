@@ -28,12 +28,15 @@ Se preferir favoritar sem balão, desligue **Perguntar pasta e etiquetas ao favo
 
 ### Onde a lista aparece
 
+* **Acima da lista de processos**, antes do grupo de Controle de Processos.
 * **Abaixo da lista de processos**, no Controle de Processos, como sempre. O painel segue o tema do SEI: com o modo noturno do SEI Pro ligado, ele também fica escuro.
 * **No painel lateral**, ao lado de qualquer tela do SEI. Abra pelo botão ao lado da estrela, no alto da árvore, ou pelo botão **Favoritos** da barra de botões do Controle de Processos. O painel lateral acompanha o tema claro ou escuro do seu sistema e tem também as abas **Histórico** e **Agente de IA**.
 
 > <img src="../img/favoritos-lateral.png" alt="Favoritos no painel lateral" width="380">
 
-Escolha em **Preferências…** (menu ⚙ dos favoritos) ou nas configurações do SEI Pro: **Abaixo da lista de processos**, **No painel lateral** ou **Nos dois lugares**. Com a lista só abaixo, o botão **Favoritos** da barra rola a página até ela; nas outras escolhas, ele abre o painel lateral. O botão mostra, num selo vermelho, quantos favoritos pedem atenção: lembrete vencido ou novidade.
+Escolha os locais em **Preferências…** (menu ⚙ dos favoritos) ou nas configurações do SEI Pro. As caixas **Acima da lista de processos** e **Abaixo da lista de processos** são excludentes: marcar uma desmarca a outra, e ambas podem ficar desmarcadas. **No painel lateral** é independente e pode acompanhar qualquer posição. Desmarcar todas oculta a lista fixa; o botão **Favoritos** continua permitindo abrir os favoritos.
+
+Com o painel lateral marcado, o botão **Favoritos** da barra abre o lateral; com uma posição na página marcada, ele rola até a lista. Se nenhum local estiver marcado, o botão abre os favoritos sob demanda. O selo vermelho mostra quantos favoritos pedem atenção: lembrete vencido ou novidade.
 
 ### Organizar
 

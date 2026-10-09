@@ -12,11 +12,17 @@ export function temPainelLateral(manifesto: object): boolean {
 }
 
 export function ondeMostrar(exibir: Preferencias["exibir"], lateral: boolean): { abaixo: boolean; lateral: boolean } {
+  if (exibir === "nenhum") return { abaixo: false, lateral: false };
+  if (exibir === "acimaLateral") return { abaixo: true, lateral };
+  if (exibir === "acima") return { abaixo: true, lateral: false };
   if (!lateral) return { abaixo: true, lateral: false };
   return { abaixo: exibir !== "lateral", lateral: exibir !== "abaixo" };
 }
 
 export const ROTULOS_EXIBIR: Record<Preferencias["exibir"], string> = {
+  nenhum: "Nenhum local",
+  acimaLateral: "Acima e no painel lateral",
+  acima: "Acima da lista de processos",
   abaixo: "Abaixo da lista de processos",
   lateral: "No painel lateral",
   ambos: "Nos dois lugares",

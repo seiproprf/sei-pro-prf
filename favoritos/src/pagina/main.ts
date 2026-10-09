@@ -250,9 +250,16 @@ async function controlarPainelEmbutido(
 ): Promise<HTMLElement | null> {
   let prefs = await lerPreferencias(sync);
   let montado: { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null = null;
+  let posicao: "acima" | "abaixo" = "abaixo";
   const aplicar = () => {
+    const novaPosicao = prefs.exibir === "acima" || prefs.exibir === "acimaLateral" ? "acima" : "abaixo";
+    if (montado && novaPosicao !== posicao) {
+      montado.fechar();
+      montado = null;
+    }
+    posicao = novaPosicao;
     const onde = ondeMostrar(prefs.exibir, lateral);
-    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido, sincronia, atualizar);
+    if (onde.abaixo && !montado) montado = montarEmbutido(ctx, sync, prefs.recolhido, sincronia, atualizar, posicao);
     else if (!onde.abaixo && montado) {
       montado.fechar();
       montado = null;
@@ -285,12 +292,14 @@ function montarEmbutido(
   recolhido: boolean,
   sincronia: ControleSincronia | null,
   atualizar: ControleAtualizar | null,
+  posicao: "acima" | "abaixo",
 ): { painel: HTMLElement; corpo: HTMLElement; fechar(): void } | null {
   const montado = montarPainel(document, {
     urlApp: chrome.runtime.getURL("html/favoritos.html"),
     temaEscuro: ctx.temaEscuro,
     recolhido,
     ordem: ordemLegada(localStorage),
+    posicao,
     aoRecolher: (r) => void gravarPreferencias(sync, { recolhido: r }),
   });
   if (!montado) return null;
