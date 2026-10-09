@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { parseHTML } from 'linkedom';
 import { lerAnotacaoDaLinha } from '../src/leitura';
 import { aoClicarSeta, renderizar } from '../src/view';
@@ -251,6 +252,80 @@ await teste('opção ao vivo, linhas novas e encerramento', async () => {
   assert.equal(d.querySelectorAll('.spro-anotacao').length, 0);
   d.querySelector('tbody')!.insertAdjacentHTML('beforeend', linha5('Anota&ccedil;&atilde;o / depois / ana').replace('P42', 'P44'));
   await esperar(); assert.equal(d.querySelectorAll('.spro-anotacao').length, 0);
+});
+
+
+
+await teste('coluna entre símbolos e processo, sem duplicação e reversível', () => {
+  const d = tabela(linha5('Anotação / nota / ana') + linha5('Anotação / outra / ana').replace('id="P42"', 'id="P43"'));
+  d.querySelector('#P43 a[href*=anotacao_registrar]')!.remove();
+  renderizar(d, true, true);
+  assert.equal(celulaProcesso(d).previousElementSibling?.className, 'spro-anotacao-coluna');
+  assert.ok(celulaProcesso(d).previousElementSibling?.previousElementSibling?.querySelector('img'));
+  assert.equal(celulaProcesso(d).querySelector('.spro-anotacao'), null);
+  assert.equal(d.querySelector('#P43 .spro-anotacao-coluna')?.textContent, '');
+  assert.equal(tr(d).querySelectorAll('td').length, 5);
+  renderizar(d, true, true);
+  assert.equal(tr(d).querySelectorAll('td').length, 5);
+  assert.equal(lerLinhaCaixa(tr(d), 'recebidos')?.atribuido, 'ana');
+  renderizar(d, true, false);
+  assert.ok(celulaProcesso(d).querySelector('.spro-anotacao'));
+  assert.equal(d.querySelector('.spro-anotacao-coluna'), null);
+  assert.equal(tr(d).querySelectorAll('td').length, 4);
+  renderizar(d, true, true);
+  renderizar(d, false);
+  assert.equal(d.querySelector('.spro-anotacao'), null);
+  assert.equal(tr(d).querySelectorAll('td').length, 4);
+  assert.equal(d.querySelector('th[colspan]')?.getAttribute('colspan'), '3');
+});
+await teste('cabeçalho individual e agrupamento alinham a coluna e são restaurados', () => {
+  const d = criar(`<table id="tblProcessosGerados"><thead><tr><th>Sel</th><th>Símbolos</th><th>Gerados</th><th>Atribuição</th></tr></thead><tbody><tr class="tableHeader"><th colspan="4">Grupo</th></tr>${linha5('Anotação / nota / ana')}</tbody></table>`);
+  renderizar(d, true, true);
+  assert.equal(d.querySelector('thead tr')?.children[2]?.textContent, 'Anotação');
+  assert.equal(d.querySelector('.tableHeader th')?.getAttribute('colspan'), '5');
+  renderizar(d, true, true);
+  assert.equal(d.querySelector('.tableHeader th')?.getAttribute('colspan'), '5');
+  renderizar(d, false);
+  assert.equal(d.querySelector('thead tr')?.children.length, 4);
+  assert.equal(d.querySelector('.tableHeader th')?.getAttribute('colspan'), '4');
+});
+await teste('controle alterna coluna ao vivo e acompanha novas linhas', async () => {
+  const d = tabela(linha5('Anotação / nota / ana'));
+  const c = iniciar(d);
+  c.configurar(true, true);
+  assert.ok(d.querySelector('.spro-anotacao-coluna'));
+  d.querySelector('tbody')!.insertAdjacentHTML('beforeend', linha5('Anotação / nova / ana').replace('id="P42"', 'id="P43"'));
+  await esperar();
+  assert.equal(d.querySelectorAll('td.spro-anotacao-coluna').length, 2);
+  c.configurar(true);
+  assert.equal(d.querySelector('.spro-anotacao-coluna'), null);
+  c.fechar();
+});
+
+// O adaptador conserva a identidade das colunas na preferência salva pelo tablesorter.
+await teste('ordenação e filtros salvos migram entre layouts sem acumular deslocamentos', () => {
+  const legado = readFileSync(new URL('../../dist/js/sei-pro.js', import.meta.url), 'utf8');
+  const valores: Record<string, any> = {
+    'tablesorter-savesort': { sortList: [[2, 0], [3, 1]] },
+    'tablesorter-filters': ['', 'Marcador', '123', '(ana)', '2026-10-09'],
+  };
+  const d = tabela(linha5('Anotação / nota / ana'));
+  const contexto = { $: { tablesorter: { storage(_t: unknown, nome: string, valor?: unknown) {
+    if (valor !== undefined) valores[nome] = valor;
+    return valores[nome];
+  } } }, migrarEstadoAnotacao: undefined as unknown as (t: unknown) => unknown };
+  runInNewContext(legado.slice(legado.indexOf('function deslocarOrdemAnotacao(')), contexto);
+  const alvo = { 0: d.querySelector('table'), find: (seletor: string) => d.querySelectorAll(seletor) };
+  renderizar(d, true, true);
+  contexto.migrarEstadoAnotacao(alvo);
+  assert.equal(JSON.stringify(valores['tablesorter-savesort'].sortList), '[[3,0],[4,1]]');
+  assert.deepEqual(valores['tablesorter-filters'], ['', 'Marcador', '', '123', '(ana)', '2026-10-09']);
+  contexto.migrarEstadoAnotacao(alvo);
+  assert.equal(JSON.stringify(valores['tablesorter-savesort'].sortList), '[[3,0],[4,1]]');
+  renderizar(d, true);
+  contexto.migrarEstadoAnotacao(alvo);
+  assert.equal(JSON.stringify(valores['tablesorter-savesort'].sortList), '[[2,0],[3,1]]');
+  assert.deepEqual(valores['tablesorter-filters'], ['', 'Marcador', '123', '(ana)', '2026-10-09']);
 });
 
 console.log(`${n} verificações passaram.`);

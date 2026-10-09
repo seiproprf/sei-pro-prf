@@ -1,10 +1,4 @@
-/**
- * Cartão da anotação dentro da célula do processo, logo abaixo do número. Não
- * cria coluna nem esconde o ícone nativo (que continua abrindo a edição), então
- * o legado que lê as colunas por posição não percebe nada. O estado fica no
- * próprio cartão (`data-spro-chave`) e a seta usa um ouvinte único no
- * documento: as linhas que o agrupamento do SEI Pro clona seguem funcionando.
- */
+/** Cartões abaixo do processo ou em coluna própria; o estado acompanha as linhas clonadas. */
 import { icone } from '../../sei-comum/src/ui/dom';
 import { type Anotacao, lerAnotacaoDaLinha } from './leitura';
 
@@ -102,22 +96,72 @@ function atualizarSetas(cartoes: HTMLElement[]): void {
   });
 }
 
+/** Ajusta cabeçalhos simples e células que abrangem a tabela (grupos/captions). */
+function ajustarCabecalhos(tabela: Element, coluna: boolean): boolean {
+  let mudou = false;
+  for (const linha of tabela.querySelectorAll('tr')) {
+    if (linha.querySelector(PROCESSO) || linha.classList.contains('tablesorter-filter-row')) continue;
+    const inserida = linha.querySelector('.spro-anotacao-coluna');
+    if (!coluna) {
+      if (inserida) { inserida.remove(); mudou = true; }
+      for (const celula of linha.querySelectorAll('[data-spro-colspan]')) {
+        celula.setAttribute('colspan', celula.getAttribute('data-spro-colspan')!);
+        celula.removeAttribute('data-spro-colspan');
+        mudou = true;
+      }
+      continue;
+    }
+    const abrangente = linha.querySelector('[colspan]');
+    if (abrangente && !abrangente.hasAttribute('data-spro-colspan')) {
+      const span = abrangente.getAttribute('colspan')!;
+      abrangente.setAttribute('data-spro-colspan', span);
+      abrangente.setAttribute('colspan', String(Number(span) + 1));
+      mudou = true;
+    } else if (!abrangente && !inserida && linha.children.length >= 3) {
+      const celula = tabela.ownerDocument.createElement(linha.children[2]!.tagName.toLowerCase());
+      celula.className = 'spro-anotacao-coluna';
+      if (celula.tagName === 'TH') {
+        celula.classList.add('infraTh');
+        celula.textContent = 'Anotação';
+        celula.setAttribute('scope', 'col');
+      }
+      linha.insertBefore(celula, linha.children[2]!);
+      mudou = true;
+    }
+  }
+  return mudou;
+}
+
 /** Põe, atualiza ou retira os cartões; desligado, devolve as células como eram. */
-export function renderizar(doc: Document, ligada: boolean): void {
+export function renderizar(doc: Document, ligada: boolean, emColuna = false): void {
   const visiveis: HTMLElement[] = [];
   for (const tabela of doc.querySelectorAll(TABELAS)) {
+    const coluna = ligada && emColuna;
+    let mudou = ajustarCabecalhos(tabela, coluna);
     for (const linha of tabela.querySelectorAll('tr')) {
       const celula = linha.querySelector(PROCESSO)?.closest('td');
+      let destino: HTMLElement | null | undefined = celula;
+      const colunas = [...linha.querySelectorAll<HTMLElement>('td.spro-anotacao-coluna')];
+      if (coluna && celula) {
+        destino = colunas.shift() ?? doc.createElement('td');
+        destino.className = 'spro-anotacao-coluna';
+        if (destino.parentElement !== linha || destino.nextElementSibling !== celula) {
+          linha.insertBefore(destino, celula);
+          mudou = true;
+        }
+      }
       const nota = ligada && celula ? lerAnotacaoDaLinha(linha) : null;
       const chave = nota ? chaveDe(nota) : null;
       const cartoes = [...linha.querySelectorAll<HTMLElement>('.spro-anotacao')];
-      const manter = cartoes.find(c => c.parentElement === celula && c.getAttribute('data-spro-chave') === chave);
+      const manter = cartoes.find(c => c.getAttribute('data-spro-chave') === chave);
       for (const cartao of cartoes) if (cartao !== manter) cartao.remove();
-      if (!nota || !celula) continue;
+      for (const antiga of colunas) { antiga.remove(); mudou = true; }
+      if (!nota || !destino) continue;
       const cartao = manter ?? criarCartao(doc, nota);
-      if (!manter) celula.append(cartao);
+      if (cartao.parentElement !== destino) destino.append(cartao);
       visiveis.push(cartao);
     }
+    if (mudou) tabela.dispatchEvent(new doc.defaultView!.Event('spro-anotacao-colunas', { bubbles: true }));
   }
   atualizarSetas(visiveis);
 }

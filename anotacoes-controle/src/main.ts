@@ -8,6 +8,7 @@ import { iniciar } from './controle';
 import css from './style.css';
 
 const OPCAO = 'mostraranotacaocontrole';
+const COLUNA = 'anotacaocontrolecoluna';
 
 function montar() {
   if (new URL(location.href).searchParams.get('acao') !== 'procedimento_controlar') return;
@@ -19,10 +20,10 @@ function montar() {
   chrome.storage.onChanged.addListener((mudancas, area) => {
     if (area !== 'sync' || !('dataValues' in mudancas)) return;
     mudou = true;
-    controle.configurar(opcaoLegadaMarcada(mudancas.dataValues!.newValue, OPCAO));
+    controle.configurar(opcaoLegadaMarcada(mudancas.dataValues!.newValue, OPCAO), opcaoLegadaMarcada(mudancas.dataValues!.newValue, COLUNA));
   });
   chrome.storage.sync.get('dataValues').then(itens => {
-    if (!mudou) controle.configurar(opcaoLegadaMarcada(itens.dataValues, OPCAO));
+    if (!mudou) controle.configurar(opcaoLegadaMarcada(itens.dataValues, OPCAO), opcaoLegadaMarcada(itens.dataValues, COLUNA));
   }).catch(() => { /* sem preferência legível: mantém a tela nativa */ });
 }
 

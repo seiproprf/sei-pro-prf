@@ -8,6 +8,7 @@ import { aoClicarSeta, renderizar, TABELAS } from './view';
 export function iniciar(doc: Document) {
   const janela = doc.defaultView;
   let ligada = false;
+  let emColuna = false;
   let encerrado = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const larguras = new Map<Element, number>();
@@ -43,7 +44,7 @@ export function iniciar(doc: Document) {
   function atualizar() {
     // Desconecta para não reagir às próprias mudanças.
     mutacoes?.disconnect();
-    renderizar(doc, ligada);
+    renderizar(doc, ligada, emColuna);
     if (!ligada) return;
     const tabelas = new Set(doc.querySelectorAll(TABELAS));
     for (const tabela of [...larguras.keys()]) if (!tabelas.has(tabela)) { tamanho?.unobserve(tabela); larguras.delete(tabela); }
@@ -52,9 +53,10 @@ export function iniciar(doc: Document) {
   }
 
   return {
-    configurar(valor: boolean) {
+    configurar(valor: boolean, coluna = false) {
       if (encerrado) return;
       ligada = valor;
+      emColuna = coluna;
       parar();
       if (ligada) doc.addEventListener('click', aoClicarSeta, true);
       atualizar();
