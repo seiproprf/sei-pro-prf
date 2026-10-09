@@ -1,0 +1,8 @@
+.spro-pesquisa-oculta {
+  display: none !important;
+}
+.spro-pesquisa-destaque {
+  background: #ffe16b !important;
+  color: #1f2328 !important;
+  border-radius: 2px;
+}
