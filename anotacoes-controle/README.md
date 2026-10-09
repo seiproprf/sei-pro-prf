@@ -13,9 +13,12 @@ que pesava:
   `aria-label` "Anotação[ com prioridade] / texto / autor" no SEI 4.1 e 5,
   tooltip no SEI 3; a prioridade também está no ícone (`anotacao2.svg`, ou
   "prioridade" no nome no SEI 3).
-- **Nenhuma coluna nova.** O legado lê as colunas por posição em dezenas de
-  lugares; dentro da célula do processo só dois leem a célula inteira, e os dois
-  (mapa e Kanban em `sei-pro.js`) descartam `.spro-anotacao`.
+- **Coluna opcional.** `anotacaocontrolecoluna` (desligada por padrão) coloca
+  o cartão entre os símbolos e o número. Os acessos posicionais do Controle
+  em `sei-pro.js` excluem `.spro-anotacao-coluna`; os extratores e filtros da
+  ordenação consideram o deslocamento. Cabeçalhos e agrupamentos acompanham
+  a coluna e são restaurados ao desligar. O evento `spro-anotacao-colunas`
+  atualiza o tablesorter quando a estrutura muda.
 - **O ícone nativo fica** e continua abrindo a edição.
 - **Visão detalhada intocada:** o SEI já tem a coluna Anotação.
 
@@ -59,7 +62,13 @@ npm install
 npm run verificar   # testes (linkedom)
 npm run tipos
 npm run build       # verificar + gera dist/js/init_anotacoes_controle.js (só ASCII)
+node tests/tablesorter.mjs # serve a página de regressão em http://127.0.0.1:8768
 ```
+
+A página de regressão executa as bibliotecas reais de jQuery e tablesorter e
+mostra o resultado na tela (`window.resultadoTestes` para automação). Verifica
+grupos e legendas, filtros e ordenação ao alternar a coluna, inclusive em trocas
+rápidas. Feche o servidor com Ctrl+C.
 
 O linkedom ignora a fase de captura dos eventos; a ordem real (o clique na
 seta não chega à linha) só se confere no Chrome.

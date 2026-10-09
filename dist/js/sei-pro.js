@@ -207,7 +207,7 @@ function appendGerados(type) {
     
     var tbody = $('#divRecebidos tbody');
     tbody.find('tr').each(function() {
-        var dataRecebido = ($(this).find('td').eq(2).find('a').length) ? getArrayProcessoRecebido($(this).find('td').eq(2).find('a').attr('href')) : '';
+        var dataRecebido = ($(this).find('td:not(.spro-anotacao-coluna)').eq(2).find('a').length) ? getArrayProcessoRecebido($(this).find('td:not(.spro-anotacao-coluna)').eq(2).find('a').attr('href')) : '';
             dataRecebido = (dataRecebido != '' && type == 'arrivaldate') ? moment(dataRecebido.datahora, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
             dataRecebido = (dataRecebido != '' && type == 'acessdate') ? moment(dataRecebido.datetime, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
             dataRecebido = (dataRecebido != '' && type == 'createdate') ? moment(dataRecebido.datageracao, 'YYYY-MM-DD HH:mm:ss').unix() : dataRecebido;
@@ -356,7 +356,7 @@ function removeAllTags(forceFilter = false, n) {
     if (forceFilter && sessionStorageRestorePro('setFiltersTableHome')) {
         setTimeout(function(){ 
             $.each(tableHomePro, function(i){
-                $.tablesorter.setFilters( tableHomePro[i][0], sessionStorageRestorePro('setFiltersTableHome'), true );
+                $.tablesorter.setFilters( tableHomePro[i][0], filtrosComAnotacao(tableHomePro[i], sessionStorageRestorePro('setFiltersTableHome')), true );
                 tableHomePro[i].trigger('update');
             });
         }, 1000);
@@ -373,7 +373,7 @@ function getUniqueTableTag(i, tagName, type) {
 	var tagName_ = getTagName(tagName, type);
     var txtTagName = ( (type == 'arrivaldate' || type == 'acessdate' || type == 'senddate' || type == 'createdate' || type == 'deadline') && tagName.indexOf('.') !== -1 ) ? tagName.split('.')[1] : tagName;
 	var tbRecebidos = $('#divRecebidos table');
-	var countTd = tbRecebidos.find('tr:not(.tablesorter-headerRow)').eq(1).find('td').length;
+    var countTd = tbRecebidos.find('tr:not(.tablesorter-headerRow)').eq(1).find('td:not(.spro-anotacao-coluna)').length;
 	var iconSelect = '<label class="lblInfraCheck" for="lnkInfraCheck" accesskey=";"></label><a id="lnkInfraCheck" onclick="getSelectAllTr(this);" onmouseover="updateTipSelectAll(this)" onmouseenter="return infraTooltipMostrar(\'Selecionar Tudo\')" onmouseout="return infraTooltipOcultar();"><img src="/infra_css/'+(isNewSEI ? 'svg/check.svg': 'imagens/check.gif')+'" id="imgRecebidosCheck" class="infraImg"></a></th>';
 	var tagCount = getTrGroupTablePro($('#divRecebidos table tbody'), 'data-tagname', tagName_).filter(':visible').length;
     var collapseBtn =   '<span class="tagintable">'+
@@ -426,15 +426,15 @@ function getTableOnTag(type) {
     $('#divRecebidos table tbody tr').each(function(index){
     	var dataTag = $(this).attr('data-tagname');
     		dataTag = ( dataTag == '' ) ? 'SemGrupo' : dataTag;
-    	if ( typeof dataTag !== 'undefined' && $(this).find('td').eq(2).find('a').length > 0 ) {
-    		var desc = $(this).find('td').eq(2).find('a').attr('onmouseover').split("','");    
+        if ( typeof dataTag !== 'undefined' && $(this).find('td:not(.spro-anotacao-coluna)').eq(2).find('a').length > 0 ) {
+            var desc = $(this).find('td:not(.spro-anotacao-coluna)').eq(2).find('a').attr('onmouseover').split("','");
             var txt_desc = (typeof desc[0] !== 'undefined') ? removePrefixoNaoVisualizadoPro(desc[0].replace("return infraTooltipMostrar('", "")) : '';
             var txt_tipo_proc = (typeof desc[1] !== 'undefined') ? desc[0].replace("return infraTooltipMostrar('", "") : '';
             var editDesc = '<a class="newLink newLink_active followLink followLinkDesc content_btnsave" onclick="editFieldProc(this)" style="right: 0;top: 0;" onmouseover="return infraTooltipMostrar(\'Editar descri\u00E7\u00E3o\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-edit" style="font-size: 100%;"></i></a>';        
     		var htmlDesc = (type == 'all')
                 ? '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td>'
                 : '<td class="tagintable" data-old="'+txt_desc+'"><span class="info">'+txt_desc+'</span>'+editDesc+'</td><td class="tagintable">'+desc[1].replace("');","")+'</td>';
-            var dataRecebido = getArrayProcessoRecebido($(this).find('td').eq(2).find('a').attr('href'));
+            var dataRecebido = getArrayProcessoRecebido($(this).find('td:not(.spro-anotacao-coluna)').eq(2).find('a').attr('href'));
             var textBoxDesc =   (type == 'arrivaldate' || type == 'acessdate') 
                                 ? dataRecebido.descricao+' em: '+moment(dataRecebido.datahora, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm')+'<br>'
                                 : (dataRecebido.datesend != '') ? dataRecebido.descricaosend+' em: '+moment(dataRecebido.datesend, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY HH:mm')+'<br>' : '';
@@ -446,7 +446,7 @@ function getTableOnTag(type) {
                 textDataRecebido = (dataRecebido != '' && (type == 'senddate' || type == 'senddepart' || type == 'acompanhamentoesp') && dataRecebido.datesend != '') ? moment(dataRecebido.datesend, 'YYYY-MM-DD HH:mm:ss').format('DD/MM/YYYY') : textDataRecebido;
             var htmlDataRecebido = (dataRecebido != '') ? '<td class="tagintable"><span onmouseout="return infraTooltipOcultar();" onmouseover="return infraTooltipMostrar(\''+textBox+'\')">'+textDataRecebido+'</span></td>' : '<td class="tagintable"></td>';
                 htmlDataRecebido = (type == 'all') ? '' : htmlDataRecebido;
-    			$(this).find('td').eq(3).after(htmlDesc+htmlDataRecebido);
+                $(this).find('td:not(.spro-anotacao-coluna)').eq(3).after(htmlDesc+htmlDataRecebido);
     		var cloneTr = $(this).clone();
     		getTrGroupTablePro($('#divRecebidos table tbody'), 'data-htagname', dataTag).after(cloneTr);
     		$(this).remove(); 
@@ -795,7 +795,7 @@ function initTableTag(type = '') {
         if (type != '' && type != 'all' && $('#tblProcessosRecebidos tbody a.urgentePro[href*="controlador.php?acao=procedimento_trabalhar"]').length > 0) {
             $('#tblProcessosRecebidos tr.tagintable[data-htagname="(URGENTE)"').remove();
             $('#tblProcessosRecebidos tr.urgentePro').show().attr('data-tagname','(URGENTE)');
-            var colspan = $('#tblProcessosRecebidos tr:not(.tableHeader)').eq(1).find('td').length;
+            var colspan = $('#tblProcessosRecebidos tr:not(.tableHeader)').eq(1).find('td:not(.spro-anotacao-coluna)').length;
                 colspan = (typeof colspan !== 'undefined' && colspan > 0) ? colspan+2 : 7;
             var htmlHeadUrgente =   '<tr data-htagname="(URGENTE)" class="tagintable tableHeader">'+
                                     '   <th class="tituloControle '+(isNewSEI ? 'infraTh' : '')+'" width="5%" align="center">'+
@@ -850,7 +850,7 @@ function getFilterTableHome(this_) {
         if (filters.length > 0) {
             setTimeout(function(){ 
                 $.each(tableHomePro, function(i){
-                    $.tablesorter.setFilters( tableHomePro[i][0], filters, true );
+                    $.tablesorter.setFilters( tableHomePro[i][0], filtrosComAnotacao(tableHomePro[i], filters), true );
                 });
                 sessionStorageStorePro('setFiltersTableHome', filters);
             }, 100);
@@ -1472,7 +1472,7 @@ function getTableProcessosCSV() {
     var tableSelect = (table.find('tbody tr.infraTrMarcada').length > 0) ? table.find('tbody tr.infraTrMarcada') : table.find('tbody tr.infraTrClara');
     var listaAcompEsp = getListaAcompanhamentoEspUnidadePro();
         tableSelect.each(function(){
-            var td = $(this).find('td');
+            var td = $(this).find('td:not(.spro-anotacao-coluna)');
             var id_protocolo = $(this).attr('id').replace('P', '');
             var etiqueta = td.eq(1).find('a[href*="andamento_marcador_gerenciar"]').attr('onmouseover');
             var etiqueta_array = (typeof etiqueta !== 'undefined' && etiqueta != '') ? extractAllTextBetweenQuotes(etiqueta) : false;
@@ -1613,11 +1613,13 @@ function setTableSorterHome() {
                    if (isNewSEI) {
                         tableSorterHome.find('th:nth-child(2)').each(function(){
                             var _this = $(this);
-                            if (_this.attr('colspan') == 3) {
-                                    _this.removeAttr('colspan');
+                            if (_this.attr('colspan') == 3 || _this.attr('data-spro-colspan') == 3) {
+                                var anotacaoColuna = _this.attr('data-spro-colspan') == 3;
+                                    _this.removeAttr('colspan data-spro-colspan');
                                 var beforeTh = _this.clone().text('');
                                 var aftereTh = _this.clone().text('');
                                     _this.before(beforeTh);
+                                    if (anotacaoColuna) _this.before($('<th class="infraTh spro-anotacao-coluna" scope="col">Anota&ccedil;&atilde;o</th>'));
                                     _this.after(aftereTh);
                             }
                         });
@@ -1637,7 +1639,8 @@ function setTableSorterHome() {
                     
                     var elemID = $(this).attr('id');
                     var _this = $('#'+$(this).attr('id'));
-                    var sortListArray = (typeof sortListSaved !== 'undefined' && sortListSaved && typeof sortListSaved[elemID] !== 'undefined') ? sortListSaved[elemID].sortList : [];
+                    var estadoAnotacao = migrarEstadoAnotacao(_this);
+                    var sortListArray = estadoAnotacao ? estadoAnotacao.sortList : (typeof sortListSaved !== 'undefined' && sortListSaved && typeof sortListSaved[elemID] !== 'undefined') ? sortListSaved[elemID].sortList : [];
                     var configSorter = {
                         sortLocaleCompare : true,
                         textExtraction: {
@@ -1698,6 +1701,12 @@ function setTableSorterHome() {
                         }
                     };
                     
+                    // A coluna opcional nao altera a identidade das celulas nativas.
+                    var extratoresNativos = configSorter.textExtraction;
+                    configSorter.textExtraction = function(elem, table) {
+                        var indice = $(elem).parent().children('td:not(.spro-anotacao-coluna)').index(elem);
+                        return extratoresNativos[indice] ? extratoresNativos[indice](elem, table, indice) : $(elem).text().trim();
+                    };
                     _this.find("thead th:eq(0)").data("sorter", false);
                     var tableHomeThis = _this.tablesorter(configSorter).on("sortEnd", function (event, data) {
                             checkboxRangerSelectShift();
@@ -1741,7 +1750,7 @@ function setTableSorterHome() {
                 }
                 var filterStore = (typeof tableHomePro[0] !== 'undefined' && typeof tableHomePro[0][0] !== 'undefined') ? $.tablesorter.storage(tableHomePro[0][0], 'tablesorter-filters') : [];
                 if (typeof filterStore !== 'undefined' && filterStore !== null && filterStore.length > 0) {
-                    var filterUser = filterStore[3];
+                    var filterUser = filterStore[tableHomePro[0].find('td.spro-anotacao-coluna').length ? 4 : 3];
                         filterUser = (typeof filterUser !== 'undefined' && filterUser !== null) ? filterUser.replace('(','').replace(')','') : false;
                     if (filterUser) {
                         $('#filterTableHome').val(filterUser).trigger('chosen:updated');
@@ -2092,9 +2101,9 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                             processo: linkProc.text(),
                             especificacao: tip ? removePrefixoNaoVisualizadoPro(tip[0]) : false,
                             tipo: tip ? tip[1] : false,
-                            html_icons: $(this).find('td').eq(1).html(),
-                            html_proc: $(this).find('td').eq(2).clone().find('.spro-anotacao').remove().end().html(),
-                            html_atribuicao: $(this).find('td').eq(3).html(),
+                            html_icons: $(this).find('td:not(.spro-anotacao-coluna)').eq(1).html(),
+                            html_proc: $(this).find('td:not(.spro-anotacao-coluna)').eq(2).clone().find('.spro-anotacao').remove().end().html(),
+                            html_atribuicao: $(this).find('td:not(.spro-anotacao-coluna)').eq(3).html(),
                             html_prazo: $(this).find('td.prazoBoxDisplay').html(),
                             color: $(this).data('color') ? $(this).css('color') : false
                         }
@@ -2209,10 +2218,10 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                                     if (targetEl != 'SemGrupo') {
                                         var targetAtribuicao = '(<a href="'+linkAtribuicao+'" title="Atribu\u00EDdo para '+targetEl+'" class="ancoraSigla">'+targetEl+'</a>)';
                                         elemUser.html(targetAtribuicao);
-                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(3).html(targetAtribuicao);
+                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td:not(.spro-anotacao-coluna)').eq(3).html(targetAtribuicao);
                                     } else {
                                         elemUser.html('');
-                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(3).html('');
+                                        tableProc.find('tr[id="P'+id_protocolo+'"]').find('td:not(.spro-anotacao-coluna)').eq(3).html('');
                                     }
                                     elemProc.find('i.fa-sync').remove();
                                     elemProc.prepend('<i class="fas fa-check-double verdeColor" style="margin-right: 5px;"></i>');
@@ -2236,7 +2245,7 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                         };
                         var elemIconTag = elemIcons.find('a[href*="acao=andamento_marcador_gerenciar"]');
                             elemIconTag = elemIconTag.filter(filtroIconeTagOrigem).length ? elemIconTag.filter(filtroIconeTagOrigem).first() : elemIconTag;
-                        var elemIconTagTable = tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(1).find('a[href*="acao=andamento_marcador_gerenciar"]');
+                        var elemIconTagTable = tableProc.find('tr[id="P'+id_protocolo+'"]').find('td:not(.spro-anotacao-coluna)').eq(1).find('a[href*="acao=andamento_marcador_gerenciar"]');
                             elemIconTagTable = elemIconTagTable.filter(filtroIconeTagOrigem).length ? elemIconTagTable.filter(filtroIconeTagOrigem).first() : elemIconTagTable;
                         var valueText = elemIconTag.attr('onmouseover');
                             valueText = (typeof valueText !== 'undefined') ? extractTooltipToArray(valueText) : false;
@@ -2268,7 +2277,7 @@ function addKanbanProc(type = storeGroupTablePro(), loop = 3) {
                                     } else if (targetEl != 'SemGrupo' && sourceEl == 'SemGrupo') {
                                         var targetMarcador = '<a href="#controlador.php?acao=andamento_marcador_gerenciar&acao_origem=procedimento_controlar&acao_retorno=procedimento_controlar&id_procedimento='+id_protocolo+'" onmouseover="return infraTooltipMostrar(\''+valueText+'\',\''+titleSource+'\');" onmouseout="return infraTooltipOcultar();" data-color="true" style="'+styleMarcador+'"><img src="'+arrayMarcador.img+'" class="imagemStatus"></a>';
                                             elemIcons.append(targetMarcador);
-                                            tableProc.find('tr[id="P'+id_protocolo+'"]').find('td').eq(1).append(targetMarcador);
+                                            tableProc.find('tr[id="P'+id_protocolo+'"]').find('td:not(.spro-anotacao-coluna)').eq(1).append(targetMarcador);
                                     } else if (targetEl == 'SemGrupo') {
                                         elemIconTag.remove();
                                         elemIconTagTable.remove();
@@ -2425,7 +2434,7 @@ function addAcompanhamentoEspIcon() {
             // O grupo vem escapado para JavaScript e HTML (formatarParametrosJavaScript do SEI, tambem o lido da lista);
             // aqui ele e escapado mais uma vez para o atributo onmouseover, que o navegador decodifica antes de rodar.
             var tooltipGrupo = String(acompanhamentoesp).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/\\?'/g, "\\'");
-            $(this).closest('tr').find('td').eq(1).append('<a class="acompanhamentoesp_icon" onmouseover="return infraTooltipMostrar(\'Acompanhamento Especial\',\''+tooltipGrupo+'\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-eye azulColor"><i></a>');
+            $(this).closest('tr').find('td:not(.spro-anotacao-coluna)').eq(1).append('<a class="acompanhamentoesp_icon" onmouseover="return infraTooltipMostrar(\'Acompanhamento Especial\',\''+tooltipGrupo+'\');" onmouseout="return infraTooltipOcultar();"><i class="fas fa-eye azulColor"><i></a>');
         }
     });
     checkListaAcompanhamentoEspIconPro();
@@ -2665,7 +2674,7 @@ function setPrazoMarcador(mode, this_, form, href, param = false, callback = fal
                                 $.each(tagResult, function(i, v){
                                     var _dateConfig = moment(_dateRef, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm:ss');
                                     var tr = $('tr#P'+v.id_procedimento);
-                                    var td = tr.find('td').eq(1);
+                                    var td = tr.find('td:not(.spro-anotacao-coluna)').eq(1);
                                     td.find('a[href*="andamento_marcador_gerenciar"]').remove();
                                     td.append(v.html);
                                     if (mode == 'add') {
@@ -2768,7 +2777,7 @@ function configDatesSwitchChangeHome(this_) {
 function getMapaControleProcesso() {
     return $('#tblProcessosRecebidos').find('tbody tr').not('.tableHeader').not('.infraCaption').map(function(){
         let _this = $(this);
-        let _td = _this.find('td');
+        let _td = _this.find('td:not(.spro-anotacao-coluna)');
         let id_procedimento = _this.attr('id');
             id_procedimento = typeof id_procedimento !== 'undefined' ? parseInt(id_procedimento.replace('P','')) : false;
         let protocolo = _td.eq(2).clone().find('.spro-anotacao').remove().end().text();
@@ -2810,7 +2819,7 @@ function updateCountIconDist() {
 var txtPadrao_getList = async () => {
     var htmlTxtPadrao = await $.get(urlTxtPadrao);
     var listTxtPadrao = $(htmlTxtPadrao).find('#divInfraAreaTabela table.infraTable tr').map(function(){
-        var td = $(this).find('td');
+        var td = $(this).find('td:not(.spro-anotacao-coluna)');
         var link = td.eq(4).find('a');
         var id = td.eq(1).text();
         var name = td.eq(2).text();
@@ -2835,7 +2844,7 @@ var txtPadrao_newLink = async () => {
 }
 var txtPadrao_getConfig = async (idTxt) => {
     var htmlTxtPadrao = await $.get(urlTxtPadrao);
-    var urlView = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').eq(2).text() == '[_'+idTxt+']') return $(this).find('a[href*="acao=texto_padrao_interno_consultar"]').attr('href') }).get();
+    var urlView = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td:not(.spro-anotacao-coluna)').eq(2).text() == '[_'+idTxt+']') return $(this).find('a[href*="acao=texto_padrao_interno_consultar"]').attr('href') }).get();
         urlView = typeof urlView !== 'undefined' && urlView !== null && urlView.length ? urlView[0] : false;
 
     if (urlView) {
@@ -2851,7 +2860,7 @@ var txtPadrao_getConfig = async (idTxt) => {
 }
 var txtPadrao_setConfig = async (data) => {
     var htmlTxtPadrao = await $.get(urlTxtPadrao);
-    var urlEdit = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td').eq(2).text() == '[_'+data.nome+']') return $(this).find('a[href*="acao=texto_padrao_interno_alterar"]').attr('href') }).get();
+    var urlEdit = $(htmlTxtPadrao).find('.infraAreaTabela tr').map(function(){ if ($(this).find('td:not(.spro-anotacao-coluna)').eq(2).text() == '[_'+data.nome+']') return $(this).find('a[href*="acao=texto_padrao_interno_alterar"]').attr('href') }).get();
         urlEdit = typeof urlEdit !== 'undefined' && urlEdit !== null && urlEdit.length ? urlEdit[0] : false;
     var urlPage = urlEdit ? urlEdit : await txtPadrao_newLink();
     var htmlLink = await $.get(urlPage);
@@ -3631,3 +3640,73 @@ function initSeiProAposFunctions(TimeOut = 10000) {
     initSeiPro();
 }
 $(document).ready(function () { initSeiProAposFunctions() });
+// O content script isolado avisa quando muda a estrutura da tabela.
+function filtrosComAnotacao(tabela, filtros) {
+    var ajustados = filtros.slice();
+    if (tabela.find('td.spro-anotacao-coluna').length) ajustados.splice(2, 0, '');
+    return ajustados;
+}
+document.addEventListener('spro-anotacao-colunas', function(evento) {
+    var tabela = $(evento.target);
+    if (!tabela.is('#tblProcessosRecebidos, #tblProcessosGerados') || !tabela.data('tablesorter')) return;
+    var config = tabela.data('tablesorter');
+    var novasColunas = tabela.find('thead tr').not('.tablesorter-filter-row').first().children('th,td').length;
+    var delta = novasColunas - config.columns;
+    var filtros = (tabela.data('spro-anotacao-filtros') || $.tablesorter.getFilters(tabela[0]) || []).slice();
+    if (delta == 1 || delta == -1) {
+        config.sortList = deslocarOrdemAnotacao(config.sortList, delta);
+        if (delta == 1) filtros.splice(2, 0, '');
+        else filtros.splice(2, 1);
+    }
+    tabela.data('spro-anotacao-filtros', filtros);
+    // Cabeçalhos dos grupos não são processos: ficam fora do cache e da
+    // filtragem. Os marcadores conservam sua posição enquanto ele é refeito.
+    var grupos = tabela.find('tbody tr.tableHeader, tbody tr.infraCaption').map(function() {
+        var marcador = document.createComment('spro-grupo');
+        this.parentNode.insertBefore(marcador, this);
+        return { linha: $(this).detach()[0], marcador: marcador };
+    }).get();
+    // A troca de layout conserva a ordem atual; sortList continua disponível
+    // para as próximas ordenações feitas pelo usuário.
+    tabela.trigger('updateAll', [false, function() {
+        grupos.forEach(function(grupo) {
+            grupo.marcador.parentNode.replaceChild(grupo.linha, grupo.marcador);
+        });
+        // updateAll recria o widget de filtros de forma assíncrona. Aplicar
+        // antes de filterInit perderia os valores ao montar os novos inputs.
+        function restaurarFiltros() {
+            var pendentes = tabela.data('spro-anotacao-filtros');
+            tabela.removeData('spro-anotacao-filtros');
+            $.tablesorter.setFilters(tabela[0], pendentes, true);
+        }
+        tabela.off('filterInit.sproAnotacao');
+        if (config.widgetOptions.filter_initialized) restaurarFiltros();
+        else tabela.one('filterInit.sproAnotacao', restaurarFiltros);
+        $.tablesorter.storage(tabela[0], 'spro-anotacao-layout', { coluna: tabela.find('td.spro-anotacao-coluna').length > 0 });
+    }]);
+});
+
+function deslocarOrdemAnotacao(ordens, delta) {
+    return ordens.filter(function(ordem) { return delta != -1 || ordem[0] != 2; }).map(function(ordem) {
+        return [ordem[0] >= 2 ? ordem[0] + delta : ordem[0], ordem[1]];
+    });
+}
+function migrarEstadoAnotacao(tabela) {
+    var coluna = tabela.find('td.spro-anotacao-coluna').length > 0;
+    var anterior = $.tablesorter.storage(tabela[0], 'spro-anotacao-layout', undefined, { storageType: 'local' });
+    var salva = $.tablesorter.storage(tabela[0], 'tablesorter-savesort', undefined, { storageType: 'local' });
+    var filtros = $.tablesorter.storage(tabela[0], 'tablesorter-filters', undefined, { storageType: 'local' });
+    if (coluna !== !!(anterior && anterior.coluna)) {
+        if (salva && Array.isArray(salva.sortList)) {
+            salva.sortList = deslocarOrdemAnotacao(salva.sortList, coluna ? 1 : -1);
+            $.tablesorter.storage(tabela[0], 'tablesorter-savesort', salva, { storageType: 'local' });
+        }
+        if (Array.isArray(filtros)) {
+            if (coluna) filtros.splice(2, 0, '');
+            else filtros.splice(2, 1);
+            $.tablesorter.storage(tabela[0], 'tablesorter-filters', filtros, { storageType: 'local' });
+        }
+    }
+    $.tablesorter.storage(tabela[0], 'spro-anotacao-layout', { coluna: coluna }, { storageType: 'local' });
+    return salva;
+}

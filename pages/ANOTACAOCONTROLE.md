@@ -18,6 +18,8 @@ No SEI, a anotação de um processo só aparece quando você passa o mouse sobre
 
 A função vem **desligada** de fábrica. Para ligar, abra as [Configurações do SEI Pro](../pages/DESATIVARFUNCOES.md), aba **Geral**, seção **Controle de Processos**, e marque **Mostrar a anotação de cada processo na tela de controle de processos**. Clique em **Salvar**: a tela de controle já aberta passa a mostrar os cartões, sem precisar recarregar.
 
+Depois de habilitar a função, aparece logo abaixo a opção **Mostrar a anotação em uma coluna à esquerda do número do processo**. Marque-a e salve para colocar os cartões entre os símbolos e o número do processo, na mesma linha. Desmarque-a para voltar a mostrar os cartões abaixo do número.
+
 ### Bom saber
 
 * O texto vem da própria tela do SEI: a função **não faz nenhuma consulta extra** ao servidor e não envia a anotação a lugar nenhum.

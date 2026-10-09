@@ -201,3 +201,15 @@
     transition: none;
   }
 }
+
+/* Coluna ao lado do número: cartão compacto, alinhado ao conteúdo da linha. */
+td.spro-anotacao-coluna {
+  width: 30%;
+  min-width: 180px;
+  max-width: 440px;
+  vertical-align: middle;
+}
+td.spro-anotacao-coluna > .spro-anotacao {
+  margin: 3px 8px;
+  max-width: none;
+}

@@ -211,6 +211,7 @@ function restore_options() {
                     $('#itemConfigGeral_'+value.name).closest('tr').find('.iconPopup').addClass('azulColor').removeClass('cinzaColor');
                 }
             });
+        $('#anotacaoControle_coluna').toggle($('#itemConfigGeral_mostraranotacaocontrole').is(':checked'));
         if(jmespath.search(dataValuesConfig, "[?name=='newdocdefault'].value | [0]") || jmespath.search(dataValuesConfig, "[?name=='newdocdefault'].value | [0]") === null) {
             $('#newdocDefault_table').show();
         } else {
@@ -348,6 +349,7 @@ function passUpdate(this_) {
     }
 }
 function changeConfigGeral() {
+    $('#anotacaoControle_coluna').toggle($('#itemConfigGeral_mostraranotacaocontrole').is(':checked'));
     var arrayShowItensMenu = [];
     $('#options-functions').find('input[name="infraAncoraSigla"]').each(function(){
         if ($(this).is(':checked')) {
