@@ -1,0 +1,35 @@
+async page => {
+  const bundle = __BUNDLE__;
+  const erros = [];
+  page.on('pageerror', e => erros.push(e.message));
+  const config = `window.__ouvintes=[];window.chrome={storage:{sync:{get:async()=>({})},onChanged:{addListener:f=>__ouvintes.push(f),removeListener:f=>{__ouvintes=__ouvintes.filter(x=>x!==f)}}}}; window.__configurar=valor=>{for(const f of __ouvintes)f({dataValues:{newValue:JSON.stringify([{configGeral:[{name:'filtrarpaginapelapesquisarapida',value:valor}]}])}},'sync');};`;
+  await page.setContent('<form id="frmProcedimentoControlar"><input aria-label="Pesquisa rápida" id="txtPesquisaRapida"><table id="tblProcessosRecebidos"><tbody><tr id="p1"><td>12.345/0001-99</td><td title="AÇÃO útil">João</td></tr><tr id="p2"><td>98765</td><td>Maria</td></tr></tbody></table></form><p>Ação útil</p>');
+  await page.addScriptTag({content:config});await page.addScriptTag({content:bundle});
+  await page.getByRole('textbox').fill('acao util');
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#p2')).display==='none');
+  if(await page.locator('#p1').isHidden())throw Error('tooltip não casou');
+  await page.getByRole('textbox').press('Escape');
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#p2')).display!=='none');
+  await page.getByRole('textbox').fill('12345');
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#p2')).display==='none');
+  await page.evaluate(()=>window.__configurar(false));
+  if(await page.locator('#p2').isHidden())throw Error('desligar não restaurou');
+  console.log('OK navegador: filtro por tooltip, CSS real, Escape e preferência ao vivo');
+  const frameHtml = `<html><body><p id="texto">AÇÃO 12.345</p><script>${config}</script><script>${bundle}</script></body></html>`;
+  const arvoreHtml = `<html><body><div id="divArvore"><a id="no" href="#x">Ação na árvore</a></div><script>${config}</script><script>${bundle}</script></body></html>`;
+  await page.setContent('<input aria-label="Pesquisa rápida" id="txtPesquisaRapida"><iframe id="ifrArvore" name="arvore"></iframe><iframe id="ifrConteudoVisualizacao" name="documento"></iframe>');
+  await page.locator('#ifrArvore').evaluate((el,html)=>el.srcdoc=html,arvoreHtml);
+  await page.locator('#ifrConteudoVisualizacao').evaluate((el,html)=>el.srcdoc=html,frameHtml);
+  await page.waitForFunction(()=>document.querySelector('#ifrArvore').contentDocument.querySelector('style') && document.querySelector('#ifrConteudoVisualizacao').contentDocument.querySelector('style'));
+  await page.getByRole('textbox').fill('acao');
+  await page.waitForFunction(()=>['ifrArvore','ifrConteudoVisualizacao'].every(id=>document.getElementById(id).contentDocument.querySelector('.spro-pesquisa-destaque')));
+  await page.getByRole('textbox').press('Escape');
+  await page.waitForFunction(()=>['ifrArvore','ifrConteudoVisualizacao'].every(id=>!document.getElementById(id).contentDocument.querySelector('.spro-pesquisa-destaque')));
+  await page.getByRole('textbox').fill('12345');
+  await page.waitForFunction(()=>document.getElementById('ifrConteudoVisualizacao').contentDocument.querySelector('.spro-pesquisa-destaque')?.textContent==='12.345');
+  await page.locator('#ifrConteudoVisualizacao').evaluate((el,html)=>el.srcdoc=html,frameHtml.replace('AÇÃO 12.345','Documento novo 12.345'));
+  await page.waitForFunction(()=>document.getElementById('ifrConteudoVisualizacao').contentDocument.querySelector('.spro-pesquisa-destaque')?.textContent==='12.345');
+  console.log('OK navegador: árvore e documento em frames irmãos, Escape simultâneo, destaque numérico e troca de documento');
+  if(erros.length) throw Error(erros.join('\n'));
+  return 'Filtro, configuração ao vivo, frames irmãos, Escape e troca de documento: OK';
+}
