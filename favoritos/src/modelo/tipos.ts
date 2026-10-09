@@ -164,7 +164,7 @@ export interface Filtro {
 }
 
 export interface Preferencias {
-  exibir: "abaixo" | "lateral" | "ambos";
+  exibir: "acima" | "abaixo" | "lateral" | "ambos" | "acimaLateral" | "nenhum";
   perguntarAoFavoritar: boolean;
   /** Obsoleto (era um só para todos os SEIs): valem as escolhas por unidade, abaixo. */
   textoPadrao: "nao-perguntado" | "ligado" | "desligado";

@@ -4,34 +4,51 @@ import { montarOpcoesExibicao } from "../src/opcoes/exibicao";
 import { checar, disparar, instalarDom, secao, tique } from "./util";
 
 export async function verificarOpcoes(): Promise<void> {
-  secao("opcoes: onde mostrar os favoritos");
-  instalarDom("<html><body></body></html>");
+  secao("opcoes: posicao exclusiva e lateral independente");
+  instalarDom();
   const sync = areaMemoria({ [CHAVE_PREFERENCIAS]: { exibir: "ambos", perguntarAoFavoritar: false } });
   const el = await montarOpcoesExibicao({ sync, lateralDisponivel: true });
-  const radio = (v: string) => el.querySelector(`input[type="radio"][value="${v}"]`) as HTMLInputElement | null;
-  const perguntar = el.querySelector('input[type="checkbox"]') as HTMLInputElement;
-  checar("tres opcoes com painel lateral", !!radio("abaixo") && !!radio("lateral") && !!radio("ambos"));
-  checar("marca a gravada", radio("ambos")!.checked && !radio("abaixo")!.checked);
-  checar("perguntar ao favoritar segue a gravada", perguntar.checked === false);
-  radio("lateral")!.checked = true;
-  disparar(radio("lateral")!, "change");
-  await tique();
-  const p = (await sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { exibir?: string; perguntarAoFavoritar?: boolean };
-  checar("trocar grava", p.exibir === "lateral" && p.perguntarAoFavoritar === false, p);
+  const caixa = (v: string) => el.querySelector(`input[value="${v}"]`) as HTMLInputElement;
+  checar(
+    "tres caixas sem nos dois lugares",
+    el.querySelectorAll('fieldset input[type="checkbox"]').length === 3 && !el.querySelector('input[value="ambos"]'),
+  );
+  // A ausencia das caixas encerra o teste para o ciclo vermelho sem mascarar a falha.
+  if (!caixa("acima") || !caixa("abaixo") || !caixa("lateral")) return;
+  const perguntar = el.querySelector("input[data-perguntar]") as HTMLInputElement;
+  checar("ambos antigo marca abaixo e lateral", caixa("abaixo").checked && caixa("lateral").checked && !caixa("acima").checked);
+  const mudar = async (v: string, checked: boolean) => {
+    caixa(v).checked = checked;
+    disparar(caixa(v), "change");
+    await tique();
+  };
+  const salvo = async () => ((await sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { exibir: string }).exibir;
+  await mudar("acima", true);
+  checar(
+    "acima desmarca abaixo mantendo lateral",
+    caixa("acima").checked && !caixa("abaixo").checked && caixa("lateral").checked && (await salvo()) === "acimaLateral",
+  );
+  await mudar("acima", false);
+  checar("permite somente lateral", !caixa("acima").checked && !caixa("abaixo").checked && (await salvo()) === "lateral");
+  await mudar("lateral", false);
+  checar("permite nenhum local", (await salvo()) === "nenhum");
+  await mudar("acima", true);
+  await mudar("abaixo", true);
+  checar("abaixo desmarca acima", caixa("abaixo").checked && !caixa("acima").checked && (await salvo()) === "abaixo");
+  checar("preserva perguntar ao favoritar", perguntar.checked === false);
   perguntar.checked = true;
   disparar(perguntar, "change");
   await tique();
   checar(
-    "caixa grava",
-    ((await sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { perguntarAoFavoritar?: boolean }).perguntarAoFavoritar === true,
+    "perguntar grava",
+    ((await sync.obter(CHAVE_PREFERENCIAS))[CHAVE_PREFERENCIAS] as { perguntarAoFavoritar: boolean }).perguntarAoFavoritar,
   );
-  await sync.gravar({ [CHAVE_PREFERENCIAS]: { exibir: "abaixo", perguntarAoFavoritar: true } });
+  await sync.gravar({ [CHAVE_PREFERENCIAS]: { exibir: "acimaLateral" } });
   await tique();
-  checar("mudanca feita em outro lugar remarca", radio("abaixo")!.checked);
-
-  const so = await montarOpcoesExibicao({ sync: areaMemoria(), lateralDisponivel: false });
+  checar("mudanca externa atualiza caixas", caixa("acima").checked && caixa("lateral").checked && !caixa("abaixo").checked);
+  const sem = await montarOpcoesExibicao({ sync, lateralDisponivel: false });
   checar(
-    "sem painel lateral, so 'abaixo' e explica",
-    !so.querySelector('input[value="lateral"]') && /painel lateral/i.test(so.textContent ?? ""),
+    "sem lateral preserva acima",
+    (sem.querySelector('input[value="acima"]') as HTMLInputElement).checked && !sem.querySelector('input[value="lateral"]'),
   );
 }

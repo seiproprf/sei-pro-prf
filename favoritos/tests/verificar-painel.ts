@@ -10,6 +10,32 @@ import { botao, checar, disparar, instalarDom, lanca, secao, telaSei, tique } fr
 import { CTX } from "./verificar-modelo";
 
 export async function verificarPainel(): Promise<void> {
+  const docAcima = instalarDom(
+    '<html><body><form id="frmProcedimentoControlar"></form><div id="panelHomePro"><div id="outroPainel"></div></div></body></html>',
+  );
+  const acima = montarPainel(docAcima, { urlApp: "x", recolhido: false, ordem: null, posicao: "acima", aoRecolher: () => undefined })!;
+  checar("acima nao participa da ordenacao dos paineis inferiores", !acima.painel.classList.contains("panelHomePro"));
+  checar("favoritos antes do controle", acima.painel.nextElementSibling?.id === "frmProcedimentoControlar");
+  checar(
+    "outros paineis continuam abaixo",
+    docAcima.querySelector("#panelHomePro")?.previousElementSibling?.id === "frmProcedimentoControlar",
+  );
+  acima.fechar();
+  const abaixo = montarPainel(docAcima, { urlApp: "x", recolhido: false, ordem: null, aoRecolher: () => undefined })!;
+  checar("abaixo preserva outros paineis", abaixo.painel.parentElement?.id === "panelHomePro" && !!docAcima.querySelector("#outroPainel"));
+  abaixo.fechar();
+  const docAgrupado = instalarDom(
+    '<html><body><div id="panelHomePro"><div id="processosSEIPro"><div id="divInfraBarraLocalizacao">Controle</div><form id="frmProcedimentoControlar"></form></div></div></body></html>',
+  );
+  const agrupado = montarPainel(docAgrupado, {
+    urlApp: "x",
+    recolhido: false,
+    ordem: null,
+    posicao: "acima",
+    aoRecolher: () => undefined,
+  })!;
+  checar("acima do grupo completo inclusive titulo", agrupado.painel.nextElementSibling?.id === "panelHomePro");
+  agrupado.fechar();
   secao("abrir processo sem montar link");
   const { doc: caixa } = telaSei("sei41/caixa.html");
   const pelaLinha = localizarAbertura(caixa, "157584");
